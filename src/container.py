@@ -7,7 +7,6 @@ from src.core.db import database
 from src.core.entities import database_proxy
 from src.tracker.services import TrackClickService
 
-
 container = create_sync_container(
     parameters={
         'MYSQL_HOST': os.getenv('MYSQL_HOST'),

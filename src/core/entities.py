@@ -1,4 +1,4 @@
-from peewee import BooleanField, CharField, DatabaseProxy, ForeignKeyField, IntegerField, Model, AutoField
+from peewee import AutoField, BooleanField, CharField, DatabaseProxy, ForeignKeyField, IntegerField, Model
 
 database_proxy = DatabaseProxy()
 
