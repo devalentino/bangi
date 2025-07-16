@@ -5,5 +5,21 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "robyn>=0.71.1",
+    "flask>=3.1.1",
+    "flask-smorest>=0.46.1",
+    "peewee>=3.18.2",
+    "peewee-migrate>=1.13.0",
+    "pytest-dotenv>=0.5.2",
+    "wireup>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-mysql>=3.1.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
 ]
