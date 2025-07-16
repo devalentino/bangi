@@ -1,4 +1,4 @@
-from peewee import CharField, UUIDField, IntegerField
+from peewee import CharField, IntegerField, UUIDField
 
 from src.core.entities import BaseModel
 
