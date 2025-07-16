@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_smorest import Api
 
+from src.health.routes import blueprint as health_blueprint
 from src.tracker.routes import blueprint as track_blueprint
 
 app = Flask(__name__)
@@ -13,3 +14,4 @@ app.config['OPENAPI_SWAGGER_UI_URL'] = 'https://cdn.jsdelivr.net/npm/swagger-ui-
 
 api = Api(app)
 api.register_blueprint(track_blueprint, url_prefix='/api/v2/track')
+api.register_blueprint(health_blueprint, url_prefix='/api/v2/health')
