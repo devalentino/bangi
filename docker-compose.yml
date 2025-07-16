@@ -23,11 +23,10 @@ services:
       context: .
       dockerfile: infra/core.Dockerfile
     restart: always
-    container_name: backend
+    env_file:
+      - .env
     ports:
-      - '8000:80'
-    volumes:
-      - .:/app
+      - '8000:5000'
     links:
       - mariadb
     depends_on:
