@@ -16,10 +16,5 @@ class TrackClick(MethodView):
         track_click_service = container.get(TrackClickService)
 
         track_click_service.track(
-            track_payload['click_id'],
-            track_payload['campaign_id'],
-            track_payload.get('campaign_name'),
-            track_payload.get('adset_name'),
-            track_payload.get('ad_name'),
-            track_payload.get('pixel'),
+            track_payload.pop('click_id'), track_payload.pop('campaign_id'), parameters=track_payload
         )

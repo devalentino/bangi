@@ -1,3 +1,4 @@
+import json
 from unittest import mock
 from uuid import uuid4
 
@@ -17,4 +18,16 @@ def test_track_click(client, campaign, read_from_db):
     assert response.status_code == 201, response.text
 
     click = read_from_db('track_click')
-    assert click == request_payload | {'id': mock.ANY, 'click_id': click_id.hex}
+    assert click == {
+        'id': mock.ANY,
+        'campaign_id': campaign['id'],
+        'click_id': click_id.hex,
+        'parameters': mock.ANY,
+    }
+
+    assert json.loads(click['parameters']) == {
+        'campaign_name': request_payload['campaign_name'],
+        'adset_name': request_payload['adset_name'],
+        'ad_name': request_payload['ad_name'],
+        'pixel': request_payload['pixel'],
+    }

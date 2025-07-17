@@ -68,10 +68,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
         id = pw.AutoField()
         click_id = pw.UUIDField()
         campaign_id = pw.IntegerField()
-        campaign_name = pw.CharField(max_length=255)
-        adset_name = pw.CharField(max_length=255)
-        ad_name = pw.CharField(max_length=255)
-        pixel = pw.CharField(max_length=255)
+        parameters = pw.TextField()
 
         class Meta:
             table_name = "track_click"

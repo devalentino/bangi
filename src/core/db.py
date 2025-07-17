@@ -1,7 +1,8 @@
 from typing import Annotated
 
-from peewee import MySQLDatabase
 from wireup import Inject, service
+
+from peewee import MySQLDatabase
 
 
 @service(lifetime='singleton')
