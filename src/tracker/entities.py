@@ -1,12 +1,9 @@
-from peewee import CharField, IntegerField, UUIDField
-
+from peewee import IntegerField, UUIDField
 from src.core.entities import BaseModel
+from src.peewee import JSONField
 
 
 class TrackClick(BaseModel):
     click_id = UUIDField()
     campaign_id = IntegerField()
-    campaign_name = CharField()
-    adset_name = CharField()
-    ad_name = CharField()
-    pixel = CharField()
+    parameters = JSONField()

@@ -1,8 +1,8 @@
 import os
 
-from peewee import MySQLDatabase
 from wireup import create_sync_container
 
+from peewee import MySQLDatabase
 from src.core.db import database
 from src.core.entities import database_proxy
 from src.tracker.services import TrackClickService
