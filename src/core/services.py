@@ -23,9 +23,10 @@ class CampaignService:
     def create(self, name, cost_model, cost_value, currency):
         campaign = Campaign(name=name, cost_model=cost_model, cost_value=cost_value, currency=currency)
         campaign.save()
+        return campaign
 
-    def update(self, id, name=None, cost_model=None, cost_value=None, currency=None):
-        campaign = Campaign.get_by_id(id)
+    def update(self, campaign_id, name=None, cost_model=None, cost_value=None, currency=None):
+        campaign = Campaign.get_by_id(campaign_id)
 
         if name:
             campaign.name = name
@@ -40,6 +41,8 @@ class CampaignService:
             campaign.currency = currency
 
         campaign.save()
+
+        return campaign
 
     def count(self):
         return Campaign.select(fn.count(Campaign.id)).scalar()

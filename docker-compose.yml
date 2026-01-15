@@ -2,17 +2,14 @@ services:
   mariadb:
     image: mariadb:latest
     restart: always
-    env_file:
-      - .env
-    volumes:
-      - ./.data:/var/lib/mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: test1234
+      MARIADB_DATABASE: bangi_local_dev
     ports:
       - '3306:3306'
     healthcheck:
       test: [ 'CMD', 'mariadb', '-u', 'root', '-p$MARIADB_ROOT_PASSWORD', '-e', 'SHOW DATABASES' ]
-      start_period: 1m
-      start_interval: 10s
-      interval: 1m
+      interval: 5s
       timeout: 5s
       retries: 3
   backend:
@@ -22,6 +19,8 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      MARIADB_HOST: mariadb
     ports:
       - '8000:5000'
     volumes:

@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from playhouse.shortcuts import model_to_dict
+
 from peewee import (
     AutoField,
     BooleanField,
@@ -8,7 +10,9 @@ from peewee import (
     DecimalField,
     ForeignKeyField,
     IntegerField,
-    Model,
+)
+from peewee import Model as PeeweeModel
+from peewee import (
     TimestampField,
 )
 from src.core.enums import CostModel, Currency
@@ -16,23 +20,33 @@ from src.core.enums import CostModel, Currency
 database_proxy = DatabaseProxy()
 
 
-class BaseModel(Model):
-    id = AutoField()
-    created_at = TimestampField(null=True, utc=True)
-
+class Model(PeeweeModel):
     class Meta:
         database = database_proxy
         legacy_table_names = False
+        primary_key = False
+        evolve = False
+
+    def to_dict(self):
+        return model_to_dict(self)
 
 
-class Campaign(BaseModel):
+class Entity(Model):
+    id = AutoField(primary_key=True)
+    created_at = TimestampField(null=True, utc=True)
+
+    class Meta:
+        evolve = False
+
+
+class Campaign(Entity):
     name = CharField()
     cost_model = CharField(null=True, default=CostModel.cpa.value)
     cost_value = DecimalField(null=True, default=Decimal('0.00'))
     currency = CharField(null=True, default=Currency.usd.value)
 
 
-class Flow(BaseModel):
+class Flow(Entity):
     campaign_id = ForeignKeyField(Campaign)
 
     order_value = IntegerField(null=False)

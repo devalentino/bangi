@@ -1,6 +1,7 @@
 import base64
 import os
 import pathlib
+from unittest import mock
 
 import pytest
 from peewee_migrate import Router
@@ -9,7 +10,7 @@ from pytest_mysql import factories
 from peewee import MySQLDatabase
 
 mysql_in_docker = factories.mysql_noproc(
-    host=os.getenv('MARIADB_HOST'),
+    host='localhost',
     port=int(os.getenv('MARIADB_PORT')),
     user=os.getenv('MARIADB_USER'),
 )
@@ -18,9 +19,16 @@ mysql = factories.mysql('mysql_in_docker', passwd=os.getenv('MARIADB_PASSWORD'))
 
 
 @pytest.fixture(autouse=True)
-def create_tables(mysql):
+def mock_database(mysql):
+    environ = os.environ | {'MARIADB_HOST': mysql.host, 'MARIADB_PORT': str(mysql.port), 'MARIADB_DATABASE': 'test'}
+    with mock.patch.dict(os.environ, environ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def create_tables(mock_database, mysql):
     db = MySQLDatabase(
-        os.getenv('MARIADB_DATABASE'),
+        'test',
         user=mysql.user.decode(),
         password=mysql.password.decode(),
         host=mysql.host,

@@ -37,7 +37,7 @@ def read_from_db(mysql):
         query = f'SELECT {column_names} FROM {table} '
 
         if filters is not None:
-            column_names = ", ".join(f"{column_name}=%({column_name})s" for column_name, value in filters.items())
+            column_names = " AND ".join(f"{column_name}=%({column_name})s" for column_name, value in filters.items())
             query += f"WHERE {column_names}"
 
         with mysql.cursor(cursors.DictCursor) as cur:

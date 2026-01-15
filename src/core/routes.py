@@ -1,6 +1,5 @@
 import humps
 from flask.views import MethodView
-from playhouse.shortcuts import model_to_dict
 
 from src.auth import auth
 from src.blueprint import Blueprint
@@ -34,7 +33,7 @@ class Campaigns(MethodView):
         count = campaign_service.count()
 
         return {
-            'content': [humps.camelize(model_to_dict(c)) for c in campaigns],
+            'content': [humps.camelize(c.to_dict()) for c in campaigns],
             'pagination': parameters_payload | {'total': count},
         }
 
@@ -58,7 +57,7 @@ class Campaign(MethodView):
     def get(self, campaign_id):
         campaign_service = container.get(CampaignService)
         campaign = campaign_service.get(campaign_id)
-        return humps.camelize(model_to_dict(campaign))
+        return humps.camelize(campaign.to_dict())
 
     @blueprint.arguments(CampaignUpdateRequestSchema)
     @blueprint.response(200)
@@ -81,4 +80,4 @@ class FilterCampaigns(MethodView):
     def get(self):
         campaign_service = container.get(CampaignService)
         campaigns = campaign_service.all()
-        return [model_to_dict(c) for c in campaigns]
+        return [c.to_dict() for c in campaigns]
