@@ -16,9 +16,9 @@ def test_get_report(client, authorization, campaign_id, timestamp):
         '/api/v2/reports/base',
         headers={'Authorization': authorization},
         query_string={
-            'campaign_id': campaign_id,
-            'period_start': start_timestamp,
-            'period_end': end_timestamp,
+            'campaignId': campaign_id,
+            'periodStart': start_timestamp,
+            'periodEnd': end_timestamp,
         },
     )
     assert response.status_code == 200, response.text
@@ -61,10 +61,10 @@ def test_get_report__group_by_parameter(client, authorization, campaign_id, time
         '/api/v2/reports/base',
         headers={'Authorization': authorization},
         query_string={
-            'campaign_id': campaign_id,
-            'period_start': timestamp - 4 * 24 * 60 * 60,
-            'period_end': timestamp,
-            'group_parameters': 'ad_name,adset_name',
+            'campaignId': campaign_id,
+            'periodStart': timestamp - 4 * 24 * 60 * 60,
+            'periodEnd': timestamp,
+            'groupParameters': 'ad_name,adset_name',
         },
     )
 
@@ -119,9 +119,9 @@ def test_get_report__no_statistics(client, authorization, timestamp):
         '/api/v2/reports/base',
         headers={'Authorization': authorization},
         query_string={
-            'campaign_id': 100500,
-            'period_start': start_timestamp,
-            'period_end': end_timestamp,
+            'campaignId': 100500,
+            'periodStart': start_timestamp,
+            'periodEnd': end_timestamp,
         },
     )
     assert response.status_code == 200, response.text

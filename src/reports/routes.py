@@ -16,5 +16,12 @@ class Report(MethodView):
     @auth.login_required
     def get(self, params):
         report_service = container.get(ReportService)
-        report, available_parameters = report_service.base_report(params)
+        report, available_parameters = report_service.base_report(
+            {
+                'campaign_id': params['campaignId'],
+                'period_start': params['periodStart'],
+                'period_end': params['periodEnd'],
+                'group_parameters': params['groupParameters'],
+            }
+        )
         return {'content': {'report': report, 'parameters': available_parameters}}
