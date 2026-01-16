@@ -2,9 +2,8 @@ services:
   mariadb:
     image: mariadb:latest
     restart: always
-    environment:
-      MARIADB_ROOT_PASSWORD: test1234
-      MARIADB_DATABASE: bangi_local_dev
+    env_file:
+      - .env
     ports:
       - '3306:3306'
     healthcheck:
