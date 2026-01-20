@@ -1,5 +1,4 @@
 import json
-from collections import defaultdict
 from datetime import datetime, timedelta
 
 from wireup import service
@@ -14,26 +13,29 @@ class ReportService:
         self.base_report_repository = base_report_repository
 
     def _build_base_report(self, report_rows, parameters):
-        report = defaultdict(lambda: defaultdict(dict))
+        report = []
         for clicks_count, leads_count, lead_status, date, *parameters_values in report_rows:
-            report[date]['clicks'] = report[date].get('clicks', 0) + clicks_count
-            if lead_status:
-                report[date]['leads'][lead_status] = leads_count
-
-            for parameter_name, parameter_value in zip(parameters['group_parameters'], parameters_values):
-                report[date]['parameters'][parameter_name] = parameter_value
+            report.append(
+                {
+                    'date': date,
+                    'clicks': clicks_count,
+                    'leads': leads_count,
+                    'lead_status': lead_status,
+                    **dict(zip(parameters['group_parameters'], parameters_values)),
+                }
+            )
 
         period_start_date = datetime.fromtimestamp(parameters['period_start']).date()
         period_end_date = utcnow().date()
         if parameters['period_end']:
             period_end_date = datetime.fromtimestamp(parameters['period_end']).date()
 
-        all_dates_report = defaultdict(lambda: defaultdict(dict))
+        all_dates_report = []
         days_delta = period_end_date - period_start_date
         for day in range(days_delta.days + 1):
             date = (period_start_date + timedelta(days=day)).strftime('%Y-%m-%d')
-            payload = report[date] if date in report else {'clicks': 0}
-            all_dates_report[date] = payload
+            records = [r for r in report if r['date'] == date] or [{'date': date, 'clicks': 0}]
+            all_dates_report.extend(records)
 
         return all_dates_report
 

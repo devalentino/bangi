@@ -14,7 +14,7 @@ class BaseReportRequest(Schema):
 
 
 class BaseReportContent(Schema):
-    report = fields.Dict()
+    report = fields.List(fields.Dict, required=True)
     parameters = fields.List(fields.String)
 
 

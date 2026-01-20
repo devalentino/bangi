@@ -41,14 +41,25 @@ def test_get_report(client, authorization, campaign_id, timestamp):
                 'adset_name',
                 'fbclid',
             ],
-            'report': {
-                start_date.strftime('%Y-%m-%d'): {'clicks': 0},
-                (start_date + timedelta(days=1)).strftime('%Y-%m-%d'): {'clicks': 0},
-                (start_date + timedelta(days=2)).strftime('%Y-%m-%d'): {'clicks': 0},
-                (start_date + timedelta(days=3)).strftime('%Y-%m-%d'): {'clicks': 2, 'leads': {'expect': 2}},
-                (start_date + timedelta(days=4)).strftime('%Y-%m-%d'): {'clicks': 2, 'leads': {'expect': 2}},
-                end_date.strftime('%Y-%m-%d'): {'clicks': 2, 'leads': {'expect': 1, 'reject': 1}},
-            },
+            'report': [
+                {'date': start_date.strftime('%Y-%m-%d'), 'clicks': 0},
+                {'date': (start_date + timedelta(days=1)).strftime('%Y-%m-%d'), 'clicks': 0},
+                {'date': (start_date + timedelta(days=2)).strftime('%Y-%m-%d'), 'clicks': 0},
+                {
+                    'date': (start_date + timedelta(days=3)).strftime('%Y-%m-%d'),
+                    'clicks': 2,
+                    'lead_status': 'expect',
+                    'leads': 2,
+                },
+                {
+                    'date': (start_date + timedelta(days=4)).strftime('%Y-%m-%d'),
+                    'clicks': 2,
+                    'lead_status': 'expect',
+                    'leads': 2,
+                },
+                {'date': end_date.strftime('%Y-%m-%d'), 'clicks': 1, 'lead_status': 'expect', 'leads': 1},
+                {'date': end_date.strftime('%Y-%m-%d'), 'clicks': 1, 'lead_status': 'reject', 'leads': 1},
+            ],
         }
     }
 
@@ -88,25 +99,58 @@ def test_get_report__group_by_parameter(client, authorization, campaign_id, time
                 'adset_name',
                 'fbclid',
             ],
-            'report': {
-                start_date.strftime('%Y-%m-%d'): {'clicks': 0},
-                (start_date + timedelta(days=1)).strftime('%Y-%m-%d'): {'clicks': 0},
-                (start_date + timedelta(days=2)).strftime('%Y-%m-%d'): {
-                    'clicks': 2,
-                    'leads': {'expect': 1},
-                    'parameters': {'ad_name': 'ad0_1', 'adset_name': 'adset9'},
+            'report': [
+                {'date': start_date.strftime('%Y-%m-%d'), 'clicks': 0},
+                {'date': (start_date + timedelta(days=1)).strftime('%Y-%m-%d'), 'clicks': 0},
+                {
+                    'date': (start_date + timedelta(days=2)).strftime('%Y-%m-%d'),
+                    'ad_name': 'ad0_0',
+                    'adset_name': 'adset9',
+                    'clicks': 1,
+                    'leads': 1,
+                    'lead_status': 'expect',
                 },
-                (start_date + timedelta(days=3)).strftime('%Y-%m-%d'): {
-                    'clicks': 2,
-                    'leads': {'expect': 1},
-                    'parameters': {'ad_name': 'ad0_1', 'adset_name': 'adset9'},
+                {
+                    'date': (start_date + timedelta(days=2)).strftime('%Y-%m-%d'),
+                    'ad_name': 'ad0_1',
+                    'adset_name': 'adset9',
+                    'clicks': 1,
+                    'leads': 1,
+                    'lead_status': 'expect',
                 },
-                end_date.strftime('%Y-%m-%d'): {
-                    'clicks': 2,
-                    'leads': {'expect': 1, 'reject': 1},
-                    'parameters': {'ad_name': 'ad0_0', 'adset_name': 'adset9'},
+                {
+                    'date': (start_date + timedelta(days=3)).strftime('%Y-%m-%d'),
+                    'ad_name': 'ad0_0',
+                    'adset_name': 'adset9',
+                    'clicks': 1,
+                    'leads': 1,
+                    'lead_status': 'expect',
                 },
-            },
+                {
+                    'date': (start_date + timedelta(days=3)).strftime('%Y-%m-%d'),
+                    'ad_name': 'ad0_1',
+                    'adset_name': 'adset9',
+                    'clicks': 1,
+                    'leads': 1,
+                    'lead_status': 'expect',
+                },
+                {
+                    'date': end_date.strftime('%Y-%m-%d'),
+                    'ad_name': 'ad0_1',
+                    'adset_name': 'adset9',
+                    'clicks': 1,
+                    'leads': 1,
+                    'lead_status': 'expect',
+                },
+                {
+                    'date': end_date.strftime('%Y-%m-%d'),
+                    'ad_name': 'ad0_0',
+                    'adset_name': 'adset9',
+                    'clicks': 1,
+                    'leads': 1,
+                    'lead_status': 'reject',
+                },
+            ],
         }
     }
 
@@ -132,12 +176,12 @@ def test_get_report__no_statistics(client, authorization, timestamp):
     assert response.json == {
         'content': {
             'parameters': [],
-            'report': {
-                start_date.strftime('%Y-%m-%d'): {'clicks': 0},
-                (start_date + timedelta(days=1)).strftime('%Y-%m-%d'): {'clicks': 0},
-                (start_date + timedelta(days=2)).strftime('%Y-%m-%d'): {'clicks': 0},
-                (start_date + timedelta(days=3)).strftime('%Y-%m-%d'): {'clicks': 0},
-                end_date.strftime('%Y-%m-%d'): {'clicks': 0},
-            },
+            'report': [
+                {'date': start_date.strftime('%Y-%m-%d'), 'clicks': 0},
+                {'date': (start_date + timedelta(days=1)).strftime('%Y-%m-%d'), 'clicks': 0},
+                {'date': (start_date + timedelta(days=2)).strftime('%Y-%m-%d'), 'clicks': 0},
+                {'date': (start_date + timedelta(days=3)).strftime('%Y-%m-%d'), 'clicks': 0},
+                {'date': end_date.strftime('%Y-%m-%d'), 'clicks': 0},
+            ],
         }
     }

@@ -32,9 +32,6 @@ api.register_blueprint(track_blueprint, url_prefix='/api/v2/track')
 api.register_blueprint(health_blueprint, url_prefix='/api/v2/health')
 
 
-@app.errorhandler(Exception)
+@app.errorhandler(ApplicationError)
 def handle_exception(e):
-    if isinstance(e, ApplicationError):
-        return {'message': e.message}, e.http_status_code
-
-    raise e
+    return {'message': e.message}, e.http_status_code
