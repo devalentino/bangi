@@ -18,7 +18,7 @@ class TestBusinessPortfolio:
                     'adCabinets': [],
                 }
             ],
-            'pagination': {'page': 1, 'page_size': 20, 'sort_by': 'id', 'sort_order': 'asc', 'total': 1},
+            'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
         }
 
     def test_create_business_portfolio(self, client, authorization, business_portfolio_name, read_from_db):
@@ -211,7 +211,7 @@ class TestBusinessPortfolioManageAccessUrls:
                     'expiresAt': date.fromtimestamp(access_url['expires_at']).isoformat(),
                 }
             ],
-            'pagination': {'page': 1, 'page_size': 20, 'sort_by': 'id', 'sort_order': 'asc', 'total': 1},
+            'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
         }
 
     def test_create_access_url(self, client, authorization, business_portfolio, read_from_db):

@@ -23,3 +23,8 @@ class CostModel(str, Enum):
     cpl = 'cpl'
     cpa = 'cpa'
     cpi = 'cpi'
+
+
+class FlowActionType(str, Enum):
+    redirect = 'redirect'
+    render = 'render'

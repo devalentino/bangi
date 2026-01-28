@@ -1,10 +1,15 @@
 import decimal
+import logging
 
+import rule_engine
 from marshmallow import Schema as MarshmallowSchema
-from marshmallow import ValidationError, fields
+from marshmallow import ValidationError, fields, validates_schema
 
 from src.core.constants import PAGINATION_DEFAULT_PAGE_SIZE
-from src.core.enums import CostModel, Currency, SortBy, SortOrder
+from src.core.enums import CostModel, Currency, FlowActionType, SortBy, SortOrder
+from src.core.models import Client
+
+logger = logging.getLogger(__name__)
 
 
 class Schema(MarshmallowSchema):
@@ -25,9 +30,9 @@ class ComaSeparatedStringsField(fields.Field):
 
 class PaginationRequestSchema(Schema):
     page = fields.Integer(dump_default=1, load_default=1)
-    page_size = fields.Integer(dump_default=PAGINATION_DEFAULT_PAGE_SIZE, load_default=PAGINATION_DEFAULT_PAGE_SIZE)
-    sort_by = fields.Enum(SortBy, dump_default=SortBy.id, load_default=SortBy.id)
-    sort_order = fields.Enum(SortOrder, dump_default=SortOrder.asc, load_default=SortOrder.asc)
+    pageSize = fields.Integer(dump_default=PAGINATION_DEFAULT_PAGE_SIZE, load_default=PAGINATION_DEFAULT_PAGE_SIZE)
+    sortBy = fields.Enum(SortBy, dump_default=SortBy.id, load_default=SortBy.id)
+    sortOrder = fields.Enum(SortOrder, dump_default=SortOrder.asc, load_default=SortOrder.asc)
 
 
 class PaginationResponseSchema(PaginationRequestSchema):
@@ -39,6 +44,7 @@ class CampaignCreateRequestSchema(Schema):
     costModel = fields.Enum(CostModel, required=True)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
     currency = fields.Enum(Currency, required=True)
+    statusMapper = fields.Dict(allow_none=True, load_default=None)
 
 
 class CampaignUpdateRequestSchema(Schema):
@@ -46,6 +52,7 @@ class CampaignUpdateRequestSchema(Schema):
     costModel = fields.Enum(CostModel)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN)
     currency = fields.Enum(Currency)
+    statusMapper = fields.Dict(allow_none=True, load_default=None)
 
 
 class CampaignResponseSchema(Schema):
@@ -54,6 +61,7 @@ class CampaignResponseSchema(Schema):
     costModel = fields.String(required=True)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
     currency = fields.String(required=True)
+    statusMapper = fields.Dict(allow_none=True)
 
 
 class CampaignListResponseSchema(Schema):
@@ -64,3 +72,60 @@ class CampaignListResponseSchema(Schema):
 class FilterCampaignResponseSchema(Schema):
     id = fields.Integer(required=True)
     name = fields.String(required=True)
+
+
+class FlowUpdateRequestSchema(Schema):
+    orderValue = fields.Integer()
+    rule = fields.String(required=True)
+    actionType = fields.Enum(FlowActionType, required=True)
+    redirectUrl = fields.Url(allow_none=True, load_default=None)
+    isEnabled = fields.Boolean()
+
+    @validates_schema
+    def validate_action(self, data, **kwargs):
+        if data.get('actionType') == FlowActionType.redirect:
+            if data.get('redirectUrl') is None:
+                raise ValidationError('redirectUrl is required for redirect action.', field_name='redirectUrl')
+            return
+
+    @validates_schema
+    def validate_rule(self, data, **kwargs):
+        rule = data.get('rule')
+        if rule is None:
+            return
+        try:
+            rule_engine.Rule(rule, context=Client.rule_engine_context())
+        except rule_engine.errors.SymbolResolutionError as e:
+            raise ValidationError(e.message, field_name='rule')
+        except rule_engine.errors.RuleSyntaxError as e:
+            raise ValidationError(e.message, field_name='rule')
+        except rule_engine.errors.EngineError:
+            logger.warning('Failed to save rule', exc_info=True)
+            raise ValidationError('rule error', field_name='rule')
+
+    @classmethod
+    def validate_render_action_type(cls, flow_payload, landing_archive):
+        if flow_payload.get('actionType') == FlowActionType.render:
+            if landing_archive is None:
+                raise ValidationError('landingArchive is required for render action.', field_name='landingArchive')
+            if not landing_archive.filename.endswith('.zip'):
+                raise ValidationError('landingArchive must be a .zip file.', field_name='landingArchive')
+            return
+
+
+class FlowCreateRequestSchema(FlowUpdateRequestSchema):
+    campaignId = fields.Integer(required=True)
+
+
+class FlowResponseSchema(Schema):
+    id = fields.Integer(required=True)
+    campaignId = fields.Integer(required=True)
+    orderValue = fields.Integer(required=True)
+    actionType = fields.String(required=True)
+    redirectUrl = fields.String(allow_none=True)
+    isEnabled = fields.Boolean(required=True)
+
+
+class FlowListResponseSchema(Schema):
+    content = fields.Nested(FlowResponseSchema(many=True), required=True)
+    pagination = fields.Nested(PaginationResponseSchema, required=True)

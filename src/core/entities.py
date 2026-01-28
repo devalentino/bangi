@@ -13,9 +13,11 @@ from peewee import (
 )
 from peewee import Model as PeeweeModel
 from peewee import (
+    TextField,
     TimestampField,
 )
-from src.core.enums import CostModel, Currency
+from src.core.enums import CostModel, Currency, FlowActionType
+from src.peewee import JSONField
 
 database_proxy = DatabaseProxy()
 
@@ -44,11 +46,14 @@ class Campaign(Entity):
     cost_model = CharField(null=True, default=CostModel.cpa.value)
     cost_value = DecimalField(null=True, default=Decimal('0.00'))
     currency = CharField(null=True, default=Currency.usd.value)
+    status_mapper = JSONField(null=True)
 
 
 class Flow(Entity):
     campaign_id = ForeignKeyField(Campaign)
-
+    rule = TextField(null=True)
     order_value = IntegerField(null=False)
+    action_type = CharField(default=FlowActionType.redirect.value)
+    redirect_url = CharField(null=True)
     is_enabled = BooleanField(default=True)
     is_deleted = BooleanField(default=False)

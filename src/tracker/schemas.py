@@ -11,7 +11,14 @@ class TrackClickRequestSchema(Schema):
         unknown = INCLUDE
 
 
-class TrackPostbackRequest(Schema):
+class TrackPostbackRequestSchema(Schema):
+    click_id = fields.UUID(required=True)
+
+    class Meta:
+        unknown = INCLUDE
+
+
+class TrackRedirectRequestSchema(Schema):
     click_id = fields.UUID(required=True)
 
     class Meta:

@@ -47,9 +47,9 @@ class Executors(MethodView):
         executor_service = container.get(ExecutorService)
         executors = executor_service.list(
             parameters_payload['page'],
-            parameters_payload['page_size'],
-            parameters_payload['sort_by'],
-            parameters_payload['sort_order'],
+            parameters_payload['pageSize'],
+            parameters_payload['sortBy'],
+            parameters_payload['sortOrder'],
         )
         count = executor_service.count()
 
@@ -94,9 +94,9 @@ class BusinessPosrfolios(MethodView):
         business_portfolio_service = container.get(BusinessPortfolioService)
         business_portfolios = business_portfolio_service.list(
             parameters_payload['page'],
-            parameters_payload['page_size'],
-            parameters_payload['sort_by'],
-            parameters_payload['sort_order'],
+            parameters_payload['pageSize'],
+            parameters_payload['sortBy'],
+            parameters_payload['sortOrder'],
         )
         count = business_portfolio_service.count()
 
@@ -161,9 +161,9 @@ class BusinessPortfolioAccessUrls(MethodView):
         business_portfolio_service = container.get(BusinessPortfolioService)
         access_urls = business_portfolio_service.list_access_urls(
             parameters_payload['page'],
-            parameters_payload['page_size'],
-            parameters_payload['sort_by'],
-            parameters_payload['sort_order'],
+            parameters_payload['pageSize'],
+            parameters_payload['sortBy'],
+            parameters_payload['sortOrder'],
             business_portfolio_id,
         )
         count = business_portfolio_service.count_access_urls()
@@ -202,9 +202,9 @@ class AdCabinets(MethodView):
         ad_cabinet_service = container.get(AdCabinetService)
         ad_cabinets = ad_cabinet_service.list(
             parameters_payload['page'],
-            parameters_payload['page_size'],
-            parameters_payload['sort_by'],
-            parameters_payload['sort_order'],
+            parameters_payload['pageSize'],
+            parameters_payload['sortBy'],
+            parameters_payload['sortOrder'],
         )
         count = ad_cabinet_service.count()
 
@@ -267,9 +267,9 @@ class Campaigns(MethodView):
         campaign_service = container.get(CampaignService)
         campaigns = campaign_service.list(
             parameters_payload['page'],
-            parameters_payload['page_size'],
-            parameters_payload['sort_by'],
-            parameters_payload['sort_order'],
+            parameters_payload['pageSize'],
+            parameters_payload['sortBy'],
+            parameters_payload['sortOrder'],
         )
         count = campaign_service.count()
 
@@ -325,9 +325,9 @@ class BusinessPages(MethodView):
         business_page_service = container.get(BusinessPageService)
         business_pages = business_page_service.list(
             parameters_payload['page'],
-            parameters_payload['page_size'],
-            parameters_payload['sort_by'],
-            parameters_payload['sort_order'],
+            parameters_payload['pageSize'],
+            parameters_payload['sortBy'],
+            parameters_payload['sortOrder'],
         )
         count = business_page_service.count()
 

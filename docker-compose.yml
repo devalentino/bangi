@@ -11,6 +11,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 3
+  app:
+    image: php:8-fpm
+    volumes:
+      - ./landings:/var/www/html
   backend:
     build:
       context: .

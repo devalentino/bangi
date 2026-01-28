@@ -6,7 +6,7 @@ def test_get_business_pages(client, authorization, business_page):
     assert response.status_code == 200, response.text
     assert response.json == {
         'content': [{'id': business_page['id'], 'name': business_page['name'], 'isBanned': business_page['is_banned']}],
-        'pagination': {'page': 1, 'page_size': 20, 'sort_by': 'id', 'sort_order': 'asc', 'total': 1},
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
     }
 
 

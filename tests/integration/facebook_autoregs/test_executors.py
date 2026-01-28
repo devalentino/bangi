@@ -6,7 +6,7 @@ def test_get_executors(client, authorization, executor, read_from_db):
     assert response.status_code == 200, response.text
     assert response.json == {
         'content': [{'id': executor['id'], 'name': executor['name'], 'isBanned': executor['is_banned']}],
-        'pagination': {'page': 1, 'page_size': 20, 'sort_by': 'id', 'sort_order': 'asc', 'total': 1},
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
     }
 
 

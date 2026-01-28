@@ -19,7 +19,7 @@ def test_get_campaigns(client, authorization, campaign_fa):
                 'executor': {'id': campaign_fa['executor_id'], 'isBanned': mock.ANY, 'name': mock.ANY},
             }
         ],
-        'pagination': {'page': 1, 'page_size': 20, 'sort_by': 'id', 'sort_order': 'asc', 'total': 1},
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
     }
 
 
@@ -43,6 +43,7 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
         'cost_model': 'cpa',
         'cost_value': 0,
         'currency': 'usd',
+        'status_mapper': 'null',
         'created_at': mock.ANY,
     }
 

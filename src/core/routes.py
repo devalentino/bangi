@@ -1,5 +1,7 @@
 import humps
+from flask import request
 from flask.views import MethodView
+from marshmallow import ValidationError
 
 from src.auth import auth
 from src.blueprint import Blueprint
@@ -10,9 +12,13 @@ from src.core.schemas import (
     CampaignResponseSchema,
     CampaignUpdateRequestSchema,
     FilterCampaignResponseSchema,
+    FlowCreateRequestSchema,
+    FlowListResponseSchema,
+    FlowResponseSchema,
+    FlowUpdateRequestSchema,
     PaginationRequestSchema,
 )
-from src.core.services import CampaignService
+from src.core.services import CampaignService, FlowService
 
 blueprint = Blueprint('core', __name__, description='Core')
 
@@ -26,9 +32,9 @@ class Campaigns(MethodView):
         campaign_service = container.get(CampaignService)
         campaigns = campaign_service.list(
             parameters_payload['page'],
-            parameters_payload['page_size'],
-            parameters_payload['sort_by'],
-            parameters_payload['sort_order'],
+            parameters_payload['pageSize'],
+            parameters_payload['sortBy'],
+            parameters_payload['sortOrder'],
         )
         count = campaign_service.count()
 
@@ -47,6 +53,7 @@ class Campaigns(MethodView):
             campaign_payload['costModel'],
             campaign_payload['costValue'],
             campaign_payload['currency'],
+            campaign_payload.get('statusMapper'),
         )
 
 
@@ -70,6 +77,7 @@ class Campaign(MethodView):
             campaign_payload.get('costModel'),
             campaign_payload.get('costValue'),
             campaign_payload.get('currency'),
+            campaign_payload.get('statusMapper'),
         )
 
 
@@ -81,3 +89,86 @@ class FilterCampaigns(MethodView):
         campaign_service = container.get(CampaignService)
         campaigns = campaign_service.all()
         return [c.to_dict() for c in campaigns]
+
+
+@blueprint.route('/flows')
+class Flows(MethodView):
+    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.response(200, FlowListResponseSchema)
+    @auth.login_required
+    def get(self, parameters_payload):
+        flow_service = container.get(FlowService)
+        flows = flow_service.list(
+            parameters_payload['page'],
+            parameters_payload['pageSize'],
+            parameters_payload['sortBy'],
+            parameters_payload['sortOrder'],
+        )
+        count = flow_service.count()
+
+        return {
+            'content': [humps.camelize(f.to_dict()) for f in flows],
+            'pagination': parameters_payload | {'total': count},
+        }
+
+    @blueprint.arguments(FlowCreateRequestSchema, location='form')
+    @blueprint.response(201)
+    @auth.login_required
+    def post(self, flow_payload):
+        landing_archive = request.files.get('landingArchive')
+
+        try:
+            FlowCreateRequestSchema.validate_render_action_type(flow_payload, landing_archive)
+        except ValidationError as e:
+            return {
+                'code': 422,
+                'errors': {'form': {'landingArchive': e.messages}},
+                'status': 'Unprocessable Entity',
+            }, 422
+
+        flow_service = container.get(FlowService)
+        flow_service.create(
+            flow_payload['campaignId'],
+            flow_payload['rule'],
+            flow_payload['orderValue'],
+            flow_payload['actionType'],
+            flow_payload.get('redirectUrl'),
+            flow_payload.get('isEnabled', True),
+            landing_archive,
+        )
+
+
+@blueprint.route('/flows/<int:flow_id>')
+class Flow(MethodView):
+    @blueprint.response(200, FlowResponseSchema)
+    @auth.login_required
+    def get(self, flow_id):
+        flow_service = container.get(FlowService)
+        flow = flow_service.get(flow_id)
+        return humps.camelize(flow.to_dict())
+
+    @blueprint.arguments(FlowUpdateRequestSchema, location='form')
+    @blueprint.response(200)
+    @auth.login_required
+    def patch(self, flow_payload, flow_id):
+        landing_archive = request.files.get('landingArchive')
+
+        try:
+            FlowUpdateRequestSchema.validate_render_action_type(flow_payload, landing_archive)
+        except ValidationError as e:
+            return {
+                'code': 422,
+                'errors': {'form': {'landingArchive': e.messages}},
+                'status': 'Unprocessable Entity',
+            }, 422
+
+        flow_service = container.get(FlowService)
+        flow_service.update(
+            flow_id,
+            flow_payload.get('rule'),
+            flow_payload.get('orderValue'),
+            flow_payload.get('actionType'),
+            flow_payload.get('redirectUrl'),
+            flow_payload.get('isEnabled'),
+            landing_archive,
+        )

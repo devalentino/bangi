@@ -1,9 +1,11 @@
 import json
 from unittest import mock
-from uuid import uuid4
+from uuid import UUID, uuid4
+
+from src.tracker.enums import Status
 
 
-class TestPostbackTerraleads:
+class TestPostback:
     def test_track_postback__post(self, client, campaign, read_from_db):
         click_id = uuid4()
         request_payload = {
@@ -23,7 +25,15 @@ class TestPostbackTerraleads:
         assert response.status_code == 201, response.text
 
         postback = read_from_db('track_postback')
-        assert postback == {'id': mock.ANY, 'click_id': click_id.hex, 'parameters': mock.ANY, 'created_at': mock.ANY}
+        assert postback == {
+            'id': mock.ANY,
+            'click_id': click_id.hex,
+            'parameters': mock.ANY,
+            'status': None,
+            'cost_value': None,
+            'currency': None,
+            'created_at': mock.ANY,
+        }
 
         assert json.loads(postback['parameters']) == {
             'from': request_payload['from'],
@@ -56,7 +66,15 @@ class TestPostbackTerraleads:
         assert response.status_code == 201, response.text
 
         postback = read_from_db('track_postback')
-        assert postback == {'id': mock.ANY, 'click_id': click_id.hex, 'parameters': mock.ANY, 'created_at': mock.ANY}
+        assert postback == {
+            'id': mock.ANY,
+            'click_id': click_id.hex,
+            'parameters': mock.ANY,
+            'status': None,
+            'cost_value': None,
+            'currency': None,
+            'created_at': mock.ANY,
+        }
 
         assert json.loads(postback['parameters']) == {
             'from': request_payload['from'],
@@ -69,3 +87,14 @@ class TestPostbackTerraleads:
             'status': request_payload['status'],
             'tid': request_payload['tid'],
         }
+
+    def test_track_postback__maps_status(self, client, click, campaign, read_from_db):
+        response = client.post(
+            '/api/v2/track/postback', json={'click_id': str(UUID(click['click_id'])), 'state': 'executed'}
+        )
+        assert response.status_code == 201, response.text
+
+        postback = read_from_db('track_postback')
+        assert postback['status'] == Status.approved.value
+        assert postback['cost_value'] == campaign['cost_value']
+        assert postback['currency'] == campaign['currency']

@@ -16,7 +16,7 @@ class TestAdCabinet:
                     'businessPortfolio': None,
                 }
             ],
-            'pagination': {'page': 1, 'page_size': 20, 'sort_by': 'id', 'sort_order': 'asc', 'total': 1},
+            'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
         }
 
     def test_create_ad_cabinet(self, client, authorization, ad_cabinet_name, read_from_db):
