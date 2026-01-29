@@ -77,7 +77,7 @@ class CampaignService:
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [c for c in Campaign.select().order_by(order_by).limit(page_size).offset(page - 1)]
+        return [c for c in Campaign.select().order_by(order_by).limit(page_size).offset((page - 1) * page_size)]
 
     def all(self):
         return [c for c in Campaign.select()]
