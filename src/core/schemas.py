@@ -120,6 +120,7 @@ class FlowCreateRequestSchema(FlowUpdateRequestSchema):
 class FlowResponseSchema(Schema):
     id = fields.Integer(required=True)
     campaignId = fields.Integer(required=True)
+    campaignName = fields.String(required=True)
     orderValue = fields.Integer(required=True)
     actionType = fields.String(required=True)
     redirectUrl = fields.String(allow_none=True)

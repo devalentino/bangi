@@ -50,7 +50,7 @@ class Campaign(Entity):
 
 
 class Flow(Entity):
-    campaign_id = ForeignKeyField(Campaign)
+    campaign = ForeignKeyField(Campaign)
     rule = TextField(null=True)
     order_value = IntegerField(null=False)
     action_type = CharField(default=FlowActionType.redirect.value)

@@ -12,6 +12,56 @@ def _zip_bytes():
     return archive
 
 
+def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
+    for index in range(25):
+        write_to_db(
+            'flow',
+            {
+                'campaign_id': campaign['id'],
+                'rule': flow_rule,
+                'order_value': index + 1,
+                'action_type': 'redirect',
+                'redirect_url': f'https://example.com/{index}',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+    response = client.get('/api/v2/core/flows', headers={'Authorization': authorization})
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [
+            {
+                'id': index + 1,
+                'campaignId': campaign['id'],
+                'campaignName': campaign['name'],
+                'orderValue': index + 1,
+                'actionType': 'redirect',
+                'redirectUrl': f'https://example.com/{index}',
+                'isEnabled': True,
+            }
+            for index in range(20)
+        ],
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 25},
+    }
+
+
+def test_get_flow(client, authorization, campaign, flow):
+    response = client.get(f'/api/v2/core/flows/{flow["id"]}', headers={'Authorization': authorization})
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'id': flow['id'],
+        'campaignId': flow['campaign_id'],
+        'campaignName': campaign['name'],
+        'orderValue': flow['order_value'],
+        'actionType': flow['action_type'],
+        'redirectUrl': flow['redirect_url'],
+        'isEnabled': bool(flow['is_enabled']),
+    }
+
+
 def test_create_flow__redirect_action_success(client, authorization, campaign, flow_rule, read_from_db):
     request_payload = {
         'campaignId': campaign['id'],

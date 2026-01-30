@@ -107,7 +107,10 @@ class Flows(MethodView):
         count = flow_service.count()
 
         return {
-            'content': [humps.camelize(f.to_dict()) for f in flows],
+            'content': [
+                humps.camelize(f.to_dict() | {'campaign_id': f.campaign.id, 'campaign_name': f.campaign.name})
+                for f in flows
+            ],
             'pagination': parameters_payload | {'total': count},
         }
 
@@ -145,7 +148,7 @@ class Flow(MethodView):
     def get(self, flow_id):
         flow_service = container.get(FlowService)
         flow = flow_service.get(flow_id)
-        return humps.camelize(flow.to_dict())
+        return humps.camelize(flow.to_dict() | {'campaign_id': flow.campaign.id, 'campaign_name': flow.campaign.name})
 
     @blueprint.arguments(FlowUpdateRequestSchema, location='form')
     @blueprint.response(200)
