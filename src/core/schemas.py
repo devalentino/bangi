@@ -125,6 +125,7 @@ class FlowResponseSchema(Schema):
     actionType = fields.String(required=True)
     redirectUrl = fields.String(allow_none=True)
     isEnabled = fields.Boolean(required=True)
+    rule = fields.String(required=True)
 
 
 class FlowListResponseSchema(Schema):
