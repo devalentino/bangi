@@ -75,6 +75,7 @@ class FilterCampaignResponseSchema(Schema):
 
 
 class FlowUpdateRequestSchema(Schema):
+    name = fields.String(required=False)
     orderValue = fields.Integer()
     rule = fields.String(required=True)
     actionType = fields.Enum(FlowActionType, required=True)
@@ -115,15 +116,18 @@ class FlowUpdateRequestSchema(Schema):
 
 class FlowCreateRequestSchema(FlowUpdateRequestSchema):
     campaignId = fields.Integer(required=True)
+    name = fields.String(required=True)
 
 
 class FlowResponseSchema(Schema):
     id = fields.Integer(required=True)
+    name = fields.String(required=True)
     campaignId = fields.Integer(required=True)
     campaignName = fields.String(required=True)
     orderValue = fields.Integer(required=True)
     actionType = fields.String(required=True)
     redirectUrl = fields.String(allow_none=True)
+    landingPath = fields.String(allow_none=True)
     isEnabled = fields.Boolean(required=True)
     rule = fields.String(required=True)
 

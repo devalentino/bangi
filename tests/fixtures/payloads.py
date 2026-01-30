@@ -7,6 +7,11 @@ def campaign_name():
 
 
 @pytest.fixture
+def flow_name():
+    return 'White flow'
+
+
+@pytest.fixture
 def status_mapper():
     return {
         'parameter': 'state',
@@ -31,8 +36,9 @@ def campaign_payload(campaign_name, status_mapper):
 
 
 @pytest.fixture
-def flow_payload(flow_rule):
+def flow_payload(flow_name, flow_rule):
     return {
+        'name': flow_name,
         'order_value': 1,
         'rule': flow_rule,
         'action_type': 'redirect',

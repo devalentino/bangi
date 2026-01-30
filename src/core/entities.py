@@ -50,6 +50,7 @@ class Campaign(Entity):
 
 
 class Flow(Entity):
+    name = CharField(null=True)
     campaign = ForeignKeyField(Campaign)
     rule = TextField(null=True)
     order_value = IntegerField(null=False)

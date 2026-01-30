@@ -6,6 +6,7 @@ from marshmallow import ValidationError
 from src.auth import auth
 from src.blueprint import Blueprint
 from src.container import container
+from src.core.enums import FlowActionType
 from src.core.schemas import (
     CampaignCreateRequestSchema,
     CampaignListResponseSchema,
@@ -108,7 +109,18 @@ class Flows(MethodView):
 
         return {
             'content': [
-                humps.camelize(f.to_dict() | {'campaign_id': f.campaign.id, 'campaign_name': f.campaign.name})
+                humps.camelize(
+                    f.to_dict()
+                    | {
+                        'campaign_id': f.campaign.id,
+                        'campaign_name': f.campaign.name,
+                        'landing_path': (
+                            f'{container.config.get("LANDING_PAGE_RENDERER_BASE_URL")}/{f.id}'
+                            if f.action_type == FlowActionType.render
+                            else None
+                        ),
+                    }
+                )
                 for f in flows
             ],
             'pagination': parameters_payload | {'total': count},
@@ -131,6 +143,7 @@ class Flows(MethodView):
 
         flow_service = container.get(FlowService)
         flow_service.create(
+            flow_payload['name'],
             flow_payload['campaignId'],
             flow_payload['rule'],
             flow_payload['orderValue'],
@@ -148,7 +161,18 @@ class Flow(MethodView):
     def get(self, flow_id):
         flow_service = container.get(FlowService)
         flow = flow_service.get(flow_id)
-        return humps.camelize(flow.to_dict() | {'campaign_id': flow.campaign.id, 'campaign_name': flow.campaign.name})
+        return humps.camelize(
+            flow.to_dict()
+            | {
+                'campaign_id': flow.campaign.id,
+                'campaign_name': flow.campaign.name,
+                'landing_path': (
+                    f'{container.config.get("LANDING_PAGE_RENDERER_BASE_URL")}/{flow.id}'
+                    if flow.action_type == FlowActionType.render
+                    else None
+                ),
+            }
+        )
 
     @blueprint.arguments(FlowUpdateRequestSchema, location='form')
     @blueprint.response(200)
@@ -168,6 +192,7 @@ class Flow(MethodView):
         flow_service = container.get(FlowService)
         flow_service.update(
             flow_id,
+            flow_payload.get('name'),
             flow_payload.get('rule'),
             flow_payload.get('orderValue'),
             flow_payload.get('actionType'),

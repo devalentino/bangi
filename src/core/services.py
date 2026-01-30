@@ -176,6 +176,7 @@ class FlowService:
 
     def create(
         self,
+        name,
         campaign_id,
         rule,
         order_value,
@@ -185,6 +186,7 @@ class FlowService:
         landing_archive=None,
     ):
         flow = Flow(
+            name=name,
             campaign_id=campaign_id,
             rule=rule,
             order_value=order_value,
@@ -202,6 +204,7 @@ class FlowService:
     def update(
         self,
         flow_id,
+        name=None,
         rule=None,
         order_value=None,
         action_type=None,
@@ -210,6 +213,9 @@ class FlowService:
         landing_archive=None,
     ):
         flow = Flow.get_by_id(flow_id)
+        if name:
+            flow.name = name
+
         if rule is not None:
             flow.rule = rule
 
