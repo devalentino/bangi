@@ -64,6 +64,13 @@ def test_get_flow(client, authorization, campaign, flow):
     }
 
 
+def test_get_flow__non_existent(client, authorization):
+    response = client.get('/api/v2/core/flows/100500', headers={'Authorization': authorization})
+
+    assert response.status_code == 404, response.text
+    assert response.json == {'message': 'Does not exist'}
+
+
 def test_create_flow__redirect_action_success(client, authorization, campaign, flow_rule, read_from_db):
     request_payload = {
         'campaignId': campaign['id'],

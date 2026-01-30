@@ -60,6 +60,14 @@ class TestBusinessPortfolio:
             'executors': [],
         }
 
+    def test_get_business_portfolio__non_existent(self, client, authorization):
+        response = client.get(
+            '/api/v2/facebook/autoregs/business-portfolios/100500',
+            headers={'Authorization': authorization},
+        )
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Does not exist'}
+
     def test_update_business_portfolio(self, client, authorization, business_portfolio, read_from_db):
         request_payload = {'name': 'Umar ibn al-Khattab', 'isBanned': True}
         assert business_portfolio['name'] != request_payload['name']
@@ -142,7 +150,7 @@ class TestBusinessPortfolio:
             headers={'Authorization': authorization},
         )
         assert response.status_code == 404
-        assert response.json == {'message': 'Executor does not exist'}
+        assert response.json == {'message': 'Does not exist'}
 
 
 class TestBusinessPortfolioWithExecutorAndAdCabinet:

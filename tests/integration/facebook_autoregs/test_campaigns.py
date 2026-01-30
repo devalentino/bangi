@@ -78,6 +78,12 @@ def test_get_campaign(client, authorization, campaign_fa):
     }
 
 
+def test_get_campaign__non_existent(client, authorization):
+    response = client.get('/api/v2/facebook/autoregs/campaigns/100500', headers={'Authorization': authorization})
+    assert response.status_code == 404, response.text
+    assert response.json == {'message': 'Does not exist'}
+
+
 def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executor, read_from_db, write_to_db):
     new_business_page = write_to_db(
         'facebook_autoregs_business_page',

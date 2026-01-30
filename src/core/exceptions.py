@@ -5,3 +5,8 @@ class ApplicationError(Exception):
 
 class LandingPageUploadError(ApplicationError):
     message = 'Can\'t store landing page'
+
+
+class DoesNotExistError(ApplicationError):
+    http_status_code = 404
+    message = 'Does not exist'

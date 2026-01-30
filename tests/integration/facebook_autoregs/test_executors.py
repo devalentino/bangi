@@ -41,6 +41,13 @@ def test_get_executor(client, authorization, executor):
     assert response.json == {'id': executor['id'], 'name': executor['name'], 'isBanned': executor['is_banned']}
 
 
+def test_get_executor__non_existent(client, authorization):
+    response = client.get('/api/v2/facebook/autoregs/executors/100500', headers={'Authorization': authorization})
+
+    assert response.status_code == 404, response.text
+    assert response.json == {'message': 'Does not exist'}
+
+
 def test_update_executor(client, authorization, executor, read_from_db):
     request_payload = {'name': 'Al-Malik al-Zahir Rukn al-Din Baybars al-Bunduqdari', 'isBanned': True}
     assert executor['name'] != request_payload['name']

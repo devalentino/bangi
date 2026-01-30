@@ -45,6 +45,12 @@ def test_get_business_page(client, authorization, business_page):
     }
 
 
+def test_get_business_page__non_existent(client, authorization):
+    response = client.get('/api/v2/facebook/autoregs/business-pages/100500', headers={'Authorization': authorization})
+    assert response.status_code == 404, response.text
+    assert response.json == {'message': 'Does not exist'}
+
+
 def test_update_business_page(client, authorization, business_page, read_from_db):
     request_payload = {'name': 'Al-Maari', 'isBanned': True}
     assert business_page['name'] != request_payload['name']

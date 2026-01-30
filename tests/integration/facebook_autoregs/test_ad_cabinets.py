@@ -57,6 +57,11 @@ class TestAdCabinet:
             'businessPortfolio': None,
         }
 
+    def test_get_ad_cabinet__non_existent(self, client, authorization):
+        response = client.get('/api/v2/facebook/autoregs/ad-cabinets/100500', headers={'Authorization': authorization})
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Does not exist'}
+
     def test_update_ad_cabinet(self, client, authorization, ad_cabinet, read_from_db):
         request_payload = {'name': 'Ibn al-Haytham', 'isBanned': True}
         assert ad_cabinet['name'] != request_payload['name']

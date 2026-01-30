@@ -4,6 +4,7 @@ from wireup import service
 
 from peewee import fn
 from src.core.enums import CostModel, Currency, SortOrder
+from src.core.exceptions import DoesNotExistError
 from src.core.services import CampaignService as CoreCampaignService
 from src.facebook_autoregs import exceptions
 from src.facebook_autoregs.entities import (
@@ -21,8 +22,8 @@ class ExecutorService:
     def get(self, id):
         try:
             return Executor.get_by_id(id)
-        except Executor.DoesNotExist:
-            raise exceptions.ExecutorDoesNotExist()
+        except Executor.DoesNotExist as exc:
+            raise DoesNotExistError() from exc
 
     def list(self, page, page_size, sort_by, sort_order):
         order_by = getattr(Executor, sort_by)
@@ -37,7 +38,7 @@ class ExecutorService:
         return executor
 
     def update(self, executor_id, name=None, is_banned=None):
-        executor = Executor.get_by_id(executor_id)
+        executor = self.get(executor_id)
 
         if name:
             executor.name = name
@@ -58,7 +59,10 @@ class BusinessPortfolioService:
         self.executor_service = executor_service
 
     def get(self, id):
-        return BusinessPortfolio.get_by_id(id)
+        try:
+            return BusinessPortfolio.get_by_id(id)
+        except BusinessPortfolio.DoesNotExist as exc:
+            raise DoesNotExistError() from exc
 
     def list(self, page, page_size, sort_by, sort_order):
         order_by = getattr(BusinessPortfolio, sort_by)
@@ -73,7 +77,7 @@ class BusinessPortfolioService:
         return business_portfolio
 
     def update(self, business_portfolio_id, name=None, is_banned=None):
-        business_portfolio = BusinessPortfolio.get_by_id(business_portfolio_id)
+        business_portfolio = self.get(business_portfolio_id)
 
         if name:
             business_portfolio.name = name
@@ -145,7 +149,10 @@ class AdCabinetService:
         self.business_portfolio_service = business_portfolio_service
 
     def get(self, id):
-        return AdCabinet.get_by_id(id)
+        try:
+            return AdCabinet.get_by_id(id)
+        except AdCabinet.DoesNotExist as exc:
+            raise DoesNotExistError() from exc
 
     def list(self, page, page_size, sort_by, sort_order):
         order_by = getattr(AdCabinet, sort_by)
@@ -160,7 +167,7 @@ class AdCabinetService:
         return ad_cabinet
 
     def update(self, ad_cabinet_id, name=None, is_banned=None):
-        ad_cabinet = AdCabinet.get_by_id(ad_cabinet_id)
+        ad_cabinet = self.get(ad_cabinet_id)
 
         if name:
             ad_cabinet.name = name
@@ -195,7 +202,10 @@ class AdCabinetService:
 @service
 class BusinessPageService:
     def get(self, id):
-        return BusinessPage.get_by_id(id)
+        try:
+            return BusinessPage.get_by_id(id)
+        except BusinessPage.DoesNotExist as exc:
+            raise DoesNotExistError() from exc
 
     def list(self, page, page_size, sort_by, sort_order):
         order_by = getattr(BusinessPage, sort_by)
@@ -210,7 +220,7 @@ class BusinessPageService:
         return business_page
 
     def update(self, business_page_id, name=None, is_banned=None):
-        business_page = BusinessPage.get_by_id(business_page_id)
+        business_page = self.get(business_page_id)
 
         if name:
             business_page.name = name
@@ -240,7 +250,10 @@ class CampaignService:
         self.core_campaign_service = core_campaign_service
 
     def get(self, id):
-        return Campaign.get_by_id(id)
+        try:
+            return Campaign.get_by_id(id)
+        except Campaign.DoesNotExist as exc:
+            raise DoesNotExistError() from exc
 
     def list(self, page, page_size, sort_by, sort_order):
         order_by = getattr(Campaign, sort_by)
