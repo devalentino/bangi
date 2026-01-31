@@ -6,7 +6,7 @@ from marshmallow import Schema as MarshmallowSchema
 from marshmallow import ValidationError, fields, validates_schema
 
 from src.core.constants import PAGINATION_DEFAULT_PAGE_SIZE
-from src.core.enums import CostModel, Currency, FlowActionType, SortBy, SortOrder
+from src.core.enums import CostModel, Currency, FlowActionType, FlowSortBy, SortBy, SortOrder
 from src.core.models import Client
 
 logger = logging.getLogger(__name__)
@@ -140,3 +140,7 @@ class FlowResponseSchema(Schema):
 class FlowListResponseSchema(Schema):
     content = fields.Nested(FlowResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
+
+
+class FlowPaginationRequestSchema(PaginationRequestSchema):
+    sortBy = fields.Enum(FlowSortBy, dump_default=FlowSortBy.id, load_default=FlowSortBy.id)

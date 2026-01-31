@@ -48,7 +48,7 @@ class Executors(MethodView):
         executors = executor_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
-            parameters_payload['sortBy'],
+            humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
         )
         count = executor_service.count()
@@ -95,7 +95,7 @@ class BusinessPosrfolios(MethodView):
         business_portfolios = business_portfolio_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
-            parameters_payload['sortBy'],
+            humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
         )
         count = business_portfolio_service.count()
@@ -162,7 +162,7 @@ class BusinessPortfolioAccessUrls(MethodView):
         access_urls = business_portfolio_service.list_access_urls(
             parameters_payload['page'],
             parameters_payload['pageSize'],
-            parameters_payload['sortBy'],
+            humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
             business_portfolio_id,
         )
@@ -203,7 +203,7 @@ class AdCabinets(MethodView):
         ad_cabinets = ad_cabinet_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
-            parameters_payload['sortBy'],
+            humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
         )
         count = ad_cabinet_service.count()
@@ -268,7 +268,7 @@ class Campaigns(MethodView):
         campaigns = campaign_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
-            parameters_payload['sortBy'],
+            humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
         )
         count = campaign_service.count()
@@ -326,7 +326,7 @@ class BusinessPages(MethodView):
         business_pages = business_page_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
-            parameters_payload['sortBy'],
+            humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
         )
         count = business_page_service.count()

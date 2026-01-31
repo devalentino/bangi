@@ -3,7 +3,7 @@ from enum import Enum
 
 class SortBy(str, Enum):
     id = 'id'
-    created_at = 'created_at'
+    createdAt = 'createdAt'
 
 
 class SortOrder(str, Enum):
@@ -28,3 +28,9 @@ class CostModel(str, Enum):
 class FlowActionType(str, Enum):
     redirect = 'redirect'
     render = 'render'
+
+
+class FlowSortBy(str, Enum):
+    id = 'id'
+    createdAt = 'createdAt'
+    orderValue = 'orderValue'

@@ -51,6 +51,96 @@ def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
     }
 
 
+def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign, flow_rule, write_to_db):
+    first = write_to_db(
+        'flow',
+        {
+            'name': 'Flow A',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 2,
+            'action_type': 'redirect',
+            'redirect_url': 'https://example.com/a',
+            'is_enabled': True,
+            'is_deleted': False,
+        },
+    )
+    second = write_to_db(
+        'flow',
+        {
+            'name': 'Flow B',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': -1,
+            'action_type': 'redirect',
+            'redirect_url': 'https://example.com/b',
+            'is_enabled': True,
+            'is_deleted': False,
+        },
+    )
+    third = write_to_db(
+        'flow',
+        {
+            'name': 'Flow C',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 10,
+            'action_type': 'redirect',
+            'redirect_url': 'https://example.com/c',
+            'is_enabled': True,
+            'is_deleted': False,
+        },
+    )
+
+    response = client.get(
+        '/api/v2/core/flows?page=1&pageSize=20&sortBy=orderValue&sortOrder=desc',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [
+            {
+                'id': third['id'],
+                'name': third['name'],
+                'campaignId': third['campaign_id'],
+                'campaignName': mock.ANY,
+                'rule': third['rule'],
+                'orderValue': third['order_value'],
+                'actionType': third['action_type'],
+                'redirectUrl': third['redirect_url'],
+                'landingPath': mock.ANY,
+                'isEnabled': third['is_enabled'],
+            },
+            {
+                'id': first['id'],
+                'name': first['name'],
+                'campaignId': first['campaign_id'],
+                'campaignName': mock.ANY,
+                'rule': first['rule'],
+                'orderValue': first['order_value'],
+                'actionType': first['action_type'],
+                'redirectUrl': first['redirect_url'],
+                'landingPath': mock.ANY,
+                'isEnabled': first['is_enabled'],
+            },
+            {
+                'id': second['id'],
+                'name': second['name'],
+                'campaignId': second['campaign_id'],
+                'campaignName': mock.ANY,
+                'rule': second['rule'],
+                'orderValue': second['order_value'],
+                'actionType': second['action_type'],
+                'redirectUrl': second['redirect_url'],
+                'landingPath': mock.ANY,
+                'isEnabled': second['is_enabled'],
+            },
+        ],
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'orderValue', 'sortOrder': 'desc', 'total': 3},
+    }
+
+
 def test_get_flow(client, authorization, campaign, flow):
     response = client.get(f'/api/v2/core/flows/{flow["id"]}', headers={'Authorization': authorization})
 

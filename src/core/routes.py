@@ -16,6 +16,7 @@ from src.core.schemas import (
     FlowBulkOrderUpdateRequestSchema,
     FlowCreateRequestSchema,
     FlowListResponseSchema,
+    FlowPaginationRequestSchema,
     FlowResponseSchema,
     FlowUpdateRequestSchema,
     PaginationRequestSchema,
@@ -35,7 +36,7 @@ class Campaigns(MethodView):
         campaigns = campaign_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
-            parameters_payload['sortBy'],
+            humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
         )
         count = campaign_service.count()
@@ -95,7 +96,7 @@ class FilterCampaigns(MethodView):
 
 @blueprint.route('/flows')
 class Flows(MethodView):
-    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.arguments(FlowPaginationRequestSchema, location='query')
     @blueprint.response(200, FlowListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
@@ -103,7 +104,7 @@ class Flows(MethodView):
         flows = flow_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
-            parameters_payload['sortBy'],
+            humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
         )
         count = flow_service.count()
