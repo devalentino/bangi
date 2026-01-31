@@ -64,6 +64,40 @@ class TestTrackRedirect:
             'tid': request_payload['tid'],
         }
 
+    def test_track_redirect__matches_flow_without_rule(self, client, campaign, write_to_db, ip2location_mock):
+        write_to_db(
+            'flow',
+            {
+                'name': 'US only',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "US"',
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/us',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        fallback_flow = write_to_db(
+            'flow',
+            {
+                'name': 'No rule',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 5,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/any',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+        request_payload = {'click_id': str(uuid4())}
+
+        response = client.get(f'/api/v2/track/process/{campaign["id"]}', query_string=request_payload)
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == fallback_flow['redirect_url']
+
 
 class TestTrackLanding:
     @pytest.fixture

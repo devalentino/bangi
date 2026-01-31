@@ -87,7 +87,7 @@ class FlowPaginationResponseSchema(FlowPaginationRequestSchema):
 
 class FlowUpdateRequestSchema(Schema):
     name = fields.String(required=False)
-    rule = fields.String(required=False)
+    rule = fields.String(required=False, allow_none=True, load_default=None)
     actionType = fields.Enum(FlowActionType, required=True)
     redirectUrl = fields.Url(allow_none=True, load_default=None)
     isEnabled = fields.Boolean()
@@ -126,7 +126,7 @@ class FlowUpdateRequestSchema(Schema):
 
 class FlowCreateRequestSchema(FlowUpdateRequestSchema):
     name = fields.String(required=True)
-    rule = fields.String(required=True)
+    rule = fields.String(required=False, allow_none=True, load_default=None)
 
 
 class FlowBulkOrderUpdateRequestSchema(Schema):
@@ -143,7 +143,7 @@ class FlowResponseSchema(Schema):
     redirectUrl = fields.String(allow_none=True)
     landingPath = fields.String(allow_none=True)
     isEnabled = fields.Boolean(required=True)
-    rule = fields.String(required=True)
+    rule = fields.String(required=True, allow_none=True)
 
 
 class FlowListResponseSchema(Schema):
