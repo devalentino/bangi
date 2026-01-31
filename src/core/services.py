@@ -179,7 +179,6 @@ class FlowService:
         name,
         campaign_id,
         rule,
-        order_value,
         action_type,
         redirect_url=None,
         is_enabled=True,
@@ -189,7 +188,7 @@ class FlowService:
             name=name,
             campaign_id=campaign_id,
             rule=rule,
-            order_value=order_value,
+            order_value=-1,
             action_type=action_type,
             redirect_url=redirect_url,
             is_enabled=is_enabled,
@@ -206,7 +205,6 @@ class FlowService:
         flow_id,
         name=None,
         rule=None,
-        order_value=None,
         action_type=None,
         redirect_url=None,
         is_enabled=None,
@@ -218,9 +216,6 @@ class FlowService:
 
         if rule is not None:
             flow.rule = rule
-
-        if order_value is not None:
-            flow.order_value = order_value
 
         if action_type is not None:
             flow.action_type = action_type
@@ -234,6 +229,16 @@ class FlowService:
 
         flow.save()
         return flow
+
+    def bulk_update_order(self, campaign_id, order):
+        # TODO: move to repo
+        with Flow._meta.database.atomic():
+            Flow.update(order_value=-1).where(Flow.campaign_id == campaign_id).execute()
+
+            for flow_id, order_value in order.items():
+                Flow.update(order_value=order_value).where(
+                    (Flow.campaign_id == campaign_id) & (Flow.id == flow_id)
+                ).execute()
 
     def count(self):
         return Flow.select(fn.count(Flow.id)).where(Flow.is_deleted == False).scalar()

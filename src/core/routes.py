@@ -13,6 +13,7 @@ from src.core.schemas import (
     CampaignResponseSchema,
     CampaignUpdateRequestSchema,
     FilterCampaignResponseSchema,
+    FlowBulkOrderUpdateRequestSchema,
     FlowCreateRequestSchema,
     FlowListResponseSchema,
     FlowResponseSchema,
@@ -115,7 +116,7 @@ class Flows(MethodView):
                         'campaign_id': f.campaign.id,
                         'campaign_name': f.campaign.name,
                         'landing_path': (
-                            f'{container.config.get("LANDING_PAGE_RENDERER_BASE_URL")}/{f.id}'
+                            f'{container.config.get("LANDING_PAGES_BASE_PATH")}/{f.id}'
                             if f.action_type == FlowActionType.render
                             else None
                         ),
@@ -146,7 +147,6 @@ class Flows(MethodView):
             flow_payload['name'],
             flow_payload['campaignId'],
             flow_payload['rule'],
-            flow_payload['orderValue'],
             flow_payload['actionType'],
             flow_payload.get('redirectUrl'),
             flow_payload.get('isEnabled', True),
@@ -167,7 +167,7 @@ class Flow(MethodView):
                 'campaign_id': flow.campaign.id,
                 'campaign_name': flow.campaign.name,
                 'landing_path': (
-                    f'{container.config.get("LANDING_PAGE_RENDERER_BASE_URL")}/{flow.id}'
+                    f'{container.config.get("LANDING_PAGES_BASE_PATH")}/{flow.id}'
                     if flow.action_type == FlowActionType.render
                     else None
                 ),
@@ -194,9 +194,18 @@ class Flow(MethodView):
             flow_id,
             flow_payload.get('name'),
             flow_payload.get('rule'),
-            flow_payload.get('orderValue'),
             flow_payload.get('actionType'),
             flow_payload.get('redirectUrl'),
             flow_payload.get('isEnabled'),
             landing_archive,
         )
+
+
+@blueprint.route('/flows/order')
+class FlowOrder(MethodView):
+    @blueprint.arguments(FlowBulkOrderUpdateRequestSchema)
+    @blueprint.response(200)
+    @auth.login_required
+    def patch(self, payload):
+        flow_service = container.get(FlowService)
+        flow_service.bulk_update_order(payload['campaignId'], payload['order'])

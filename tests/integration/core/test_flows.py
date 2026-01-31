@@ -81,7 +81,6 @@ def test_create_flow__redirect_action_success(client, authorization, campaign, f
         'name': 'Black flow',
         'campaignId': campaign['id'],
         'rule': flow_rule,
-        'orderValue': 1,
         'actionType': 'redirect',
         'redirectUrl': 'https://example.com',
         'isEnabled': True,
@@ -103,7 +102,7 @@ def test_create_flow__redirect_action_success(client, authorization, campaign, f
         'created_at': mock.ANY,
         'rule': request_payload['rule'],
         'campaign_id': request_payload['campaignId'],
-        'order_value': request_payload['orderValue'],
+        'order_value': -1,
         'action_type': request_payload['actionType'],
         'redirect_url': request_payload['redirectUrl'],
         'is_enabled': request_payload['isEnabled'],
@@ -117,7 +116,6 @@ def test_create_flow__render_action_success(
     request_payload = {
         'name': flow_name,
         'campaignId': campaign['id'],
-        'orderValue': 2,
         'actionType': 'render',
         'landingArchive': (_zip_bytes(), 'landing.zip'),
         'rule': flow_rule,
@@ -140,7 +138,7 @@ def test_create_flow__render_action_success(
         'created_at': mock.ANY,
         'rule': request_payload['rule'],
         'campaign_id': request_payload['campaignId'],
-        'order_value': request_payload['orderValue'],
+        'order_value': -1,
         'action_type': request_payload['actionType'],
         'redirect_url': None,
         'is_enabled': 1,
@@ -156,7 +154,6 @@ def test_create_flow__requires_redirect_url_for_redirect_action(client, authoriz
         data={
             'name': flow_name,
             'campaignId': campaign['id'],
-            'orderValue': 1,
             'actionType': 'redirect',
             'rule': flow_rule,
         },
@@ -179,7 +176,6 @@ def test_create_flow__requires_landing_archive_for_render_action(client, authori
             'name': flow_name,
             'campaignId': campaign['id'],
             'rule': flow_rule,
-            'orderValue': 1,
             'actionType': 'render',
             'redirectUrl': 'https://example.com',
         },
@@ -202,7 +198,6 @@ def test_create_flow__rejects_non_zip_landing_archive(client, authorization, cam
             'name': flow_name,
             'campaignId': campaign['id'],
             'rule': flow_rule,
-            'orderValue': 1,
             'actionType': 'render',
             'landingArchive': (io.BytesIO(b'not-a-zip'), 'landing.txt'),
         },
@@ -222,7 +217,6 @@ def test_create_flow__rejects_rule_with_unsupported_term(client, authorization, 
         'name': flow_name,
         'campaignId': campaign['id'],
         'rule': 'countri == "US"',
-        'orderValue': 1,
         'actionType': 'redirect',
         'redirectUrl': 'https://example.com',
         'isEnabled': True,
@@ -246,7 +240,6 @@ def test_create_flow__rejects_rule_with_unsupported_term(client, authorization, 
 def test_update_flow__redirect_action_success(client, authorization, flow, read_from_db):
     request_payload = {
         'name': 'Black flow',
-        'orderValue': 3,
         'rule': 'country == "RO"',
         'actionType': 'redirect',
         'redirectUrl': 'https://example.org',
@@ -269,7 +262,7 @@ def test_update_flow__redirect_action_success(client, authorization, flow, read_
         'created_at': mock.ANY,
         'campaign_id': flow['campaign_id'],
         'rule': request_payload['rule'],
-        'order_value': request_payload['orderValue'],
+        'order_value': flow['order_value'],
         'action_type': request_payload['actionType'],
         'redirect_url': request_payload['redirectUrl'],
         'is_enabled': request_payload['isEnabled'],
@@ -283,7 +276,6 @@ def test_update_flow__render_action_success(
     request_payload = {
         'name': 'Black flow',
         'rule': flow_rule,
-        'orderValue': 4,
         'actionType': 'render',
         'isEnabled': True,
         'landingArchive': (_zip_bytes(), 'landing.zip'),
@@ -306,7 +298,7 @@ def test_update_flow__render_action_success(
         'created_at': mock.ANY,
         'campaign_id': flow['campaign_id'],
         'rule': request_payload['rule'],
-        'order_value': request_payload['orderValue'],
+        'order_value': flow['order_value'],
         'action_type': request_payload['actionType'],
         'redirect_url': None,
         'is_enabled': request_payload['isEnabled'],
@@ -388,3 +380,84 @@ def test_update_flow__rejects_unsupported_rule_term(client, authorization, flow)
         'errors': {'form': {'rule': ['syntax error at: EOF']}},
         'status': 'Unprocessable Entity',
     }
+
+
+def test_bulk_update_flow_order_values(
+    client, authorization, campaign, campaign_payload, flow_rule, write_to_db, read_from_db
+):
+    flow_one = write_to_db(
+        'flow',
+        {
+            'name': 'Flow 1',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 1,
+            'action_type': 'redirect',
+            'redirect_url': 'https://example.com/1',
+            'is_enabled': True,
+            'is_deleted': False,
+        },
+    )
+    flow_two = write_to_db(
+        'flow',
+        {
+            'name': 'Flow 2',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 2,
+            'action_type': 'redirect',
+            'redirect_url': 'https://example.com/2',
+            'is_enabled': True,
+            'is_deleted': False,
+        },
+    )
+    flow_three = write_to_db(
+        'flow',
+        {
+            'name': 'Flow 3',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 3,
+            'action_type': 'redirect',
+            'redirect_url': 'https://example.com/3',
+            'is_enabled': True,
+            'is_deleted': False,
+        },
+    )
+    other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Other Campaign'})
+    other_flow = write_to_db(
+        'flow',
+        {
+            'name': 'Other Flow',
+            'campaign_id': other_campaign['id'],
+            'rule': flow_rule,
+            'order_value': 9,
+            'action_type': 'redirect',
+            'redirect_url': 'https://example.com/other',
+            'is_enabled': True,
+            'is_deleted': False,
+        },
+    )
+
+    request_payload = {
+        'campaignId': campaign['id'],
+        'order': {
+            flow_one['id']: 10,
+            flow_three['id']: 30,
+            other_flow['id']: 999,
+        },
+    }
+
+    response = client.patch('/api/v2/core/flows/order', headers={'Authorization': authorization}, json=request_payload)
+
+    assert response.status_code == 200, response.text
+
+    assert (
+        read_from_db('flow', filters={'id': flow_one['id']})['order_value'] == request_payload['order'][flow_one['id']]
+    )
+    assert read_from_db('flow', filters={'id': flow_two['id']})['order_value'] == -1  # since it was not in mapping
+    assert (
+        read_from_db('flow', filters={'id': flow_three['id']})['order_value']
+        == request_payload['order'][flow_three['id']]
+    )
+    assert read_from_db('flow', filters={'id': other_flow['id']})['order_value'] == other_flow['order_value']
