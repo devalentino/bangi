@@ -74,6 +74,17 @@ class FilterCampaignResponseSchema(Schema):
     name = fields.String(required=True)
 
 
+class FlowPaginationRequestSchema(Schema):
+    page = fields.Integer(dump_default=1, load_default=1)
+    pageSize = fields.Integer(dump_default=PAGINATION_DEFAULT_PAGE_SIZE, load_default=PAGINATION_DEFAULT_PAGE_SIZE)
+    sortBy = fields.Enum(FlowSortBy, dump_default=FlowSortBy.id, load_default=FlowSortBy.id)
+    sortOrder = fields.Enum(SortOrder, dump_default=SortOrder.asc, load_default=SortOrder.asc)
+
+
+class FlowPaginationResponseSchema(FlowPaginationRequestSchema):
+    total = fields.Integer(required=True)
+
+
 class FlowUpdateRequestSchema(Schema):
     name = fields.String(required=False)
     rule = fields.String(required=False)
@@ -114,13 +125,11 @@ class FlowUpdateRequestSchema(Schema):
 
 
 class FlowCreateRequestSchema(FlowUpdateRequestSchema):
-    campaignId = fields.Integer(required=True)
     name = fields.String(required=True)
     rule = fields.String(required=True)
 
 
 class FlowBulkOrderUpdateRequestSchema(Schema):
-    campaignId = fields.Integer(required=True)
     order = fields.Dict(keys=fields.Integer(), values=fields.Integer(), required=True)
 
 
@@ -139,8 +148,4 @@ class FlowResponseSchema(Schema):
 
 class FlowListResponseSchema(Schema):
     content = fields.Nested(FlowResponseSchema(many=True), required=True)
-    pagination = fields.Nested(PaginationResponseSchema, required=True)
-
-
-class FlowPaginationRequestSchema(PaginationRequestSchema):
-    sortBy = fields.Enum(FlowSortBy, dump_default=FlowSortBy.id, load_default=FlowSortBy.id)
+    pagination = fields.Nested(FlowPaginationResponseSchema, required=True)

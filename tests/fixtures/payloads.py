@@ -12,6 +12,11 @@ def flow_name():
 
 
 @pytest.fixture
+def flow_is_deleted():
+    return False
+
+
+@pytest.fixture
 def status_mapper():
     return {
         'parameter': 'state',
@@ -36,7 +41,7 @@ def campaign_payload(campaign_name, status_mapper):
 
 
 @pytest.fixture
-def flow_payload(flow_name, flow_rule):
+def flow_payload(flow_name, flow_rule, flow_is_deleted):
     return {
         'name': flow_name,
         'order_value': 1,
@@ -44,5 +49,5 @@ def flow_payload(flow_name, flow_rule):
         'action_type': 'redirect',
         'redirect_url': 'https://example.com',
         'is_enabled': True,
-        'is_deleted': False,
+        'is_deleted': flow_is_deleted,
     }

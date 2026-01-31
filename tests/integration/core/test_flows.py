@@ -3,6 +3,8 @@ import pathlib
 import zipfile
 from unittest import mock
 
+import pytest
+
 
 def _zip_bytes():
     archive = io.BytesIO()
@@ -28,7 +30,10 @@ def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
             },
         )
 
-    response = client.get('/api/v2/core/flows', headers={'Authorization': authorization})
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+    )
 
     assert response.status_code == 200, response.text
     assert response.json == {
@@ -48,6 +53,64 @@ def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
             for index in range(20)
         ],
         'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 25},
+    }
+
+
+def test_flows_list__filters_by_campaign(client, authorization, campaign, campaign_payload, flow_rule, write_to_db):
+    for index in range(3):
+        write_to_db(
+            'flow',
+            {
+                'name': f'Flow {index}',
+                'campaign_id': campaign['id'],
+                'rule': flow_rule,
+                'order_value': index + 1,
+                'action_type': 'redirect',
+                'redirect_url': f'https://example.com/{index}',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+    other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Other Campaign'})
+    for index in range(2):
+        write_to_db(
+            'flow',
+            {
+                'name': f'Other Flow {index}',
+                'campaign_id': other_campaign['id'],
+                'rule': flow_rule,
+                'order_value': index + 10,
+                'action_type': 'redirect',
+                'redirect_url': f'https://example.com/other/{index}',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [
+            {
+                'id': index + 1,
+                'name': f'Flow {index}',
+                'campaignId': campaign['id'],
+                'campaignName': campaign['name'],
+                'rule': flow_rule,
+                'orderValue': index + 1,
+                'actionType': 'redirect',
+                'redirectUrl': f'https://example.com/{index}',
+                'landingPath': None,
+                'isEnabled': True,
+            }
+            for index in range(3)
+        ],
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 3},
     }
 
 
@@ -93,7 +156,7 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
     )
 
     response = client.get(
-        '/api/v2/core/flows?page=1&pageSize=20&sortBy=orderValue&sortOrder=desc',
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows?page=1&pageSize=20&sortBy=orderValue&sortOrder=desc',
         headers={'Authorization': authorization},
     )
 
@@ -141,8 +204,39 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
     }
 
 
+def test_flows_list__filter_out_deleted(client, authorization, campaign, flow_rule, write_to_db):
+    for index in range(25):
+        write_to_db(
+            'flow',
+            {
+                'name': f'Flow {index}',
+                'campaign_id': campaign['id'],
+                'rule': flow_rule,
+                'order_value': index + 1,
+                'action_type': 'redirect',
+                'redirect_url': f'https://example.com/{index}',
+                'is_enabled': True,
+                'is_deleted': True,
+            },
+        )
+
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [],
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 0},
+    }
+
+
 def test_get_flow(client, authorization, campaign, flow):
-    response = client.get(f'/api/v2/core/flows/{flow["id"]}', headers={'Authorization': authorization})
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+    )
 
     assert response.status_code == 200, response.text
     assert response.json == {
@@ -159,17 +253,41 @@ def test_get_flow(client, authorization, campaign, flow):
     }
 
 
-def test_get_flow__non_existent(client, authorization):
-    response = client.get('/api/v2/core/flows/100500', headers={'Authorization': authorization})
+def test_get_flow__non_existent(client, authorization, campaign):
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows/100500',
+        headers={'Authorization': authorization},
+    )
 
     assert response.status_code == 404, response.text
     assert response.json == {'message': 'Does not exist'}
 
 
+def test_get_flow__non_related_campaign(client, authorization, flow, campaign_payload, write_to_db):
+    other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Another Campaign'})
+
+    response = client.get(
+        f'/api/v2/core/campaigns/{other_campaign["id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 404, response.text
+    assert response.json == {'message': 'Does not exist'}
+
+
+def test_delete_flow(client, authorization, flow, campaign, flow_rule, write_to_db, read_from_db):
+    response = client.delete(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 204, response.text
+    assert read_from_db('flow', filters={'id': flow['id']})['is_deleted'] == 1
+
+
 def test_create_flow__redirect_action_success(client, authorization, campaign, flow_rule, read_from_db):
     request_payload = {
         'name': 'Black flow',
-        'campaignId': campaign['id'],
         'rule': flow_rule,
         'actionType': 'redirect',
         'redirectUrl': 'https://example.com',
@@ -177,7 +295,7 @@ def test_create_flow__redirect_action_success(client, authorization, campaign, f
     }
 
     response = client.post(
-        '/api/v2/core/flows',
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
         headers={'Authorization': authorization},
         data=request_payload,
         content_type='multipart/form-data',
@@ -191,7 +309,7 @@ def test_create_flow__redirect_action_success(client, authorization, campaign, f
         'name': request_payload['name'],
         'created_at': mock.ANY,
         'rule': request_payload['rule'],
-        'campaign_id': request_payload['campaignId'],
+        'campaign_id': campaign['id'],
         'order_value': -1,
         'action_type': request_payload['actionType'],
         'redirect_url': request_payload['redirectUrl'],
@@ -205,14 +323,13 @@ def test_create_flow__render_action_success(
 ):
     request_payload = {
         'name': flow_name,
-        'campaignId': campaign['id'],
         'actionType': 'render',
         'landingArchive': (_zip_bytes(), 'landing.zip'),
         'rule': flow_rule,
     }
 
     response = client.post(
-        '/api/v2/core/flows',
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
         headers={'Authorization': authorization},
         data=request_payload,
         content_type='multipart/form-data',
@@ -227,7 +344,7 @@ def test_create_flow__render_action_success(
         'name': request_payload['name'],
         'created_at': mock.ANY,
         'rule': request_payload['rule'],
-        'campaign_id': request_payload['campaignId'],
+        'campaign_id': campaign['id'],
         'order_value': -1,
         'action_type': request_payload['actionType'],
         'redirect_url': None,
@@ -239,11 +356,10 @@ def test_create_flow__render_action_success(
 
 def test_create_flow__requires_redirect_url_for_redirect_action(client, authorization, campaign, flow_name, flow_rule):
     response = client.post(
-        '/api/v2/core/flows',
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
         headers={'Authorization': authorization},
         data={
             'name': flow_name,
-            'campaignId': campaign['id'],
             'actionType': 'redirect',
             'rule': flow_rule,
         },
@@ -260,11 +376,10 @@ def test_create_flow__requires_redirect_url_for_redirect_action(client, authoriz
 
 def test_create_flow__requires_landing_archive_for_render_action(client, authorization, campaign, flow_name, flow_rule):
     response = client.post(
-        '/api/v2/core/flows',
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
         headers={'Authorization': authorization},
         data={
             'name': flow_name,
-            'campaignId': campaign['id'],
             'rule': flow_rule,
             'actionType': 'render',
             'redirectUrl': 'https://example.com',
@@ -282,11 +397,10 @@ def test_create_flow__requires_landing_archive_for_render_action(client, authori
 
 def test_create_flow__rejects_non_zip_landing_archive(client, authorization, campaign, flow_name, flow_rule):
     response = client.post(
-        '/api/v2/core/flows',
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
         headers={'Authorization': authorization},
         data={
             'name': flow_name,
-            'campaignId': campaign['id'],
             'rule': flow_rule,
             'actionType': 'render',
             'landingArchive': (io.BytesIO(b'not-a-zip'), 'landing.txt'),
@@ -305,7 +419,6 @@ def test_create_flow__rejects_non_zip_landing_archive(client, authorization, cam
 def test_create_flow__rejects_rule_with_unsupported_term(client, authorization, campaign, flow_name):
     request_payload = {
         'name': flow_name,
-        'campaignId': campaign['id'],
         'rule': 'countri == "US"',
         'actionType': 'redirect',
         'redirectUrl': 'https://example.com',
@@ -313,7 +426,7 @@ def test_create_flow__rejects_rule_with_unsupported_term(client, authorization, 
     }
 
     response = client.post(
-        '/api/v2/core/flows',
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
         headers={'Authorization': authorization},
         data=request_payload,
         content_type='multipart/form-data',
@@ -337,7 +450,7 @@ def test_update_flow__redirect_action_success(client, authorization, flow, read_
     }
 
     response = client.patch(
-        f'/api/v2/core/flows/{flow["id"]}',
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
         headers={'Authorization': authorization},
         data=request_payload,
         content_type='multipart/form-data',
@@ -372,7 +485,7 @@ def test_update_flow__render_action_success(
     }
 
     response = client.patch(
-        f'/api/v2/core/flows/{flow["id"]}',
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
         headers={'Authorization': authorization},
         data=request_payload,
         content_type='multipart/form-data',
@@ -399,7 +512,7 @@ def test_update_flow__render_action_success(
 
 def test_update_flow__requires_redirect_url_for_redirect_action(client, authorization, flow):
     response = client.patch(
-        f'/api/v2/core/flows/{flow["id"]}',
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
         headers={'Authorization': authorization},
         data={
             'actionType': 'redirect',
@@ -418,7 +531,7 @@ def test_update_flow__requires_redirect_url_for_redirect_action(client, authoriz
 
 def test_update_flow__requires_landing_archive_for_render_action(client, authorization, flow):
     response = client.patch(
-        f'/api/v2/core/flows/{flow["id"]}',
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
         headers={'Authorization': authorization},
         data={'actionType': 'render', 'rule': flow['rule']},
         content_type='multipart/form-data',
@@ -434,7 +547,7 @@ def test_update_flow__requires_landing_archive_for_render_action(client, authori
 
 def test_update_flow__rejects_non_zip_landing_archive(client, authorization, flow):
     response = client.patch(
-        f'/api/v2/core/flows/{flow["id"]}',
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
         headers={'Authorization': authorization},
         data={
             'rule': flow['rule'],
@@ -454,7 +567,7 @@ def test_update_flow__rejects_non_zip_landing_archive(client, authorization, flo
 
 def test_update_flow__rejects_unsupported_rule_term(client, authorization, flow):
     response = client.patch(
-        f'/api/v2/core/flows/{flow["id"]}',
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
         headers={'Authorization': authorization},
         data={
             'rule': 'country ==',
@@ -530,7 +643,6 @@ def test_bulk_update_flow_order_values(
     )
 
     request_payload = {
-        'campaignId': campaign['id'],
         'order': {
             flow_one['id']: 10,
             flow_three['id']: 30,
@@ -538,7 +650,11 @@ def test_bulk_update_flow_order_values(
         },
     }
 
-    response = client.patch('/api/v2/core/flows/order', headers={'Authorization': authorization}, json=request_payload)
+    response = client.patch(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows/order',
+        headers={'Authorization': authorization},
+        json=request_payload,
+    )
 
     assert response.status_code == 200, response.text
 
@@ -551,3 +667,18 @@ def test_bulk_update_flow_order_values(
         == request_payload['order'][flow_three['id']]
     )
     assert read_from_db('flow', filters={'id': other_flow['id']})['order_value'] == other_flow['order_value']
+
+
+class TestGetDeletedFlow:
+    @pytest.fixture
+    def flow_is_deleted(self):
+        return True
+
+    def test_get_flow(self, client, authorization, campaign, flow):
+        response = client.get(
+            f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
+            headers={'Authorization': authorization},
+        )
+
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Does not exist'}

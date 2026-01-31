@@ -94,20 +94,21 @@ class FilterCampaigns(MethodView):
         return [c.to_dict() for c in campaigns]
 
 
-@blueprint.route('/flows')
-class Flows(MethodView):
+@blueprint.route('/campaigns/<int:campaign_id>/flows')
+class CampaignFlows(MethodView):
     @blueprint.arguments(FlowPaginationRequestSchema, location='query')
     @blueprint.response(200, FlowListResponseSchema)
     @auth.login_required
-    def get(self, parameters_payload):
+    def get(self, parameters_payload, campaign_id):
         flow_service = container.get(FlowService)
         flows = flow_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
             humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
+            campaign_id=campaign_id,
         )
-        count = flow_service.count()
+        count = flow_service.count(campaign_id=campaign_id)
 
         return {
             'content': [
@@ -131,7 +132,7 @@ class Flows(MethodView):
     @blueprint.arguments(FlowCreateRequestSchema, location='form')
     @blueprint.response(201)
     @auth.login_required
-    def post(self, flow_payload):
+    def post(self, flow_payload, campaign_id):
         landing_archive = request.files.get('landingArchive')
 
         try:
@@ -146,7 +147,7 @@ class Flows(MethodView):
         flow_service = container.get(FlowService)
         flow_service.create(
             flow_payload['name'],
-            flow_payload['campaignId'],
+            campaign_id,
             flow_payload['rule'],
             flow_payload['actionType'],
             flow_payload.get('redirectUrl'),
@@ -155,13 +156,13 @@ class Flows(MethodView):
         )
 
 
-@blueprint.route('/flows/<int:flow_id>')
+@blueprint.route('/campaigns/<int:campaign_id>/flows/<int:flow_id>')
 class Flow(MethodView):
     @blueprint.response(200, FlowResponseSchema)
     @auth.login_required
-    def get(self, flow_id):
+    def get(self, campaign_id, flow_id):
         flow_service = container.get(FlowService)
-        flow = flow_service.get(flow_id)
+        flow = flow_service.get(flow_id, campaign_id)
         return humps.camelize(
             flow.to_dict()
             | {
@@ -178,7 +179,7 @@ class Flow(MethodView):
     @blueprint.arguments(FlowUpdateRequestSchema, location='form')
     @blueprint.response(200)
     @auth.login_required
-    def patch(self, flow_payload, flow_id):
+    def patch(self, flow_payload, campaign_id, flow_id):
         landing_archive = request.files.get('landingArchive')
 
         try:
@@ -193,6 +194,7 @@ class Flow(MethodView):
         flow_service = container.get(FlowService)
         flow_service.update(
             flow_id,
+            campaign_id,
             flow_payload.get('name'),
             flow_payload.get('rule'),
             flow_payload.get('actionType'),
@@ -201,12 +203,18 @@ class Flow(MethodView):
             landing_archive,
         )
 
+    @blueprint.response(204)
+    @auth.login_required
+    def delete(self, campaign_id, flow_id):
+        flow_service = container.get(FlowService)
+        flow_service.delete(flow_id, campaign_id)
 
-@blueprint.route('/flows/order')
+
+@blueprint.route('/campaigns/<int:campaign_id>/flows/order')
 class FlowOrder(MethodView):
-    @blueprint.arguments(FlowBulkOrderUpdateRequestSchema)
+    @blueprint.arguments(FlowBulkOrderUpdateRequestSchema, location='json')
     @blueprint.response(200)
     @auth.login_required
-    def patch(self, payload):
+    def patch(self, payload, campaign_id):
         flow_service = container.get(FlowService)
-        flow_service.bulk_update_order(payload['campaignId'], payload['order'])
+        flow_service.bulk_update_order(campaign_id, payload['order'])

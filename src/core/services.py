@@ -158,20 +158,29 @@ class FlowService:
         response = httpx.get(f'{self.landing_renderer_base_url}/{flow_id}')
         return response.text
 
-    def get(self, id):
+    def get(self, id, campaign_id):
         try:
-            return Flow.get_by_id(id)
+            flow = Flow.get_by_id(id)
         except Flow.DoesNotExist as exc:
             raise DoesNotExistError() from exc
 
-    def list(self, page, page_size, sort_by, sort_order):
+        if flow.campaign.id != campaign_id or flow.is_deleted:
+            raise DoesNotExistError()
+
+        return flow
+
+    def list(self, page, page_size, sort_by, sort_order, campaign_id):
         order_by = getattr(Flow, sort_by)
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
         return [
             f
-            for f in Flow.select().where(Flow.is_deleted == False).order_by(order_by).limit(page_size).offset(page - 1)
+            for f in Flow.select()
+            .where((Flow.is_deleted == False) & (Flow.campaign == campaign_id))
+            .order_by(order_by)
+            .limit(page_size)
+            .offset(page - 1)
         ]
 
     def create(
@@ -203,6 +212,7 @@ class FlowService:
     def update(
         self,
         flow_id,
+        campaign_id,
         name=None,
         rule=None,
         action_type=None,
@@ -210,7 +220,7 @@ class FlowService:
         is_enabled=None,
         landing_archive=None,
     ):
-        flow = Flow.get_by_id(flow_id)
+        flow = self.get(flow_id, campaign_id)
         if name:
             flow.name = name
 
@@ -230,6 +240,11 @@ class FlowService:
         flow.save()
         return flow
 
+    def delete(self, flow_id, campaign_id):
+        flow = self.get(flow_id, campaign_id)
+        flow.is_deleted = True
+        flow.save()
+
     def bulk_update_order(self, campaign_id, order):
         # TODO: move to repo
         with Flow._meta.database.atomic():
@@ -240,8 +255,10 @@ class FlowService:
                     (Flow.campaign_id == campaign_id) & (Flow.id == flow_id)
                 ).execute()
 
-    def count(self):
-        return Flow.select(fn.count(Flow.id)).where(Flow.is_deleted == False).scalar()
+    def count(self, campaign_id):
+        return (
+            Flow.select(fn.count(Flow.id)).where((Flow.is_deleted == False) & (Flow.campaign == campaign_id)).scalar()
+        )
 
     def process_flows(self, campaign_id: int, client: Client):
         flows = Flow.select().where(Flow.campaign_id == campaign_id).order_by(Flow.order_value.desc())
