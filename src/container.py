@@ -29,6 +29,7 @@ container = create_sync_container(
         'LANDING_PAGES_BASE_PATH': os.getenv('LANDING_PAGES_BASE_PATH'),
         'IP2LOCATION_DB_PATH': os.getenv('IP2LOCATION_DB_PATH'),
         'LANDING_PAGE_RENDERER_BASE_URL': os.getenv('LANDING_PAGE_RENDERER_BASE_URL'),
+        'INTERNAL_PROCESS_BASE_URL': os.getenv('INTERNAL_PROCESS_BASE_URL'),
     },
     services=[
         database,

@@ -31,6 +31,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./.env:/app/.env
+      - ./landings:/app/landings
     links:
       - mariadb
     healthcheck:

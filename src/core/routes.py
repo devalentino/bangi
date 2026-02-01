@@ -42,7 +42,13 @@ class Campaigns(MethodView):
         count = campaign_service.count()
 
         return {
-            'content': [humps.camelize(c.to_dict()) for c in campaigns],
+            'content': [
+                humps.camelize(
+                    c.to_dict()
+                    | {'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{c.id}'}
+                )
+                for c in campaigns
+            ],
             'pagination': parameters_payload | {'total': count},
         }
 
@@ -67,7 +73,10 @@ class Campaign(MethodView):
     def get(self, campaign_id):
         campaign_service = container.get(CampaignService)
         campaign = campaign_service.get(campaign_id)
-        return humps.camelize(campaign.to_dict())
+        return humps.camelize(
+            campaign.to_dict()
+            | {'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{campaign.id}'}
+        )
 
     @blueprint.arguments(CampaignUpdateRequestSchema)
     @blueprint.response(200)

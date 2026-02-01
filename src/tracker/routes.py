@@ -9,6 +9,7 @@ from src.tracker.schemas import TrackClickRequestSchema, TrackPostbackRequestSch
 from src.tracker.services import TrackService
 
 blueprint = Blueprint('tracker', __name__, description='Tracker')
+process_blueprint = Blueprint('process', __name__, description='Tracker Process')
 
 
 @blueprint.route('/click')
@@ -40,10 +41,10 @@ class TrackPostback(MethodView):
         track_click_service.track_postback(track_payload.pop('click_id'), parameters=track_payload)
 
 
-@blueprint.route('/process/<int:campaign_id>')
+@process_blueprint.route('/<int:campaign_id>')
 class Process(MethodView):
-    @blueprint.arguments(TrackRedirectRequestSchema, location='query')
-    @blueprint.response(200)
+    @process_blueprint.arguments(TrackRedirectRequestSchema, location='query')
+    @process_blueprint.response(200)
     def get(self, redirect_payload, campaign_id):
         track_click_service = container.get(TrackService)
         client_service = container.get(ClientService)

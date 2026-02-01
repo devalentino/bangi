@@ -32,7 +32,7 @@ def test_create_campaign(client, authorization, campaign_payload, read_from_db):
     }
 
 
-def test_campaigns_list(client, authorization, campaign_payload, write_to_db):
+def test_campaigns_list(client, authorization, environment, campaign_payload, write_to_db):
     for ci in range(25):
         write_to_db('campaign', {'name': f'Campaign {ci}', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'})
 
@@ -46,6 +46,7 @@ def test_campaigns_list(client, authorization, campaign_payload, write_to_db):
                 'currency': 'usd',
                 'id': index + 1,
                 'name': f'Campaign {index}',
+                'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{index + 1}',
                 'statusMapper': None,
             }
             for index in range(20)
@@ -54,7 +55,7 @@ def test_campaigns_list(client, authorization, campaign_payload, write_to_db):
     }
 
 
-def test_get_campaign(client, authorization, campaign):
+def test_get_campaign(client, authorization, campaign, environment):
     response = client.get(f'/api/v2/core/campaigns/{campaign["id"]}', headers={'Authorization': authorization})
 
     assert response.status_code == 200, response.text
@@ -64,6 +65,7 @@ def test_get_campaign(client, authorization, campaign):
         'costModel': campaign['cost_model'],
         'costValue': str(campaign['cost_value'].quantize(Decimal('0.01'))),
         'currency': campaign['currency'],
+        'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{campaign["id"]}',
         'statusMapper': json.loads(campaign['status_mapper']),
     }
 
