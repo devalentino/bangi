@@ -132,6 +132,9 @@ class FlowService:
         self.landing_pages_base_path = landing_pages_base_path
         self.landing_renderer_base_url = landing_renderer_base_url
 
+    def _has_index_file(self, path):
+        return any(os.path.isfile(os.path.join(path, name)) for name in ('index.html', 'index.php'))
+
     def _store_landing_archive(self, flow_id, landing_archive):
         if not self.landing_pages_base_path:
             logger.error('Landing archives base path is not configured')
@@ -152,10 +155,23 @@ class FlowService:
         finally:
             os.remove(temp_path)
 
+        if not self._has_index_file(landing_dir):
+            entries = os.listdir(landing_dir)
+            if len(entries) == 1:
+                container_path = os.path.join(landing_dir, entries[0])
+                if os.path.isdir(container_path) and self._has_index_file(container_path):
+                    for name in os.listdir(container_path):
+                        shutil.move(os.path.join(container_path, name), landing_dir)
+                    shutil.rmtree(container_path)
+
+            if not self._has_index_file(landing_dir):
+                logger.error('Landing archive is missing index.html or index.php')
+                raise LandingPageUploadError()
+
         return landing_dir
 
     def _render_landing_page(self, flow_id):
-        response = httpx.get(f'{self.landing_renderer_base_url}/{flow_id}')
+        response = httpx.get(f'{self.landing_renderer_base_url}/{flow_id}/')
         return response.text
 
     def get(self, id, campaign_id):

@@ -4,6 +4,7 @@ class ApplicationError(Exception):
 
 
 class LandingPageUploadError(ApplicationError):
+    http_status_code = 400
     message = 'Can\'t store landing page'
 
 

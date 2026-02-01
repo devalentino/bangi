@@ -14,6 +14,41 @@ def _zip_bytes():
     return archive
 
 
+def _zip_bytes_with_assets():
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, 'w') as zip_file:
+        zip_file.writestr(
+            'archive/index.html',
+            (
+                '<!doctype html>'
+                '<html>'
+                '<head>'
+                '<link rel="stylesheet" href="css/style.css">'
+                '</head>'
+                '<body>'
+                '<script src="js/script.js"></script>'
+                '</body>'
+                '</html>'
+            ),
+        )
+        zip_file.writestr(
+            'archive/js/script.js',
+            "document.addEventListener('DOMContentLoaded', () => alert('Loaded'));",
+        )
+        zip_file.writestr('archive/css/style.css', 'body { background: #eee; }')
+    archive.seek(0)
+    return archive
+
+
+def _zip_bytes_without_index():
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, 'w') as zip_file:
+        zip_file.writestr('archive/landing.txt', 'no index here')
+        zip_file.writestr('archive/js/script.js', 'console.log("ok");')
+    archive.seek(0)
+    return archive
+
+
 def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
     for index in range(25):
         write_to_db(
@@ -355,6 +390,32 @@ def test_create_flow__render_action_success(
     assert (pathlib.Path(expected_landing_path) / 'index.html').exists()
 
 
+def test_create_flow__render_action_success_with_nested_archive(
+    client, authorization, campaign, environment, flow_name, flow_rule, landing_pages_base_path, read_from_db
+):
+    request_payload = {
+        'name': flow_name,
+        'actionType': 'render',
+        'landingArchive': (_zip_bytes_with_assets(), 'landing.zip'),
+        'rule': flow_rule,
+    }
+
+    response = client.post(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+        data=request_payload,
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 201, response.text
+
+    flow = read_from_db('flow')
+    expected_landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
+    assert (expected_landing_path / 'index.html').exists()
+    assert (expected_landing_path / 'js' / 'script.js').exists()
+    assert (expected_landing_path / 'css' / 'style.css').exists()
+
+
 def test_create_flow__requires_redirect_url_for_redirect_action(client, authorization, campaign, flow_name, flow_rule):
     response = client.post(
         f'/api/v2/core/campaigns/{campaign["id"]}/flows',
@@ -415,6 +476,27 @@ def test_create_flow__rejects_non_zip_landing_archive(client, authorization, cam
         'errors': {'form': {'landingArchive': ['landingArchive must be a .zip file.']}},
         'status': 'Unprocessable Entity',
     }
+
+
+def test_create_flow__rejects_landing_archive_without_index(
+    client, authorization, campaign, environment, flow_name, flow_rule
+):
+    request_payload = {
+        'name': flow_name,
+        'actionType': 'render',
+        'landingArchive': (_zip_bytes_without_index(), 'landing.zip'),
+        'rule': flow_rule,
+    }
+
+    response = client.post(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+        data=request_payload,
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 400, response.text
+    assert response.json == {'message': "Can't store landing page"}
 
 
 def test_create_flow__rejects_rule_with_unsupported_term(client, authorization, campaign, flow_name):

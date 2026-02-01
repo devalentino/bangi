@@ -10,7 +10,7 @@ from src.facebook_autoregs.routes import blueprint as facebook_autoregs_blueprin
 from src.health.routes import blueprint as health_blueprint
 from src.reports.routes import blueprint as reports_blueprint
 from src.tracker.routes import blueprint as track_blueprint
-from src.tracker.routes import process_blueprint as track_public_blueprint
+from src.tracker.routes import process_blueprint
 
 configure_logging()
 
@@ -30,7 +30,7 @@ api.register_blueprint(core_blueprint, url_prefix='/api/v2/core')
 api.register_blueprint(facebook_autoregs_blueprint, url_prefix='/api/v2/facebook/autoregs')
 api.register_blueprint(reports_blueprint, url_prefix='/api/v2/reports')
 api.register_blueprint(track_blueprint, url_prefix='/api/v2/track')
-api.register_blueprint(track_public_blueprint, url_prefix='/process')
+api.register_blueprint(process_blueprint, url_prefix='/process')
 api.register_blueprint(health_blueprint, url_prefix='/api/v2/health')
 
 

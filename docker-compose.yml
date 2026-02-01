@@ -12,11 +12,9 @@ services:
       timeout: 5s
       retries: 3
   landing-renderer:
-    image: php:8-fpm
+    image: php:8-apache
     volumes:
       - ./landings:/var/www/html/landings
-    ports:
-      - '8002:80'
   backend:
     build:
       context: .
