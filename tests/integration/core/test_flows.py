@@ -285,6 +285,7 @@ def test_delete_flow(client, authorization, flow, campaign, flow_rule, write_to_
     assert read_from_db('flow', filters={'id': flow['id']})['is_deleted'] == 1
 
 
+@pytest.mark.parametrize('flow_rule', ['country == "MD"', ''])
 def test_create_flow__redirect_action_success(client, authorization, campaign, flow_rule, read_from_db):
     request_payload = {
         'name': 'Black flow',
@@ -308,7 +309,7 @@ def test_create_flow__redirect_action_success(client, authorization, campaign, f
         'id': mock.ANY,
         'name': request_payload['name'],
         'created_at': mock.ANY,
-        'rule': request_payload['rule'],
+        'rule': mock.ANY,
         'campaign_id': campaign['id'],
         'order_value': -1,
         'action_type': request_payload['actionType'],

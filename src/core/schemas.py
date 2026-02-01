@@ -88,7 +88,7 @@ class FlowPaginationResponseSchema(FlowPaginationRequestSchema):
 
 class FlowUpdateRequestSchema(Schema):
     name = fields.String(required=False)
-    rule = fields.String(required=False, allow_none=True, load_default=None)
+    rule = fields.String(required=True)
     actionType = fields.Enum(FlowActionType, required=True)
     redirectUrl = fields.Url(allow_none=True, load_default=None)
     isEnabled = fields.Boolean()
@@ -103,7 +103,8 @@ class FlowUpdateRequestSchema(Schema):
     @validates_schema
     def validate_rule(self, data, **kwargs):
         rule = data.get('rule')
-        if rule is None:
+        if rule is None or rule == '':
+            data['rule'] = None
             return
         try:
             rule_engine.Rule(rule, context=Client.rule_engine_context())
@@ -127,7 +128,6 @@ class FlowUpdateRequestSchema(Schema):
 
 class FlowCreateRequestSchema(FlowUpdateRequestSchema):
     name = fields.String(required=True)
-    rule = fields.String(required=False, allow_none=True, load_default=None)
 
 
 class FlowBulkOrderUpdateRequestSchema(Schema):
