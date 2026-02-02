@@ -135,6 +135,22 @@ class FlowService:
     def _has_index_file(self, path):
         return any(os.path.isfile(os.path.join(path, name)) for name in ('index.html', 'index.php'))
 
+    def _cleanup_landing_dir(self, base_path):
+        dirs_to_remove = {'__MACOSX', '.DS_Store', '.git', '.svn', '.hg'}
+        files_to_remove = {'.DS_Store', 'Desktop.ini', 'Thumbs.db'}
+
+        for root, dirs, files in os.walk(base_path, topdown=True):
+            for name in list(dirs):
+                if name in dirs_to_remove:
+                    shutil.rmtree(os.path.join(root, name), ignore_errors=True)
+                    dirs.remove(name)
+            for name in files:
+                if name in files_to_remove:
+                    try:
+                        os.remove(os.path.join(root, name))
+                    except FileNotFoundError:
+                        continue
+
     def _folders_tree(self, base_path):
         entries = []
         for root, dirs, files in os.walk(base_path):
@@ -169,6 +185,8 @@ class FlowService:
                 archive.extractall(landing_dir)
         finally:
             os.remove(temp_path)
+
+        self._cleanup_landing_dir(landing_dir)
 
         if not self._has_index_file(landing_dir):
             entries = os.listdir(landing_dir)
