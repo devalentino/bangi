@@ -1,6 +1,6 @@
 from marshmallow import fields
 
-from src.core.schemas import PaginationResponseSchema, Schema
+from src.core.schemas import PaginationRequestSchema, PaginationResponseSchema, Schema
 
 
 class BusinessPortfolioNestedResponseSchema(Schema):
@@ -18,9 +18,8 @@ class ExecutorResponseSchema(ExecutorRequestSchema):
     id = fields.Integer(required=True)
 
 
-class ExecutorListResponseSchema(Schema):
-    content = fields.Nested(ExecutorResponseSchema(many=True), required=True)
-    pagination = fields.Nested(PaginationResponseSchema, required=True)
+class NameFilterRequestSchema(PaginationRequestSchema):
+    partialName = fields.String(load_default=None)
 
 
 class AdCabinetRequestSchema(Schema):
@@ -49,9 +48,20 @@ class BusinessPortfolioResponseSchema(ExecutorRequestSchema):
     adCabinets = fields.Nested(AdCabinetResponseSchema(many=True), required=True)
 
 
+class NameFilterResponseSchema(Schema):
+    partialName = fields.String(allow_none=True, required=True)
+
+
+class ExecutorListResponseSchema(Schema):
+    content = fields.Nested(ExecutorResponseSchema(many=True), required=True)
+    pagination = fields.Nested(PaginationResponseSchema, required=True)
+    filters = fields.Nested(NameFilterResponseSchema, required=True)
+
+
 class BusinessPortfolioListResponseSchema(Schema):
     content = fields.Nested(BusinessPortfolioResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
+    filters = fields.Nested(NameFilterResponseSchema, required=True)
 
 
 class BusinessPageRequestSchema(Schema):

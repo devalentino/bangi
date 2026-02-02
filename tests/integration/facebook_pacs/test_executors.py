@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest import mock
 
 
@@ -6,7 +7,32 @@ def test_get_executors(client, authorization, executor, read_from_db):
     assert response.status_code == 200, response.text
     assert response.json == {
         'content': [{'id': executor['id'], 'name': executor['name'], 'isBanned': executor['is_banned']}],
+        'filters': {'partialName': None},
         'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
+    }
+
+
+def test_get_executors__filters_by_partial_name(client, authorization, write_to_db):
+    timestamp = datetime.now(timezone.utc).replace(tzinfo=None).timestamp()
+    alpha = write_to_db('facebook_pacs_executor', {'name': 'Alpha One', 'is_banned': False, 'created_at': timestamp})
+    write_to_db('facebook_pacs_executor', {'name': 'Beta Two', 'is_banned': False, 'created_at': timestamp})
+    alphanumeric = write_to_db(
+        'facebook_pacs_executor', {'name': 'Alphanumeric', 'is_banned': False, 'created_at': timestamp}
+    )
+
+    response = client.get(
+        '/api/v2/facebook/pacs/executors',
+        headers={'Authorization': authorization},
+        query_string={'partialName': 'Alp'},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [
+            {'id': alpha['id'], 'name': alpha['name'], 'isBanned': alpha['is_banned']},
+            {'id': alphanumeric['id'], 'name': alphanumeric['name'], 'isBanned': alphanumeric['is_banned']},
+        ],
+        'filters': {'partialName': 'Alp'},
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 2},
     }
 
 

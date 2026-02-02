@@ -25,12 +25,16 @@ class ExecutorService:
         except Executor.DoesNotExist as exc:
             raise DoesNotExistError() from exc
 
-    def list(self, page, page_size, sort_by, sort_order):
+    def list(self, page, page_size, sort_by, sort_order, partial_name=None):
         order_by = getattr(Executor, sort_by)
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [e for e in Executor.select().order_by(order_by).limit(page_size).offset(page - 1)]
+        query = Executor.select()
+        if partial_name:
+            query = query.where(fn.LOWER(Executor.name).contains(partial_name.lower()))
+
+        return [e for e in query.order_by(order_by).limit(page_size).offset(page - 1)]
 
     def create(self, name, is_banned):
         executor = Executor(name=name, is_banned=is_banned)
@@ -49,8 +53,11 @@ class ExecutorService:
         executor.save()
         return executor
 
-    def count(self):
-        return Executor.select(fn.count(Executor.id)).scalar()
+    def count(self, partial_name=None):
+        query = Executor.select(fn.count(Executor.id))
+        if partial_name:
+            query = query.where(fn.LOWER(Executor.name).contains(partial_name.lower()))
+        return query.scalar()
 
 
 @service
@@ -64,12 +71,16 @@ class BusinessPortfolioService:
         except BusinessPortfolio.DoesNotExist as exc:
             raise DoesNotExistError() from exc
 
-    def list(self, page, page_size, sort_by, sort_order):
+    def list(self, page, page_size, sort_by, sort_order, partial_name=None):
         order_by = getattr(BusinessPortfolio, sort_by)
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [bm for bm in BusinessPortfolio.select().order_by(order_by).limit(page_size).offset(page - 1)]
+        query = BusinessPortfolio.select()
+        if partial_name:
+            query = query.where(fn.LOWER(BusinessPortfolio.name).contains(partial_name.lower()))
+
+        return [bm for bm in query.order_by(order_by).limit(page_size).offset(page - 1)]
 
     def create(self, name, is_banned):
         business_portfolio = BusinessPortfolio(name=name, is_banned=is_banned)
@@ -88,8 +99,11 @@ class BusinessPortfolioService:
         business_portfolio.save()
         return business_portfolio
 
-    def count(self):
-        return BusinessPortfolio.select(fn.count(BusinessPortfolio.id)).scalar()
+    def count(self, partial_name=None):
+        query = BusinessPortfolio.select(fn.count(BusinessPortfolio.id))
+        if partial_name:
+            query = query.where(fn.LOWER(BusinessPortfolio.name).contains(partial_name.lower()))
+        return query.scalar()
 
     def bind_executor(self, business_portfolio_id, executor_id):
         executor = self.executor_service.get(executor_id)

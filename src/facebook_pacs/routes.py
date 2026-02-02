@@ -26,6 +26,7 @@ from src.facebook_pacs.schemas import (
     ExecutorListResponseSchema,
     ExecutorRequestSchema,
     ExecutorResponseSchema,
+    NameFilterRequestSchema,
 )
 from src.facebook_pacs.services import (
     AdCabinetService,
@@ -40,22 +41,27 @@ blueprint = Blueprint('facebook_pacs', __name__, description='Facebook PACs (Per
 
 @blueprint.route('/executors')
 class Executors(MethodView):
-    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.arguments(NameFilterRequestSchema, location='query')
     @blueprint.response(200, ExecutorListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         executor_service = container.get(ExecutorService)
+        partial_name = parameters_payload.get('partialName')
+        if not partial_name or len(partial_name) <= 2:
+            partial_name = None
         executors = executor_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
             humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
+            partial_name=partial_name,
         )
-        count = executor_service.count()
+        count = executor_service.count(partial_name=partial_name)
 
         return {
             'content': [humps.camelize(e.to_dict()) for e in executors],
             'pagination': parameters_payload | {'total': count},
+            'filters': {'partialName': partial_name},
         }
 
     @blueprint.arguments(ExecutorRequestSchema)
@@ -87,22 +93,27 @@ class Executor(MethodView):
 
 @blueprint.route('/business-portfolios')
 class BusinessPosrfolios(MethodView):
-    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.arguments(NameFilterRequestSchema, location='query')
     @blueprint.response(200, BusinessPortfolioListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         business_portfolio_service = container.get(BusinessPortfolioService)
+        partial_name = parameters_payload.get('partialName')
+        if not partial_name or len(partial_name) <= 2:
+            partial_name = None
         business_portfolios = business_portfolio_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
             humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
+            partial_name=partial_name,
         )
-        count = business_portfolio_service.count()
+        count = business_portfolio_service.count(partial_name=partial_name)
 
         return {
             'content': [humps.camelize(b.to_dict()) for b in business_portfolios],
             'pagination': parameters_payload | {'total': count},
+            'filters': {'partialName': partial_name},
         }
 
     @blueprint.arguments(BusinessPortfolioRequestSchema)
@@ -154,7 +165,7 @@ class BusinessPortfolioAssignExecutor(MethodView):
 
 @blueprint.route('/business-portfolios/<int:businessPortfolioId>/access-urls')
 class BusinessPortfolioAccessUrls(MethodView):
-    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.arguments(NameFilterRequestSchema, location='query')
     @blueprint.response(200, BusinessPortfolioAccessUrlListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload, businessPortfolioId):

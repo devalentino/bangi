@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from unittest import mock
 
 import pytest
@@ -18,7 +18,50 @@ class TestBusinessPortfolio:
                     'adCabinets': [],
                 }
             ],
+            'filters': {'partialName': None},
             'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
+        }
+
+    def test_get_business_portfolios__filters_by_partial_name(self, client, authorization, write_to_db):
+        timestamp = datetime.now(timezone.utc).replace(tzinfo=None).timestamp()
+        alpha = write_to_db(
+            'facebook_pacs_business_portfolio',
+            {'name': 'Alpha Holdings', 'is_banned': False, 'created_at': timestamp},
+        )
+        write_to_db(
+            'facebook_pacs_business_portfolio',
+            {'name': 'Beta Holdings', 'is_banned': False, 'created_at': timestamp},
+        )
+        alphanumeric = write_to_db(
+            'facebook_pacs_business_portfolio',
+            {'name': 'Alphanumeric Group', 'is_banned': False, 'created_at': timestamp},
+        )
+
+        response = client.get(
+            '/api/v2/facebook/pacs/business-portfolios',
+            headers={'Authorization': authorization},
+            query_string={'partialName': 'Alp'},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'id': alpha['id'],
+                    'name': alpha['name'],
+                    'isBanned': alpha['is_banned'],
+                    'executors': [],
+                    'adCabinets': [],
+                },
+                {
+                    'id': alphanumeric['id'],
+                    'name': alphanumeric['name'],
+                    'isBanned': alphanumeric['is_banned'],
+                    'executors': [],
+                    'adCabinets': [],
+                },
+            ],
+            'filters': {'partialName': 'Alp'},
+            'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 2},
         }
 
     def test_create_business_portfolio(self, client, authorization, business_portfolio_name, read_from_db):
