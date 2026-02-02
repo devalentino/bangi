@@ -23,9 +23,8 @@ def ip2location_mock(environment):
 
 class TestTrackRedirect:
     def test_track_redirect(self, client, campaign, flow, read_from_db, ip2location_mock):
-        click_id = uuid4()
         request_payload = {
-            'click_id': str(click_id),
+            'clickId': str(uuid4()),
             'status': 'accept',
             'tid': '123',
             'payout': 10,
@@ -46,7 +45,7 @@ class TestTrackRedirect:
         click = read_from_db('track_click')
         assert click == {
             'id': mock.ANY,
-            'click_id': click_id.hex,
+            'click_id': request_payload['clickId'],
             'campaign_id': campaign['id'],
             'parameters': mock.ANY,
             'created_at': mock.ANY,
@@ -98,6 +97,12 @@ class TestTrackRedirect:
         assert response.status_code == 302, response.text
         assert response.headers['Location'] == fallback_flow['redirect_url']
 
+    def test_track_redirect__missing_click_id(self, client, campaign, flow, ip2location_mock):
+        response = client.get(f'/process/{campaign["id"]}')
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == flow['redirect_url']
+
 
 class TestTrackLanding:
     @pytest.fixture
@@ -123,9 +128,8 @@ class TestTrackLanding:
         )
 
     def test_track_landing(self, client, campaign, flow, read_from_db, ip2location_mock, landing_render_mock):
-        click_id = uuid4()
         request_payload = {
-            'click_id': str(click_id),
+            'clickId': str(uuid4()),
             'status': 'accept',
             'tid': '123',
             'payout': 10,
@@ -147,7 +151,7 @@ class TestTrackLanding:
         click = read_from_db('track_click')
         assert click == {
             'id': mock.ANY,
-            'click_id': click_id.hex,
+            'click_id': request_payload['clickId'],
             'campaign_id': campaign['id'],
             'parameters': mock.ANY,
             'created_at': mock.ANY,

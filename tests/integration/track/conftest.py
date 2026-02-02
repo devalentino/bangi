@@ -9,7 +9,7 @@ def click(campaign, timestamp, write_to_db):
         'track_click',
         {
             'campaign_id': campaign['id'],
-            'click_id': uuid4().hex,
+            'click_id': str(uuid4()),
             'parameters': {},
             'created_at': timestamp,
         },

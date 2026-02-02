@@ -69,6 +69,10 @@ class TrackService:
             if status == Status.approved:
                 cost_value = campaign.cost_value
                 currency = campaign.currency
+        else:
+            logger.warning(
+                'Tracking postback for not found campaign', extra={'click_id': click_id, 'parameters': parameters}
+            )
 
         postback = TrackPostback(
             click_id=click_id,

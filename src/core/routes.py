@@ -66,13 +66,13 @@ class Campaigns(MethodView):
         )
 
 
-@blueprint.route('/campaigns/<int:campaign_id>')
+@blueprint.route('/campaigns/<int:campaignId>')
 class Campaign(MethodView):
     @blueprint.response(200, CampaignResponseSchema)
     @auth.login_required
-    def get(self, campaign_id):
+    def get(self, campaignId):
         campaign_service = container.get(CampaignService)
-        campaign = campaign_service.get(campaign_id)
+        campaign = campaign_service.get(campaignId)
         return humps.camelize(
             campaign.to_dict()
             | {'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{campaign.id}'}
@@ -81,10 +81,10 @@ class Campaign(MethodView):
     @blueprint.arguments(CampaignUpdateRequestSchema)
     @blueprint.response(200)
     @auth.login_required
-    def patch(self, campaign_payload, campaign_id):
+    def patch(self, campaign_payload, campaignId):
         campaign_service = container.get(CampaignService)
         campaign_service.update(
-            campaign_id,
+            campaignId,
             campaign_payload.get('name'),
             campaign_payload.get('costModel'),
             campaign_payload.get('costValue'),
@@ -103,21 +103,21 @@ class FilterCampaigns(MethodView):
         return [c.to_dict() for c in campaigns]
 
 
-@blueprint.route('/campaigns/<int:campaign_id>/flows')
+@blueprint.route('/campaigns/<int:campaignId>/flows')
 class CampaignFlows(MethodView):
     @blueprint.arguments(FlowPaginationRequestSchema, location='query')
     @blueprint.response(200, FlowListResponseSchema)
     @auth.login_required
-    def get(self, parameters_payload, campaign_id):
+    def get(self, parameters_payload, campaignId):
         flow_service = container.get(FlowService)
         flows = flow_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
             humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
-            campaign_id=campaign_id,
+            campaign_id=campaignId,
         )
-        count = flow_service.count(campaign_id=campaign_id)
+        count = flow_service.count(campaign_id=campaignId)
 
         return {
             'content': [
@@ -141,7 +141,7 @@ class CampaignFlows(MethodView):
     @blueprint.arguments(FlowCreateRequestSchema, location='form')
     @blueprint.response(201)
     @auth.login_required
-    def post(self, flow_payload, campaign_id):
+    def post(self, flow_payload, campaignId):
         landing_archive = request.files.get('landingArchive')
 
         try:
@@ -156,7 +156,7 @@ class CampaignFlows(MethodView):
         flow_service = container.get(FlowService)
         flow_service.create(
             flow_payload['name'],
-            campaign_id,
+            campaignId,
             flow_payload['rule'],
             flow_payload['actionType'],
             flow_payload.get('redirectUrl'),
@@ -165,13 +165,13 @@ class CampaignFlows(MethodView):
         )
 
 
-@blueprint.route('/campaigns/<int:campaign_id>/flows/<int:flow_id>')
+@blueprint.route('/campaigns/<int:campaignId>/flows/<int:flowId>')
 class Flow(MethodView):
     @blueprint.response(200, FlowResponseSchema)
     @auth.login_required
-    def get(self, campaign_id, flow_id):
+    def get(self, campaignId, flowId):
         flow_service = container.get(FlowService)
-        flow = flow_service.get(flow_id, campaign_id)
+        flow = flow_service.get(flowId, campaignId)
         return humps.camelize(
             flow.to_dict()
             | {
@@ -188,7 +188,7 @@ class Flow(MethodView):
     @blueprint.arguments(FlowUpdateRequestSchema, location='form')
     @blueprint.response(200)
     @auth.login_required
-    def patch(self, flow_payload, campaign_id, flow_id):
+    def patch(self, flow_payload, campaignId, flowId):
         landing_archive = request.files.get('landingArchive')
 
         try:
@@ -202,8 +202,8 @@ class Flow(MethodView):
 
         flow_service = container.get(FlowService)
         flow_service.update(
-            flow_id,
-            campaign_id,
+            flowId,
+            campaignId,
             flow_payload.get('name'),
             flow_payload.get('rule'),
             flow_payload.get('actionType'),
@@ -214,16 +214,16 @@ class Flow(MethodView):
 
     @blueprint.response(204)
     @auth.login_required
-    def delete(self, campaign_id, flow_id):
+    def delete(self, campaignId, flowId):
         flow_service = container.get(FlowService)
-        flow_service.delete(flow_id, campaign_id)
+        flow_service.delete(flowId, campaignId)
 
 
-@blueprint.route('/campaigns/<int:campaign_id>/flows/order')
+@blueprint.route('/campaigns/<int:campaignId>/flows/order')
 class FlowOrder(MethodView):
     @blueprint.arguments(FlowBulkOrderUpdateRequestSchema, location='json')
     @blueprint.response(200)
     @auth.login_required
-    def patch(self, payload, campaign_id):
+    def patch(self, payload, campaignId):
         flow_service = container.get(FlowService)
-        flow_service.bulk_update_order(campaign_id, payload['order'])
+        flow_service.bulk_update_order(campaignId, payload['order'])
