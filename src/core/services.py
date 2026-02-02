@@ -135,6 +135,21 @@ class FlowService:
     def _has_index_file(self, path):
         return any(os.path.isfile(os.path.join(path, name)) for name in ('index.html', 'index.php'))
 
+    def _folders_tree(self, base_path):
+        entries = []
+        for root, dirs, files in os.walk(base_path):
+            rel_root = os.path.relpath(root, base_path)
+            if rel_root != '.':
+                entries.append(rel_root)
+            for name in sorted(dirs):
+                dir_path = os.path.join(rel_root, name) if rel_root != '.' else name
+                entries.append(dir_path)
+            for name in sorted(files):
+                file_path = os.path.join(rel_root, name) if rel_root != '.' else name
+                entries.append(file_path)
+            dirs.sort()
+        return sorted(set(entries))
+
     def _store_landing_archive(self, flow_id, landing_archive):
         if not self.landing_pages_base_path:
             logger.error('Landing archives base path is not configured')
@@ -165,7 +180,10 @@ class FlowService:
                     shutil.rmtree(container_path)
 
             if not self._has_index_file(landing_dir):
-                logger.error('Landing archive is missing index.html or index.php')
+                logger.error(
+                    'Landing archive is missing index.html or index.php',
+                    extra={'folders_tree': self._folders_tree(landing_dir)},
+                )
                 raise LandingPageUploadError()
 
         return landing_dir

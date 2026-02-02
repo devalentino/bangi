@@ -19,6 +19,7 @@ CORS(app)
 
 app.config['API_TITLE'] = 'Tracker API'
 app.config['API_VERSION'] = 'v2'
+app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
 app.config['OPENAPI_VERSION'] = '3.0.2'
 app.config['OPENAPI_URL_PREFIX'] = '/openapi'
 app.config['OPENAPI_SWAGGER_UI_PATH'] = '/swagger-ui'
