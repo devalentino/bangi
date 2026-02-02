@@ -1,5 +1,6 @@
 import types
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
+from random import randint
 from typing import Union, get_args, get_origin
 
 from rule_engine import Context, ast
@@ -13,6 +14,7 @@ class Client:
     country: str | None
     is_bot: bool
     is_mobile: bool
+    roll: int = field(default_factory=lambda: randint(1, 100))
 
     @staticmethod
     def _rule_data_type(annotation):

@@ -6,8 +6,8 @@ from peewee import fn
 from src.core.enums import CostModel, Currency, SortOrder
 from src.core.exceptions import DoesNotExistError
 from src.core.services import CampaignService as CoreCampaignService
-from src.facebook_autoregs import exceptions
-from src.facebook_autoregs.entities import (
+from src.facebook_pacs import exceptions
+from src.facebook_pacs.entities import (
     AdCabinet,
     BusinessPage,
     BusinessPortfolio,

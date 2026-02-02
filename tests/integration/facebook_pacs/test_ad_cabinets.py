@@ -5,7 +5,7 @@ import pytest
 
 class TestAdCabinet:
     def test_get_ad_cabinets(self, client, authorization, ad_cabinet, read_from_db):
-        response = client.get('/api/v2/facebook/autoregs/ad-cabinets', headers={'Authorization': authorization})
+        response = client.get('/api/v2/facebook/pacs/ad-cabinets', headers={'Authorization': authorization})
         assert response.status_code == 200, response.text
         assert response.json == {
             'content': [
@@ -23,7 +23,7 @@ class TestAdCabinet:
         request_payload = {'name': ad_cabinet_name, 'isBanned': False}
 
         response = client.post(
-            '/api/v2/facebook/autoregs/ad-cabinets',
+            '/api/v2/facebook/pacs/ad-cabinets',
             headers={'Authorization': authorization},
             json=request_payload,
         )
@@ -35,7 +35,7 @@ class TestAdCabinet:
             'businessPortfolio': None,
         }
 
-        db_payload = read_from_db('facebook_autoregs_ad_cabinet')
+        db_payload = read_from_db('facebook_pacs_ad_cabinet')
         assert db_payload == {
             'id': mock.ANY,
             'created_at': mock.ANY,
@@ -46,7 +46,7 @@ class TestAdCabinet:
 
     def test_get_ad_cabinet(self, client, authorization, ad_cabinet):
         response = client.get(
-            f'/api/v2/facebook/autoregs/ad-cabinets/{ad_cabinet["id"]}',
+            f'/api/v2/facebook/pacs/ad-cabinets/{ad_cabinet["id"]}',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 200, response.text
@@ -58,7 +58,7 @@ class TestAdCabinet:
         }
 
     def test_get_ad_cabinet__non_existent(self, client, authorization):
-        response = client.get('/api/v2/facebook/autoregs/ad-cabinets/100500', headers={'Authorization': authorization})
+        response = client.get('/api/v2/facebook/pacs/ad-cabinets/100500', headers={'Authorization': authorization})
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Does not exist'}
 
@@ -68,7 +68,7 @@ class TestAdCabinet:
         assert ad_cabinet['is_banned'] != request_payload['isBanned']
 
         response = client.patch(
-            f'/api/v2/facebook/autoregs/ad-cabinets/{ad_cabinet["id"]}',
+            f'/api/v2/facebook/pacs/ad-cabinets/{ad_cabinet["id"]}',
             headers={'Authorization': authorization},
             json=request_payload,
         )
@@ -80,7 +80,7 @@ class TestAdCabinet:
             'businessPortfolio': None,
         }
 
-        db_payload = read_from_db('facebook_autoregs_ad_cabinet', filters={'id': ad_cabinet['id']})
+        db_payload = read_from_db('facebook_pacs_ad_cabinet', filters={'id': ad_cabinet['id']})
         assert db_payload == {
             'id': mock.ANY,
             'created_at': mock.ANY,
@@ -93,7 +93,7 @@ class TestAdCabinet:
         assert ad_cabinet['business_portfolio_id'] is None
 
         response = client.post(
-            f'/api/v2/facebook/autoregs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{business_portfolio["id"]}',
+            f'/api/v2/facebook/pacs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{business_portfolio["id"]}',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 201
@@ -108,7 +108,7 @@ class TestAdCabinet:
             },
         }
 
-        db_payload = read_from_db('facebook_autoregs_ad_cabinet', filters={'id': ad_cabinet['id']})
+        db_payload = read_from_db('facebook_pacs_ad_cabinet', filters={'id': ad_cabinet['id']})
         assert db_payload['business_portfolio_id'] == business_portfolio['id']
 
 
@@ -116,19 +116,19 @@ class TestAdCabinetWithBusinessPortfolio:
     @pytest.fixture
     def ad_cabinet(self, business_portfolio, ad_cabinet_payload, write_to_db):
         return write_to_db(
-            'facebook_autoregs_ad_cabinet', ad_cabinet_payload | {'business_portfolio_id': business_portfolio['id']}
+            'facebook_pacs_ad_cabinet', ad_cabinet_payload | {'business_portfolio_id': business_portfolio['id']}
         )
 
     def test_unbind_business_portfolio(self, client, authorization, ad_cabinet, business_portfolio, read_from_db):
         assert ad_cabinet['business_portfolio_id'] == business_portfolio['id']
 
         response = client.delete(
-            f'/api/v2/facebook/autoregs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{business_portfolio["id"]}',
+            f'/api/v2/facebook/pacs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{business_portfolio["id"]}',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 204
 
-        db_payload = read_from_db('facebook_autoregs_ad_cabinet', filters={'id': ad_cabinet['id']})
+        db_payload = read_from_db('facebook_pacs_ad_cabinet', filters={'id': ad_cabinet['id']})
         assert db_payload['business_portfolio_id'] is None
 
     def test_unbind_business_portfolio__nonexistent_business_portfolio(self, client, authorization, ad_cabinet):
@@ -136,7 +136,7 @@ class TestAdCabinetWithBusinessPortfolio:
         assert ad_cabinet['business_portfolio_id'] != nonexistent_manager_id
 
         response = client.delete(
-            f'/api/v2/facebook/autoregs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{nonexistent_manager_id}',
+            f'/api/v2/facebook/pacs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{nonexistent_manager_id}',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 400

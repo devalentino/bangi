@@ -4,7 +4,7 @@ from peewee import BooleanField, CharField, ForeignKeyField, ManyToManyField, Ti
 from src.core.entities import Campaign as CoreCampaign
 from src.core.entities import Entity
 
-TABLE_NAME_PREFIX = 'facebook_autoregs_'
+TABLE_NAME_PREFIX = 'facebook_pacs_'
 
 
 class Executor(Entity):

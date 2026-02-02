@@ -43,11 +43,11 @@ class TrackPostback(MethodView):
         track_click_service.track_postback(track_payload.pop('clickId'), parameters=track_payload)
 
 
-@process_blueprint.route('/<int:campaign_id>')
+@process_blueprint.route('/<int:campaignId>')
 class Process(MethodView):
     @process_blueprint.arguments(TrackProcessRequestSchema, location='query')
     @process_blueprint.response(200)
-    def get(self, process_payload, campaign_id):
+    def get(self, process_payload, campaignId):
         track_click_service = container.get(TrackService)
         client_service = container.get(ClientService)
         flow_service = container.get(FlowService)
@@ -56,10 +56,10 @@ class Process(MethodView):
         if click_id is None:
             click_id = str(uuid4())
 
-        track_click_service.track_click(click_id, campaign_id=campaign_id, parameters=process_payload)
+        track_click_service.track_click(click_id, campaign_id=campaignId, parameters=process_payload)
 
         action_type, subject = flow_service.process_flows(
-            campaign_id,
+            campaignId,
             client_service.client_info(
                 request.user_agent.string, request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
             ),

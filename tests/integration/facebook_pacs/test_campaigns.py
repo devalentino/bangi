@@ -2,7 +2,7 @@ from unittest import mock
 
 
 def test_get_campaigns(client, authorization, campaign_fa):
-    response = client.get('/api/v2/facebook/autoregs/campaigns', headers={'Authorization': authorization})
+    response = client.get('/api/v2/facebook/pacs/campaigns', headers={'Authorization': authorization})
     assert response.status_code == 200, response.text
 
     assert response.json == {
@@ -25,14 +25,14 @@ def test_get_campaigns(client, authorization, campaign_fa):
 
 def test_create_campaign(client, authorization, ad_cabinet, executor, business_page, read_from_db):
     request_payload = {
-        'name': 'Autoregs Campaign',
+        'name': 'pacs Campaign',
         'executorId': executor['id'],
         'adCabinetId': ad_cabinet['id'],
         'businessPageId': business_page['id'],
     }
 
     response = client.post(
-        '/api/v2/facebook/autoregs/campaigns', headers={'Authorization': authorization}, json=request_payload
+        '/api/v2/facebook/pacs/campaigns', headers={'Authorization': authorization}, json=request_payload
     )
     assert response.status_code == 201, response.text
 
@@ -47,8 +47,8 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
         'created_at': mock.ANY,
     }
 
-    autoregs_campaign = read_from_db('facebook_autoregs_ad_campaign')
-    assert autoregs_campaign == {
+    pacs_campaign = read_from_db('facebook_pacs_ad_campaign')
+    assert pacs_campaign == {
         'id': mock.ANY,
         'created_at': mock.ANY,
         'core_campaign_id': core_campaign['id'],
@@ -60,7 +60,7 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
 
 def test_get_campaign(client, authorization, campaign_fa):
     response = client.get(
-        f'/api/v2/facebook/autoregs/campaigns/{campaign_fa["id"]}',
+        f'/api/v2/facebook/pacs/campaigns/{campaign_fa["id"]}',
         headers={'Authorization': authorization},
     )
     assert response.status_code == 200, response.text
@@ -79,14 +79,14 @@ def test_get_campaign(client, authorization, campaign_fa):
 
 
 def test_get_campaign__non_existent(client, authorization):
-    response = client.get('/api/v2/facebook/autoregs/campaigns/100500', headers={'Authorization': authorization})
+    response = client.get('/api/v2/facebook/pacs/campaigns/100500', headers={'Authorization': authorization})
     assert response.status_code == 404, response.text
     assert response.json == {'message': 'Does not exist'}
 
 
 def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executor, read_from_db, write_to_db):
     new_business_page = write_to_db(
-        'facebook_autoregs_business_page',
+        'facebook_pacs_business_page',
         {'name': 'Al-Idrisi', 'is_banned': False},
     )
     request_payload = {
@@ -97,7 +97,7 @@ def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executo
     }
 
     response = client.patch(
-        f'/api/v2/facebook/autoregs/campaigns/{campaign_fa["id"]}',
+        f'/api/v2/facebook/pacs/campaigns/{campaign_fa["id"]}',
         headers={'Authorization': authorization},
         json=request_payload,
     )
@@ -106,5 +106,5 @@ def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executo
     core_campaign = read_from_db('campaign', filters={'id': campaign_fa['core_campaign_id']})
     assert core_campaign['name'] == request_payload['name']
 
-    autoregs_campaign = read_from_db('facebook_autoregs_ad_campaign', filters={'id': campaign_fa['id']})
-    assert autoregs_campaign['business_page_id'] == new_business_page['id']
+    pacs_campaign = read_from_db('facebook_pacs_ad_campaign', filters={'id': campaign_fa['id']})
+    assert pacs_campaign['business_page_id'] == new_business_page['id']

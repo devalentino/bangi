@@ -1,6 +1,6 @@
 import json
 from unittest import mock
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 
 class TestPostback:
@@ -85,9 +85,7 @@ class TestPostback:
         }
 
     def test_track_postback__maps_status(self, client, click, campaign, read_from_db):
-        response = client.post(
-            '/api/v2/track/postback', json={'clickId': str(UUID(click['click_id'])), 'state': 'executed'}
-        )
+        response = client.post('/api/v2/track/postback', json={'clickId': click['click_id'], 'state': 'executed'})
         assert response.status_code == 201, response.text
 
         postback = read_from_db('track_postback')

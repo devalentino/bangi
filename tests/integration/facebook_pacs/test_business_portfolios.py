@@ -6,7 +6,7 @@ import pytest
 
 class TestBusinessPortfolio:
     def test_get_business_portfolios(self, client, authorization, business_portfolio, read_from_db):
-        response = client.get('/api/v2/facebook/autoregs/business-portfolios', headers={'Authorization': authorization})
+        response = client.get('/api/v2/facebook/pacs/business-portfolios', headers={'Authorization': authorization})
         assert response.status_code == 200, response.text
         assert response.json == {
             'content': [
@@ -25,7 +25,7 @@ class TestBusinessPortfolio:
         request_payload = {'name': business_portfolio_name, 'isBanned': False}
 
         response = client.post(
-            '/api/v2/facebook/autoregs/business-portfolios',
+            '/api/v2/facebook/pacs/business-portfolios',
             headers={'Authorization': authorization},
             json=request_payload,
         )
@@ -38,7 +38,7 @@ class TestBusinessPortfolio:
             'executors': [],
         }
 
-        db_payload = read_from_db('facebook_autoregs_business_portfolio')
+        db_payload = read_from_db('facebook_pacs_business_portfolio')
         assert db_payload == {
             'id': mock.ANY,
             'name': request_payload['name'],
@@ -48,7 +48,7 @@ class TestBusinessPortfolio:
 
     def test_get_business_portfolio(self, client, authorization, business_portfolio):
         response = client.get(
-            f'/api/v2/facebook/autoregs/business-portfolios/{business_portfolio["id"]}',
+            f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 200, response.text
@@ -62,7 +62,7 @@ class TestBusinessPortfolio:
 
     def test_get_business_portfolio__non_existent(self, client, authorization):
         response = client.get(
-            '/api/v2/facebook/autoregs/business-portfolios/100500',
+            '/api/v2/facebook/pacs/business-portfolios/100500',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 404, response.text
@@ -74,7 +74,7 @@ class TestBusinessPortfolio:
         assert business_portfolio['is_banned'] != request_payload['isBanned']
 
         response = client.patch(
-            f'/api/v2/facebook/autoregs/business-portfolios/{business_portfolio["id"]}',
+            f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}',
             headers={'Authorization': authorization},
             json=request_payload,
         )
@@ -87,7 +87,7 @@ class TestBusinessPortfolio:
             'executors': mock.ANY,
         }
 
-        db_payload = read_from_db('facebook_autoregs_business_portfolio', filters={'id': business_portfolio['id']})
+        db_payload = read_from_db('facebook_pacs_business_portfolio', filters={'id': business_portfolio['id']})
         assert db_payload == {
             'id': mock.ANY,
             'created_at': mock.ANY,
@@ -99,7 +99,7 @@ class TestBusinessPortfolio:
         self, client, authorization, business_portfolio, executor, write_to_db, read_from_db
     ):
         response = client.post(
-            f'/api/v2/facebook/autoregs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
+            f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 201
@@ -114,7 +114,7 @@ class TestBusinessPortfolio:
         }
 
         db_payload = read_from_db(
-            'facebook_autoregs_business_portfolio2executor',
+            'facebook_pacs_business_portfolio2executor',
             filters={'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
         )
         assert db_payload
@@ -123,18 +123,18 @@ class TestBusinessPortfolio:
         self, client, authorization, business_portfolio, executor, write_to_db, read_from_db
     ):
         write_to_db(
-            'facebook_autoregs_business_portfolio2executor',
+            'facebook_pacs_business_portfolio2executor',
             {'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
         )
 
         response = client.delete(
-            f'/api/v2/facebook/autoregs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
+            f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 204
 
         db_payload = read_from_db(
-            'facebook_autoregs_business_portfolio2executor',
+            'facebook_pacs_business_portfolio2executor',
             filters={'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
         )
         assert db_payload is None
@@ -145,7 +145,7 @@ class TestBusinessPortfolio:
         non_existent_executor = 100500
 
         response = client.delete(
-            '/api/v2/facebook/autoregs/business-portfolios'
+            '/api/v2/facebook/pacs/business-portfolios'
             f'/{business_portfolio["id"]}/executors/{non_existent_executor}',
             headers={'Authorization': authorization},
         )
@@ -157,11 +157,11 @@ class TestBusinessPortfolioWithExecutorAndAdCabinet:
     @pytest.fixture
     def ad_cabinet(self, executor, business_portfolio, ad_cabinet_payload, write_to_db):
         ad_cabinet = write_to_db(
-            'facebook_autoregs_ad_cabinet', ad_cabinet_payload | {'business_portfolio_id': business_portfolio['id']}
+            'facebook_pacs_ad_cabinet', ad_cabinet_payload | {'business_portfolio_id': business_portfolio['id']}
         )
 
         write_to_db(
-            'facebook_autoregs_business_portfolio2executor',
+            'facebook_pacs_business_portfolio2executor',
             {'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
         )
 
@@ -169,7 +169,7 @@ class TestBusinessPortfolioWithExecutorAndAdCabinet:
 
     def test_get_business_portfolio(self, client, authorization, business_portfolio, executor, ad_cabinet, write_to_db):
         response = client.get(
-            f'/api/v2/facebook/autoregs/business-portfolios/{business_portfolio["id"]}',
+            f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 200, response.text
@@ -197,7 +197,7 @@ class TestBusinessPortfolioManageAccessUrls:
     @pytest.fixture
     def access_url(self, business_portfolio, timestamp, write_to_db):
         return write_to_db(
-            'facebook_autoregs_business_portfolio_access_url',
+            'facebook_pacs_business_portfolio_access_url',
             {
                 'business_portfolio_id': business_portfolio['id'],
                 'url': 'http://localhost',
@@ -207,7 +207,7 @@ class TestBusinessPortfolioManageAccessUrls:
 
     def test_get_access_urls(self, client, authorization, access_url):
         response = client.get(
-            f'/api/v2/facebook/autoregs/business-portfolios/{access_url["business_portfolio_id"]}/access-urls',
+            f'/api/v2/facebook/pacs/business-portfolios/{access_url["business_portfolio_id"]}/access-urls',
             headers={'Authorization': authorization},
         )
         assert response.status_code == 200, response.text
@@ -230,7 +230,7 @@ class TestBusinessPortfolioManageAccessUrls:
             'expiresAt': expires_at.isoformat(),
         }
         response = client.post(
-            f'/api/v2/facebook/autoregs/business-portfolios/{business_portfolio["id"]}/access-urls',
+            f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/access-urls',
             headers={'Authorization': authorization},
             json=request_payload,
         )
@@ -241,7 +241,7 @@ class TestBusinessPortfolioManageAccessUrls:
             'expiresAt': request_payload['expiresAt'],
         }
 
-        db_payload = read_from_db('facebook_autoregs_business_portfolio_access_url')
+        db_payload = read_from_db('facebook_pacs_business_portfolio_access_url')
         assert db_payload == {
             'id': mock.ANY,
             'created_at': mock.ANY,
@@ -253,12 +253,12 @@ class TestBusinessPortfolioManageAccessUrls:
     def test_delete_access_url(self, client, authorization, access_url, read_from_db):
         response = client.delete(
             (
-                '/api/v2/facebook/autoregs/business-portfolios'
+                '/api/v2/facebook/pacs/business-portfolios'
                 f'/{access_url["business_portfolio_id"]}/access-urls/{access_url["id"]}'
             ),
             headers={'Authorization': authorization},
         )
         assert response.status_code == 204, response.text
 
-        db_payload = read_from_db('facebook_autoregs_business_portfolio_access_url')
+        db_payload = read_from_db('facebook_pacs_business_portfolio_access_url')
         assert db_payload is None

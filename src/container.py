@@ -7,11 +7,11 @@ from src.auth.services import AuthenticationService
 from src.core.db import database
 from src.core.entities import database_proxy
 from src.core.services import CampaignService, ClientService, FlowService, Ip2LocationLocator
-from src.facebook_autoregs.services import AdCabinetService as FacebookAutoregsAdCabinetService
-from src.facebook_autoregs.services import BusinessPageService as FacebookAutoregsBusinessPageService
-from src.facebook_autoregs.services import BusinessPortfolioService as FacebookAutoregsBusinessPortfolioService
-from src.facebook_autoregs.services import CampaignService as FacebookAutoregsCampaignService
-from src.facebook_autoregs.services import ExecutorService as FacebookAutoregsExecutorService
+from src.facebook_pacs.services import AdCabinetService as FacebookPacsAdCabinetService
+from src.facebook_pacs.services import BusinessPageService as FacebookPacsBusinessPageService
+from src.facebook_pacs.services import BusinessPortfolioService as FacebookPacsBusinessPortfolioService
+from src.facebook_pacs.services import CampaignService as FacebookPacsCampaignService
+from src.facebook_pacs.services import ExecutorService as FacebookPacsExecutorService
 from src.reports.repositories import BaseReportRepository
 from src.reports.services import ReportService
 from src.tracker.services import TrackService
@@ -38,11 +38,11 @@ container = create_sync_container(
         CampaignService,
         ClientService,
         FlowService,
-        FacebookAutoregsAdCabinetService,
-        FacebookAutoregsBusinessPageService,
-        FacebookAutoregsBusinessPortfolioService,
-        FacebookAutoregsCampaignService,
-        FacebookAutoregsExecutorService,
+        FacebookPacsAdCabinetService,
+        FacebookPacsBusinessPageService,
+        FacebookPacsBusinessPortfolioService,
+        FacebookPacsCampaignService,
+        FacebookPacsExecutorService,
         Ip2LocationLocator,
         ReportService,
         TrackService,

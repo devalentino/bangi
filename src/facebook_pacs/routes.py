@@ -7,7 +7,7 @@ from src.auth import auth
 from src.blueprint import Blueprint
 from src.container import container
 from src.core.schemas import PaginationRequestSchema
-from src.facebook_autoregs.schemas import (
+from src.facebook_pacs.schemas import (
     AdCabinetListResponseSchema,
     AdCabinetRequestSchema,
     AdCabinetResponseSchema,
@@ -27,7 +27,7 @@ from src.facebook_autoregs.schemas import (
     ExecutorRequestSchema,
     ExecutorResponseSchema,
 )
-from src.facebook_autoregs.services import (
+from src.facebook_pacs.services import (
     AdCabinetService,
     BusinessPageService,
     BusinessPortfolioService,
@@ -35,7 +35,7 @@ from src.facebook_autoregs.services import (
     ExecutorService,
 )
 
-blueprint = Blueprint('extension_facebook_autoregs', __name__, description='Facebook Autoregs Extension')
+blueprint = Blueprint('facebook_pacs', __name__, description='Facebook PACs (Personal Ad Account)')
 
 
 @blueprint.route('/executors')

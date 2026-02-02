@@ -1,0 +1,1 @@
+IGNORE = ["model", "entity"]
