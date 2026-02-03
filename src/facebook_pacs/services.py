@@ -2,7 +2,7 @@ from datetime import datetime, time
 
 from wireup import service
 
-from peewee import fn
+from peewee import IntegrityError, fn
 from src.core.enums import CostModel, Currency, SortOrder
 from src.core.exceptions import DoesNotExistError
 from src.core.services import CampaignService as CoreCampaignService
@@ -15,6 +15,7 @@ from src.facebook_pacs.entities import (
     Campaign,
     Executor,
 )
+from src.facebook_pacs.exceptions import ExecutorIsAlreadyBindError
 
 
 @service
@@ -109,7 +110,11 @@ class BusinessPortfolioService:
         executor = self.executor_service.get(executor_id)
         business_portfolio = self.get(business_portfolio_id)
 
-        business_portfolio.executors.add(executor)
+        try:
+            business_portfolio.executors.add(executor)
+        except IntegrityError as exp:
+            raise ExecutorIsAlreadyBindError from exp
+
         business_portfolio.save()
 
         return business_portfolio

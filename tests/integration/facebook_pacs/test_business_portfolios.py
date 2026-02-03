@@ -162,6 +162,21 @@ class TestBusinessPortfolio:
         )
         assert db_payload
 
+    def test_bind_business_portfolio_with_executor__already_bound(
+        self, client, authorization, business_portfolio, executor, write_to_db, read_from_db
+    ):
+        write_to_db(
+            'facebook_pacs_business_portfolio2executor',
+            {'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
+        )
+
+        response = client.post(
+            f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
+            headers={'Authorization': authorization},
+        )
+        assert response.status_code == 400, response.text
+        assert response.json == {'message': 'Executor is already bind'}
+
     def test_unbind_business_portfolio_with_executor(
         self, client, authorization, business_portfolio, executor, write_to_db, read_from_db
     ):
@@ -170,6 +185,21 @@ class TestBusinessPortfolio:
             {'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
         )
 
+        response = client.delete(
+            f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
+            headers={'Authorization': authorization},
+        )
+        assert response.status_code == 204
+
+        db_payload = read_from_db(
+            'facebook_pacs_business_portfolio2executor',
+            filters={'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
+        )
+        assert db_payload is None
+
+    def test_unbind_business_portfolio_with_executor__not_bound(
+        self, client, authorization, business_portfolio, executor, read_from_db
+    ):
         response = client.delete(
             f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
             headers={'Authorization': authorization},
