@@ -14,6 +14,7 @@ def test_create_campaign(client, authorization, campaign_payload, read_from_db):
         'costModel': campaign_payload['cost_model'],
         'costValue': campaign_payload['cost_value'],
         'currency': campaign_payload['currency'],
+        'statusMapper': campaign_payload['status_mapper'],
     }
 
     response = client.post('/api/v2/core/campaigns', headers={'Authorization': authorization}, json=request_payload)
@@ -27,9 +28,11 @@ def test_create_campaign(client, authorization, campaign_payload, read_from_db):
         'cost_model': request_payload['costModel'],
         'cost_value': request_payload['costValue'],
         'currency': request_payload['currency'],
-        'status_mapper': 'null',
+        'status_mapper': mock.ANY,
         'created_at': mock.ANY,
     }
+
+    assert json.loads(campaign['status_mapper']) == request_payload['statusMapper']
 
 
 def test_campaigns_list(client, authorization, environment, campaign_payload, write_to_db):

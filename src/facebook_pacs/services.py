@@ -3,7 +3,7 @@ from datetime import datetime, time
 from wireup import service
 
 from peewee import IntegrityError, fn
-from src.core.enums import CostModel, Currency, SortOrder
+from src.core.enums import SortOrder
 from src.core.exceptions import DoesNotExistError
 from src.core.services import CampaignService as CoreCampaignService
 from src.facebook_pacs import exceptions
@@ -301,10 +301,18 @@ class CampaignService:
         ad_cabinet_id,
         executor_id,
         business_page_id,
-        cost_value=0,
-        currency=Currency.usd.value,
+        cost_model,
+        cost_value,
+        currency,
+        status_mapper,
     ):
-        core_campaign = self.core_campaign_service.create(name, CostModel.cpa.value, cost_value, currency)
+        core_campaign = self.core_campaign_service.create(
+            name,
+            cost_model,
+            cost_value,
+            currency,
+            status_mapper=status_mapper,
+        )
 
         ad_cabinet = self.ad_cabinet_service.get(ad_cabinet_id)
         executor = self.executor_service.get(executor_id)
@@ -323,15 +331,24 @@ class CampaignService:
         self,
         campaign_id,
         name=None,
+        cost_model=None,
         cost_value=None,
         currency=None,
+        status_mapper=None,
         ad_cabinet_id=None,
         executor_id=None,
         business_page_id=None,
     ):
         campaign = self.get(campaign_id)
 
-        self.core_campaign_service.update(campaign.core_campaign.id, name, cost_value, currency)
+        self.core_campaign_service.update(
+            campaign.core_campaign.id,
+            name,
+            cost_model,
+            cost_value,
+            currency,
+            status_mapper,
+        )
 
         if ad_cabinet_id:
             ad_cabinet = self.ad_cabinet_service.get(ad_cabinet_id)

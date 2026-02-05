@@ -44,7 +44,7 @@ class CampaignCreateRequestSchema(Schema):
     costModel = fields.Enum(CostModel, required=True)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
     currency = fields.Enum(Currency, required=True)
-    statusMapper = fields.Dict(allow_none=True, load_default=None)
+    statusMapper = fields.Dict(required=True)
 
 
 class CampaignUpdateRequestSchema(Schema):

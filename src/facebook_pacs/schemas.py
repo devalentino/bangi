@@ -1,5 +1,8 @@
+import decimal
+
 from marshmallow import fields
 
+from src.core.enums import CostModel, Currency
 from src.core.schemas import PaginationRequestSchema, PaginationResponseSchema, Schema
 
 
@@ -82,6 +85,10 @@ class BusinessPageListResponseSchema(Schema):
 
 class CampaignRequestSchema(Schema):
     name = fields.String(required=True)
+    costModel = fields.Enum(CostModel, required=True)
+    costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
+    currency = fields.Enum(Currency, required=True)
+    statusMapper = fields.Dict(required=True)
     executorId = fields.Integer(required=True)
     adCabinetId = fields.Integer(required=True)
     businessPageId = fields.Integer(required=True)

@@ -304,6 +304,10 @@ class Campaigns(MethodView):
             campaign_payload['adCabinetId'],
             campaign_payload['executorId'],
             campaign_payload['businessPageId'],
+            cost_model=campaign_payload['costModel'],
+            cost_value=campaign_payload['costValue'],
+            currency=campaign_payload['currency'],
+            status_mapper=campaign_payload.get('statusMapper'),
         )
 
 
@@ -321,11 +325,15 @@ class Campaign(MethodView):
     @auth.login_required
     def patch(self, campaign_payload, campaignId):
         campaign_service = container.get(CampaignService)
+        cost_model = campaign_payload['costModel']
+        currency = campaign_payload['currency']
         campaign_service.update(
             campaignId,
             name=campaign_payload.get('name'),
+            cost_model=cost_model.value if hasattr(cost_model, 'value') else cost_model,
             cost_value=campaign_payload.get('costValue'),
-            currency=campaign_payload.get('currency'),
+            currency=currency.value if hasattr(currency, 'value') else currency,
+            status_mapper=campaign_payload.get('statusMapper'),
             ad_cabinet_id=campaign_payload.get('adCabinetId'),
             executor_id=campaign_payload.get('executorId'),
             business_page_id=campaign_payload.get('businessPageId'),

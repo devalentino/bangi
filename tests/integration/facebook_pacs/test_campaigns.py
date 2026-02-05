@@ -1,3 +1,4 @@
+import json
 from unittest import mock
 
 
@@ -27,6 +28,10 @@ def test_get_campaigns(client, authorization, campaign, campaign_fa):
 def test_create_campaign(client, authorization, ad_cabinet, executor, business_page, read_from_db):
     request_payload = {
         'name': 'pacs Campaign',
+        'costModel': 'cpm',
+        'costValue': 12,
+        'currency': 'eur',
+        'statusMapper': {'parameter': 'state', 'mapping': {'executed': 'approved'}},
         'executorId': executor['id'],
         'adCabinetId': ad_cabinet['id'],
         'businessPageId': business_page['id'],
@@ -41,12 +46,13 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
     assert core_campaign == {
         'id': mock.ANY,
         'name': request_payload['name'],
-        'cost_model': 'cpa',
-        'cost_value': 0,
-        'currency': 'usd',
-        'status_mapper': 'null',
+        'cost_model': request_payload['costModel'],
+        'cost_value': request_payload['costValue'],
+        'currency': request_payload['currency'],
+        'status_mapper': mock.ANY,
         'created_at': mock.ANY,
     }
+    assert json.loads(core_campaign['status_mapper']) == request_payload['statusMapper']
 
     pacs_campaign = read_from_db('facebook_pacs_ad_campaign')
     assert pacs_campaign == {
@@ -93,6 +99,10 @@ def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executo
     )
     request_payload = {
         'name': 'Campaign Updated',
+        'costModel': 'cpa',
+        'costValue': 7,
+        'currency': 'usd',
+        'statusMapper': {'parameter': 'status', 'mapping': {'ok': 'approved'}},
         'executorId': executor['id'],
         'adCabinetId': ad_cabinet['id'],
         'businessPageId': new_business_page['id'],
@@ -106,7 +116,16 @@ def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executo
     assert response.status_code == 200, response.text
 
     core_campaign = read_from_db('campaign', filters={'id': campaign_fa['core_campaign_id']})
-    assert core_campaign['name'] == request_payload['name']
+    assert core_campaign == {
+        'id': campaign_fa['core_campaign_id'],
+        'name': request_payload['name'],
+        'cost_model': request_payload['costModel'],
+        'cost_value': request_payload['costValue'],
+        'currency': request_payload['currency'],
+        'status_mapper': mock.ANY,
+        'created_at': mock.ANY,
+    }
+    assert json.loads(core_campaign['status_mapper']) == request_payload['statusMapper']
 
     pacs_campaign = read_from_db('facebook_pacs_ad_campaign', filters={'id': campaign_fa['id']})
     assert pacs_campaign['business_page_id'] == new_business_page['id']
