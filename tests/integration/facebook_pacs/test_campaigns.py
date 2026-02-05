@@ -1,7 +1,7 @@
 from unittest import mock
 
 
-def test_get_campaigns(client, authorization, campaign_fa):
+def test_get_campaigns(client, authorization, campaign, campaign_fa):
     response = client.get('/api/v2/facebook/pacs/campaigns', headers={'Authorization': authorization})
     assert response.status_code == 200, response.text
 
@@ -9,6 +9,7 @@ def test_get_campaigns(client, authorization, campaign_fa):
         'content': [
             {
                 'id': campaign_fa['id'],
+                'name': campaign['name'],
                 'adCabinet': {
                     'businessPortfolio': mock.ANY,
                     'id': campaign_fa['ad_cabinet_id'],
@@ -58,7 +59,7 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
     }
 
 
-def test_get_campaign(client, authorization, campaign_fa):
+def test_get_campaign(client, authorization, campaign, campaign_fa):
     response = client.get(
         f'/api/v2/facebook/pacs/campaigns/{campaign_fa["id"]}',
         headers={'Authorization': authorization},
@@ -67,6 +68,7 @@ def test_get_campaign(client, authorization, campaign_fa):
 
     assert response.json == {
         'id': campaign_fa['id'],
+        'name': campaign['name'],
         'adCabinet': {
             'id': campaign_fa['ad_cabinet_id'],
             'businessPortfolio': mock.ANY,

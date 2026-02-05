@@ -285,7 +285,7 @@ class Campaigns(MethodView):
         count = campaign_service.count()
 
         return {
-            'content': [humps.camelize(c.to_dict()) for c in campaigns],
+            'content': [humps.camelize(c.to_dict() | {'name': c.core_campaign.name}) for c in campaigns],
             'pagination': parameters_payload | {'total': count},
         }
 
@@ -309,7 +309,7 @@ class Campaign(MethodView):
     def get(self, campaignId):
         campaign_service = container.get(CampaignService)
         campaign = campaign_service.get(campaignId)
-        return humps.camelize(campaign.to_dict())
+        return humps.camelize(campaign.to_dict() | {'name': campaign.core_campaign.name})
 
     @blueprint.arguments(CampaignRequestSchema)
     @blueprint.response(200)
