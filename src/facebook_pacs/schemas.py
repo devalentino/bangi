@@ -3,6 +3,10 @@ from marshmallow import fields
 from src.core.schemas import PaginationRequestSchema, PaginationResponseSchema, Schema
 
 
+class NameFilterResponseSchema(Schema):
+    partialName = fields.String(allow_none=True, required=True)
+
+
 class BusinessPortfolioNestedResponseSchema(Schema):
     id = fields.Integer(required=True)
     name = fields.String(required=True)
@@ -35,6 +39,7 @@ class AdCabinetResponseSchema(ExecutorRequestSchema):
 class AdCabinetListResponseSchema(Schema):
     content = fields.Nested(AdCabinetResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
+    filters = fields.Nested(NameFilterResponseSchema, required=True)
 
 
 class BusinessPortfolioRequestSchema(Schema):
@@ -46,10 +51,6 @@ class BusinessPortfolioResponseSchema(ExecutorRequestSchema):
     id = fields.Integer(required=True)
     executors = fields.Nested(ExecutorResponseSchema(many=True), required=True)
     adCabinets = fields.Nested(AdCabinetResponseSchema(many=True), required=True)
-
-
-class NameFilterResponseSchema(Schema):
-    partialName = fields.String(allow_none=True, required=True)
 
 
 class ExecutorListResponseSchema(Schema):
@@ -76,6 +77,7 @@ class BusinessPageResponseSchema(BusinessPageRequestSchema):
 class BusinessPageListResponseSchema(Schema):
     content = fields.Nested(BusinessPageResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
+    filters = fields.Nested(NameFilterResponseSchema, required=True)
 
 
 class CampaignRequestSchema(Schema):

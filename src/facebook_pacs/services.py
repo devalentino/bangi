@@ -173,12 +173,16 @@ class AdCabinetService:
         except AdCabinet.DoesNotExist as exc:
             raise DoesNotExistError() from exc
 
-    def list(self, page, page_size, sort_by, sort_order):
+    def list(self, page, page_size, sort_by, sort_order, partial_name=None):
         order_by = getattr(AdCabinet, sort_by)
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [ac for ac in AdCabinet.select().order_by(order_by).limit(page_size).offset(page - 1)]
+        query = AdCabinet.select()
+        if partial_name:
+            query = query.where(fn.LOWER(AdCabinet.name).contains(partial_name.lower()))
+
+        return [ac for ac in query.order_by(order_by).limit(page_size).offset(page - 1)]
 
     def create(self, name, is_banned):
         ad_cabinet = AdCabinet(name=name, is_banned=is_banned)
@@ -197,8 +201,11 @@ class AdCabinetService:
         ad_cabinet.save()
         return ad_cabinet
 
-    def count(self):
-        return AdCabinet.select(fn.count(AdCabinet.id)).scalar()
+    def count(self, partial_name=None):
+        query = AdCabinet.select(fn.count(AdCabinet.id))
+        if partial_name:
+            query = query.where(fn.LOWER(AdCabinet.name).contains(partial_name.lower()))
+        return query.scalar()
 
     def bind_business_portfolio(self, ad_cabinet_id, business_portfolio_id):
         business_portfolio = self.business_portfolio_service.get(business_portfolio_id)
@@ -226,12 +233,16 @@ class BusinessPageService:
         except BusinessPage.DoesNotExist as exc:
             raise DoesNotExistError() from exc
 
-    def list(self, page, page_size, sort_by, sort_order):
+    def list(self, page, page_size, sort_by, sort_order, partial_name=None):
         order_by = getattr(BusinessPage, sort_by)
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [bp for bp in BusinessPage.select().order_by(order_by).limit(page_size).offset(page - 1)]
+        query = BusinessPage.select()
+        if partial_name:
+            query = query.where(fn.LOWER(BusinessPage.name).contains(partial_name.lower()))
+
+        return [bp for bp in query.order_by(order_by).limit(page_size).offset(page - 1)]
 
     def create(self, name, is_banned):
         business_page = BusinessPage(name=name, is_banned=is_banned)
@@ -250,8 +261,11 @@ class BusinessPageService:
         business_page.save()
         return business_page
 
-    def count(self):
-        return BusinessPage.select(fn.count(BusinessPage.id)).scalar()
+    def count(self, partial_name=None):
+        query = BusinessPage.select(fn.count(BusinessPage.id))
+        if partial_name:
+            query = query.where(fn.LOWER(BusinessPage.name).contains(partial_name.lower()))
+        return query.scalar()
 
 
 @service

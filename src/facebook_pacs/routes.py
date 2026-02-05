@@ -165,7 +165,7 @@ class BusinessPortfolioAssignExecutor(MethodView):
 
 @blueprint.route('/business-portfolios/<int:businessPortfolioId>/access-urls')
 class BusinessPortfolioAccessUrls(MethodView):
-    @blueprint.arguments(NameFilterRequestSchema, location='query')
+    @blueprint.arguments(PaginationRequestSchema, location='query')
     @blueprint.response(200, BusinessPortfolioAccessUrlListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload, businessPortfolioId):
@@ -206,22 +206,27 @@ class BusinessPortfolioAccessUrl(MethodView):
 
 @blueprint.route('/ad-cabinets')
 class AdCabinets(MethodView):
-    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.arguments(NameFilterRequestSchema, location='query')
     @blueprint.response(200, AdCabinetListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         ad_cabinet_service = container.get(AdCabinetService)
+        partial_name = parameters_payload.get('partialName')
+        if not partial_name or len(partial_name) <= 2:
+            partial_name = None
         ad_cabinets = ad_cabinet_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
             humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
+            partial_name=partial_name,
         )
-        count = ad_cabinet_service.count()
+        count = ad_cabinet_service.count(partial_name=partial_name)
 
         return {
             'content': [humps.camelize(ac.to_dict()) for ac in ad_cabinets],
             'pagination': parameters_payload | {'total': count},
+            'filters': {'partialName': partial_name},
         }
 
     @blueprint.arguments(AdCabinetRequestSchema)
@@ -329,22 +334,27 @@ class Campaign(MethodView):
 
 @blueprint.route('/business-pages')
 class BusinessPages(MethodView):
-    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.arguments(NameFilterRequestSchema, location='query')
     @blueprint.response(200, BusinessPageListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         business_page_service = container.get(BusinessPageService)
+        partial_name = parameters_payload.get('partialName')
+        if not partial_name or len(partial_name) <= 2:
+            partial_name = None
         business_pages = business_page_service.list(
             parameters_payload['page'],
             parameters_payload['pageSize'],
             humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
+            partial_name=partial_name,
         )
-        count = business_page_service.count()
+        count = business_page_service.count(partial_name=partial_name)
 
         return {
             'content': [humps.camelize(bp.to_dict()) for bp in business_pages],
             'pagination': parameters_payload | {'total': count},
+            'filters': {'partialName': partial_name},
         }
 
     @blueprint.arguments(BusinessPageRequestSchema)

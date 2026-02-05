@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest import mock
 
 
@@ -6,7 +7,34 @@ def test_get_business_pages(client, authorization, business_page):
     assert response.status_code == 200, response.text
     assert response.json == {
         'content': [{'id': business_page['id'], 'name': business_page['name'], 'isBanned': business_page['is_banned']}],
+        'filters': {'partialName': None},
         'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
+    }
+
+
+def test_get_business_pages__filters_by_partial_name(client, authorization, write_to_db):
+    timestamp = datetime.now(timezone.utc).replace(tzinfo=None).timestamp()
+    alpha = write_to_db(
+        'facebook_pacs_business_page', {'name': 'Alpha Page', 'is_banned': False, 'created_at': timestamp}
+    )
+    write_to_db('facebook_pacs_business_page', {'name': 'Beta Page', 'is_banned': False, 'created_at': timestamp})
+    alphanumeric = write_to_db(
+        'facebook_pacs_business_page', {'name': 'Alphanumeric Page', 'is_banned': False, 'created_at': timestamp}
+    )
+
+    response = client.get(
+        '/api/v2/facebook/pacs/business-pages',
+        headers={'Authorization': authorization},
+        query_string={'partialName': 'Alp'},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [
+            {'id': alpha['id'], 'name': alpha['name'], 'isBanned': alpha['is_banned']},
+            {'id': alphanumeric['id'], 'name': alphanumeric['name'], 'isBanned': alphanumeric['is_banned']},
+        ],
+        'filters': {'partialName': 'Alp'},
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 2},
     }
 
 

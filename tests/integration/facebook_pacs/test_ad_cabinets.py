@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest import mock
 
 import pytest
@@ -16,7 +17,43 @@ class TestAdCabinet:
                     'businessPortfolio': None,
                 }
             ],
+            'filters': {'partialName': None},
             'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
+        }
+
+    def test_get_ad_cabinets__filters_by_partial_name(self, client, authorization, write_to_db):
+        timestamp = datetime.now(timezone.utc).replace(tzinfo=None).timestamp()
+        alpha = write_to_db(
+            'facebook_pacs_ad_cabinet', {'name': 'Alpha Cabinet', 'is_banned': False, 'created_at': timestamp}
+        )
+        write_to_db('facebook_pacs_ad_cabinet', {'name': 'Beta Cabinet', 'is_banned': False, 'created_at': timestamp})
+        alphanumeric = write_to_db(
+            'facebook_pacs_ad_cabinet', {'name': 'Alphanumeric Hub', 'is_banned': False, 'created_at': timestamp}
+        )
+
+        response = client.get(
+            '/api/v2/facebook/pacs/ad-cabinets',
+            headers={'Authorization': authorization},
+            query_string={'partialName': 'Alp'},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'id': alpha['id'],
+                    'name': alpha['name'],
+                    'isBanned': alpha['is_banned'],
+                    'businessPortfolio': None,
+                },
+                {
+                    'id': alphanumeric['id'],
+                    'name': alphanumeric['name'],
+                    'isBanned': alphanumeric['is_banned'],
+                    'businessPortfolio': None,
+                },
+            ],
+            'filters': {'partialName': 'Alp'},
+            'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 2},
         }
 
     def test_create_ad_cabinet(self, client, authorization, ad_cabinet_name, read_from_db):
