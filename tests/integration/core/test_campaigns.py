@@ -28,6 +28,7 @@ def test_create_campaign(client, authorization, campaign_payload, read_from_db):
         'cost_model': request_payload['costModel'],
         'cost_value': request_payload['costValue'],
         'currency': request_payload['currency'],
+        'expenses_distribution_parameter': None,
         'status_mapper': mock.ANY,
         'created_at': mock.ANY,
     }
@@ -47,6 +48,7 @@ def test_campaigns_list(client, authorization, environment, campaign_payload, wr
                 'costModel': 'cpm',
                 'costValue': '1.00',
                 'currency': 'usd',
+                'expensesDistributionParameter': None,
                 'id': index + 1,
                 'name': f'Campaign {index}',
                 'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{index + 1}',
@@ -68,6 +70,7 @@ def test_get_campaign(client, authorization, campaign, environment):
         'costModel': campaign['cost_model'],
         'costValue': str(campaign['cost_value'].quantize(Decimal('0.01'))),
         'currency': campaign['currency'],
+        'expensesDistributionParameter': campaign['expenses_distribution_parameter'],
         'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{campaign["id"]}',
         'statusMapper': json.loads(campaign['status_mapper']),
     }
@@ -77,7 +80,7 @@ def test_get_campaign__non_existent(client, authorization):
     response = client.get('/api/v2/core/campaigns/100500', headers={'Authorization': authorization})
 
     assert response.status_code == 404, response.text
-    assert response.json == {'message': 'Does not exist'}
+    assert response.json == {'message': 'Campaign does not exist'}
 
 
 @pytest.mark.parametrize(

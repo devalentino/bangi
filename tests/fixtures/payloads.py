@@ -30,13 +30,19 @@ def flow_rule():
 
 
 @pytest.fixture
-def campaign_payload(campaign_name, status_mapper):
+def expenses_distribution_parameter():
+    return None
+
+
+@pytest.fixture
+def campaign_payload(campaign_name, status_mapper, expenses_distribution_parameter):
     return {
         'name': campaign_name,
         'cost_model': 'cpa',
         'cost_value': 10,
         'currency': 'usd',
         'status_mapper': status_mapper,
+        'expenses_distribution_parameter': expenses_distribution_parameter,
     }
 
 

@@ -13,7 +13,7 @@ def test_get_report(client, authorization, campaign_id, timestamp):
     end_timestamp = timestamp
 
     response = client.get(
-        '/api/v2/reports/base',
+        '/api/v2/reports/statistics',
         headers={'Authorization': authorization},
         query_string={
             'campaignId': campaign_id,
@@ -69,7 +69,7 @@ def test_get_report__group_by_parameter(client, authorization, campaign_id, time
     end_timestamp = timestamp
 
     response = client.get(
-        '/api/v2/reports/base',
+        '/api/v2/reports/statistics',
         headers={'Authorization': authorization},
         query_string={
             'campaignId': campaign_id,
@@ -160,7 +160,7 @@ def test_get_report__no_statistics(client, authorization, timestamp):
     end_timestamp = timestamp
 
     response = client.get(
-        '/api/v2/reports/base',
+        '/api/v2/reports/statistics',
         headers={'Authorization': authorization},
         query_string={
             'campaignId': 100500,

@@ -63,6 +63,7 @@ class CampaignResponseSchema(Schema):
     currency = fields.String(required=True)
     statusMapper = fields.Dict(allow_none=True)
     internalProcessUrl = fields.String(allow_none=True)
+    expensesDistributionParameter = fields.String(allow_none=True)
 
 
 class CampaignListResponseSchema(Schema):

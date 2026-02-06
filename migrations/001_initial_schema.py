@@ -109,6 +109,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
         cost_value = pw.DecimalField(auto_round=False, decimal_places=5, default=Decimal('0'), max_digits=10, null=True, rounding=ROUND_HALF_EVEN)
         currency = pw.CharField(default='usd', max_length=255, null=True)
         status_mapper = pw.TextField(null=True)
+        expenses_distribution_parameter = pw.CharField(max_length=255, null=True)
 
         class Meta:
             table_name = "campaign"
@@ -165,6 +166,18 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
         class Meta:
             table_name = "track_postback"
 
+    @migrator.create_model
+    class Expense(pw.Model):
+        id = pw.AutoField()
+        created_at = pw.TimestampField(null=True)
+        campaign = pw.ForeignKeyField(column_name='campaign_id', field='id', model=migrator.orm['campaign'])
+        date = pw.DateField()
+        distribution = pw.TextField()
+
+        class Meta:
+            table_name = "expense"
+            indexes = [(('campaign', 'date'), True)]
+
 
 def rollback(migrator: Migrator, database: pw.Database, *, fake=False):
     """Write your rollback migrations here."""
@@ -174,6 +187,8 @@ def rollback(migrator: Migrator, database: pw.Database, *, fake=False):
     migrator.remove_model('track_click')
 
     migrator.remove_model('flow')
+
+    migrator.remove_model('expense')
 
     migrator.remove_model('facebook_pacs_ad_campaign')
 

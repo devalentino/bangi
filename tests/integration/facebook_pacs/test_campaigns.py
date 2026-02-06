@@ -50,6 +50,7 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
         'cost_value': request_payload['costValue'],
         'currency': request_payload['currency'],
         'status_mapper': mock.ANY,
+        'expenses_distribution_parameter': None,
         'created_at': mock.ANY,
     }
     assert json.loads(core_campaign['status_mapper']) == request_payload['statusMapper']
@@ -89,7 +90,7 @@ def test_get_campaign(client, authorization, campaign, campaign_fa):
 def test_get_campaign__non_existent(client, authorization):
     response = client.get('/api/v2/facebook/pacs/campaigns/100500', headers={'Authorization': authorization})
     assert response.status_code == 404, response.text
-    assert response.json == {'message': 'Does not exist'}
+    assert response.json == {'message': 'Campaign does not exist'}
 
 
 def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executor, read_from_db, write_to_db):
@@ -123,6 +124,7 @@ def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executo
         'cost_value': request_payload['costValue'],
         'currency': request_payload['currency'],
         'status_mapper': mock.ANY,
+        'expenses_distribution_parameter': mock.ANY,
         'created_at': mock.ANY,
     }
     assert json.loads(core_campaign['status_mapper']) == request_payload['statusMapper']

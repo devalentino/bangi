@@ -15,7 +15,7 @@ from wireup import Inject, injectable, service
 from peewee import fn
 from src.core.entities import Campaign, Flow
 from src.core.enums import FlowActionType, SortOrder
-from src.core.exceptions import DoesNotExistError, LandingPageUploadError
+from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError, LandingPageUploadError
 from src.core.models import Client
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class CampaignService:
         try:
             return Campaign.get_by_id(id)
         except Campaign.DoesNotExist as exc:
-            raise DoesNotExistError() from exc
+            raise CampaignDoesNotExistError() from exc
 
     def list(self, page, page_size, sort_by, sort_order):
         order_by = getattr(Campaign, sort_by)
@@ -232,7 +232,7 @@ class FlowService:
             .where((Flow.is_deleted == False) & (Flow.campaign == campaign_id))
             .order_by(order_by)
             .limit(page_size)
-            .offset(page - 1)
+            .offset((page - 1) * page_size)
         ]
 
     def create(

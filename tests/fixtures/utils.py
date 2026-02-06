@@ -11,3 +11,8 @@ def utcnow():
 @pytest.fixture
 def timestamp(utcnow):
     return int(utcnow.timestamp())
+
+
+@pytest.fixture
+def today(utcnow):
+    return utcnow.date()

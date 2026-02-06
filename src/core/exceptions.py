@@ -11,3 +11,7 @@ class LandingPageUploadError(ApplicationError):
 class DoesNotExistError(ApplicationError):
     http_status_code = 404
     message = 'Does not exist'
+
+
+class CampaignDoesNotExistError(DoesNotExistError):
+    message = 'Campaign does not exist'

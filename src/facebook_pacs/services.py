@@ -4,7 +4,7 @@ from wireup import service
 
 from peewee import IntegrityError, fn
 from src.core.enums import SortOrder
-from src.core.exceptions import DoesNotExistError
+from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError
 from src.core.services import CampaignService as CoreCampaignService
 from src.facebook_pacs import exceptions
 from src.facebook_pacs.entities import (
@@ -35,7 +35,7 @@ class ExecutorService:
         if partial_name:
             query = query.where(fn.LOWER(Executor.name).contains(partial_name.lower()))
 
-        return [e for e in query.order_by(order_by).limit(page_size).offset(page - 1)]
+        return [e for e in query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)]
 
     def create(self, name, is_banned):
         executor = Executor(name=name, is_banned=is_banned)
@@ -81,7 +81,7 @@ class BusinessPortfolioService:
         if partial_name:
             query = query.where(fn.LOWER(BusinessPortfolio.name).contains(partial_name.lower()))
 
-        return [bm for bm in query.order_by(order_by).limit(page_size).offset(page - 1)]
+        return [bm for bm in query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)]
 
     def create(self, name, is_banned):
         business_portfolio = BusinessPortfolio(name=name, is_banned=is_banned)
@@ -148,7 +148,7 @@ class BusinessPortfolioService:
             .where(BusinessPortfolioAccessUrl.business_portfolio == business_portfolio_id)
             .order_by(order_by)
             .limit(page_size)
-            .offset(page - 1)
+            .offset((page - 1) * page_size)
         ]
 
     def count_access_urls(self):
@@ -182,7 +182,7 @@ class AdCabinetService:
         if partial_name:
             query = query.where(fn.LOWER(AdCabinet.name).contains(partial_name.lower()))
 
-        return [ac for ac in query.order_by(order_by).limit(page_size).offset(page - 1)]
+        return [ac for ac in query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)]
 
     def create(self, name, is_banned):
         ad_cabinet = AdCabinet(name=name, is_banned=is_banned)
@@ -242,7 +242,7 @@ class BusinessPageService:
         if partial_name:
             query = query.where(fn.LOWER(BusinessPage.name).contains(partial_name.lower()))
 
-        return [bp for bp in query.order_by(order_by).limit(page_size).offset(page - 1)]
+        return [bp for bp in query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)]
 
     def create(self, name, is_banned):
         business_page = BusinessPage(name=name, is_banned=is_banned)
@@ -286,14 +286,14 @@ class CampaignService:
         try:
             return Campaign.get_by_id(id)
         except Campaign.DoesNotExist as exc:
-            raise DoesNotExistError() from exc
+            raise CampaignDoesNotExistError() from exc
 
     def list(self, page, page_size, sort_by, sort_order):
         order_by = getattr(Campaign, sort_by)
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [ac for ac in Campaign.select().order_by(order_by).limit(page_size).offset(page - 1)]
+        return [ac for ac in Campaign.select().order_by(order_by).limit(page_size).offset((page - 1) * page_size)]
 
     def create(
         self,
