@@ -17,6 +17,7 @@ from src.core.entities import Campaign, Flow
 from src.core.enums import FlowActionType, SortOrder
 from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError, LandingPageUploadError
 from src.core.models import Client
+from src.tracker.entities import TrackClick
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,15 @@ class CampaignService:
 
     def count(self):
         return Campaign.select(fn.count(Campaign.id)).scalar()
+
+    def expenses_distribution_parameters(self, campaign_id):
+        parameters = set()
+        query = TrackClick.select(TrackClick.parameters).where(TrackClick.campaign_id == campaign_id)
+        for click in query:
+            if click.parameters:
+                parameters.update(click.parameters.keys())
+
+        return sorted(parameters)
 
 
 @service

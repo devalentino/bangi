@@ -46,7 +46,7 @@ class ExpensesReport(MethodView):
             params['pageSize'],
             humps.decamelize(params['sortBy'].value),
             params['sortOrder'],
-            params.get('campaignId'),
+            params['campaignId'],
             params.get('start'),
             params.get('end'),
         )

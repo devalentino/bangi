@@ -76,6 +76,10 @@ class FilterCampaignResponseSchema(Schema):
     name = fields.String(required=True)
 
 
+class ExpensesDistributionParametersResponseSchema(Schema):
+    parameter = fields.String(required=True)
+
+
 class FlowPaginationRequestSchema(Schema):
     page = fields.Integer(dump_default=1, load_default=1)
     pageSize = fields.Integer(dump_default=PAGINATION_DEFAULT_PAGE_SIZE, load_default=PAGINATION_DEFAULT_PAGE_SIZE)
