@@ -5,11 +5,11 @@ from src.auth import auth
 from src.blueprint import Blueprint
 from src.container import container
 from src.reports.schemas import (
-    BaseReportRequest,
-    BaseReportResponse,
     ExpensesReportCreateRequest,
     ExpensesReportListResponse,
     ExpensesReportRequestSchema,
+    StatisticsReportResponse,
+    StisticsReportRequest,
 )
 from src.reports.services import ReportService
 
@@ -18,8 +18,8 @@ blueprint = Blueprint('reports', __name__, description='Reports')
 
 @blueprint.route('/statistics')
 class StatisticsReport(MethodView):
-    @blueprint.arguments(BaseReportRequest, location='query')
-    @blueprint.response(200, BaseReportResponse)
+    @blueprint.arguments(StisticsReportRequest, location='query')
+    @blueprint.response(200, StatisticsReportResponse)
     @auth.login_required
     def get(self, params):
         report_service = container.get(ReportService)
@@ -47,15 +47,15 @@ class ExpensesReport(MethodView):
             humps.decamelize(params['sortBy'].value),
             params['sortOrder'],
             params['campaignId'],
-            params.get('start'),
-            params.get('end'),
+            params.get('periodStart'),
+            params.get('periodEnd'),
         )
         return {
             'content': expenses,
             'pagination': params | {'total': total},
             'filters': {
-                'start': params.get('start'),
-                'end': params.get('end'),
+                'periodStart': params.get('periodStart'),
+                'periodEnd': params.get('periodEnd'),
                 'campaignId': params.get('campaignId'),
             },
         }

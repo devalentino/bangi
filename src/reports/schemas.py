@@ -4,7 +4,7 @@ from src.core.schemas import ComaSeparatedStringsField, PaginationRequestSchema,
 from src.reports.enums import ExpenseSortBy
 
 
-class BaseReportRequest(Schema):
+class StisticsReportRequest(Schema):
     campaignId = fields.Integer(required=True)
     periodStart = fields.Integer(required=True)
     periodEnd = fields.Integer(required=False)
@@ -14,13 +14,13 @@ class BaseReportRequest(Schema):
         unknown = INCLUDE
 
 
-class BaseReportContent(Schema):
+class StatisticsReportContent(Schema):
     report = fields.List(fields.Dict, required=True)
     parameters = fields.List(fields.String)
 
 
-class BaseReportResponse(Schema):
-    content = fields.Nested(BaseReportContent())
+class StatisticsReportResponse(Schema):
+    content = fields.Nested(StatisticsReportContent())
 
 
 class ExpensesReportDistribution(Schema):
@@ -35,8 +35,8 @@ class ExpensesReportCreateRequest(Schema):
 
 
 class ExpensesReportFilterSchema(Schema):
-    start = fields.Date(required=False)
-    end = fields.Date(required=False)
+    periodStart = fields.Date(required=False)
+    periodEnd = fields.Date(required=False)
     campaignId = fields.Integer(required=True)
 
 

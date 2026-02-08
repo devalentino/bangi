@@ -100,8 +100,8 @@ class TestExpensesReport:
             headers={'Authorization': authorization},
             query_string={
                 'campaignId': campaign['id'],
-                'start': date_start.isoformat(),
-                'end': date_end.isoformat(),
+                'periodStart': date_start.isoformat(),
+                'periodEnd': date_end.isoformat(),
                 'page': 1,
                 'pageSize': 10,
                 'sortBy': 'date',
@@ -122,7 +122,11 @@ class TestExpensesReport:
                 },
             ],
             'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'date', 'sortOrder': 'asc', 'total': 2},
-            'filters': {'campaignId': campaign['id'], 'start': date_start.isoformat(), 'end': date_end.isoformat()},
+            'filters': {
+                'campaignId': campaign['id'],
+                'periodStart': date_start.isoformat(),
+                'periodEnd': date_end.isoformat(),
+            },
         }
 
 

@@ -78,18 +78,18 @@ class ReportService:
                 update={Expense.distribution: date_distribution['distribution']},
             ).execute()
 
-    def list_expenses(self, page, page_size, sort_by, sort_order, campaign_id, start=None, end=None):
+    def list_expenses(self, page, page_size, sort_by, sort_order, campaign_id, period_start=None, period_end=None):
         order_by = getattr(Expense, sort_by)
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
         query = Expense.select(Expense, Campaign).join(Campaign).where(Expense.campaign == campaign_id)
 
-        if start is not None:
-            query = query.where(Expense.date >= start)
+        if period_start is not None:
+            query = query.where(Expense.date >= period_start)
 
-        if end is not None:
-            query = query.where(Expense.date <= end)
+        if period_end is not None:
+            query = query.where(Expense.date <= period_end)
 
         total = query.count()
 
