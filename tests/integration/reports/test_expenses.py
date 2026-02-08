@@ -129,49 +129,7 @@ class TestExpensesReport:
             },
         }
 
-    def test_get_expenses_report__no_expenses__clicks_exist(
-        self, client, authorization, campaign, today, read_from_db, write_to_db
-    ):
-        write_to_db(
-            'track_click',
-            {
-                'click_id': 'click-1',
-                'campaign_id': campaign['id'],
-                'parameters': {'utm_source': 'fb', 'ad_name': 'ad1'},
-            },
-        )
-
-        response = client.get(
-            '/api/v2/reports/expenses',
-            headers={'Authorization': authorization},
-            query_string={
-                'campaignId': campaign['id'],
-                'periodStart': today.isoformat(),
-                'periodEnd': today.isoformat(),
-                'page': 1,
-                'pageSize': 10,
-                'sortBy': 'date',
-                'sortOrder': 'asc',
-            },
-        )
-
-        assert response.status_code == 200, response.text
-        assert response.json == {
-            'content': [  # default template is returned
-                {'date': today.isoformat(), 'distribution': {'ad_name': 0, 'utm_source': 0}}
-            ],
-            'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'date', 'sortOrder': 'asc', 'total': 0},
-            'filters': {
-                'campaignId': campaign['id'],
-                'periodStart': today.isoformat(),
-                'periodEnd': today.isoformat(),
-            },
-        }
-
-        expenses = read_from_db('expense')
-        assert expenses is None
-
-    def test_get_expenses_report__no_expenses__no_clicks(self, client, authorization, campaign, today, read_from_db):
+    def test_get_expenses_report__no_expenses(self, client, authorization, campaign, today, read_from_db):
         response = client.get(
             '/api/v2/reports/expenses',
             headers={'Authorization': authorization},

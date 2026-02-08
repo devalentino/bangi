@@ -101,7 +101,6 @@ class ReportService:
         # cover case for no reports
         campaign = self.campaign_service.get(campaign_id)
         today = datetime.today()
-        distribution_parameters = self.campaign_service.expenses_distribution_parameters(campaign.id)
-        expense = Expense(campaign=campaign, date=today, distribution={p: 0 for p in distribution_parameters})
+        expense = Expense(campaign=campaign, date=today, distribution={})
 
         return [expense], 0
