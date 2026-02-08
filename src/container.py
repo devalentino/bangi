@@ -13,7 +13,7 @@ from src.facebook_pacs.services import BusinessPortfolioService as FacebookPacsB
 from src.facebook_pacs.services import CampaignService as FacebookPacsCampaignService
 from src.facebook_pacs.services import ExecutorService as FacebookPacsExecutorService
 from src.reports.repositories import BaseReportRepository
-from src.reports.services import ReportService
+from src.reports.services import ReportHelperService, ReportService
 from src.tracker.services import TrackService
 
 container = create_sync_container(
@@ -44,6 +44,7 @@ container = create_sync_container(
         FacebookPacsCampaignService,
         FacebookPacsExecutorService,
         Ip2LocationLocator,
+        ReportHelperService,
         ReportService,
         TrackService,
     ],

@@ -5,13 +5,17 @@ from src.auth import auth
 from src.blueprint import Blueprint
 from src.container import container
 from src.reports.schemas import (
+    ExpensesDistributionParametersRequestSchema,
+    ExpensesDistributionParametersResponseSchema,
+    ExpensesDistributionParameterValuesRequestSchema,
+    ExpensesDistributionParameterValuesResponseSchema,
     ExpensesReportCreateRequest,
     ExpensesReportListResponse,
     ExpensesReportRequestSchema,
     StatisticsReportResponse,
     StisticsReportRequest,
 )
-from src.reports.services import ReportService
+from src.reports.services import ReportHelperService, ReportService
 
 blueprint = Blueprint('reports', __name__, description='Reports')
 
@@ -51,7 +55,7 @@ class ExpensesReport(MethodView):
             params.get('periodEnd'),
         )
         return {
-            'content': expenses,
+            'content': [e.to_dict() for e in expenses],
             'pagination': params | {'total': total},
             'filters': {
                 'periodStart': params.get('periodStart'),
@@ -68,3 +72,25 @@ class ExpensesReport(MethodView):
         report_service.submit_expenses(
             expenses_payload['campaignId'], expenses_payload['distributionParameter'], expenses_payload['dates']
         )
+
+
+@blueprint.route('/helpers/expenses-distribution-parameters')
+class FilterCampaignExpensesDistributionParameters(MethodView):
+    @blueprint.arguments(ExpensesDistributionParametersRequestSchema, location='query')
+    @blueprint.response(200, ExpensesDistributionParametersResponseSchema(many=True))
+    @auth.login_required
+    def get(self, params):
+        helpers_service = container.get(ReportHelperService)
+        parameters = helpers_service.list_expenses_distribution_parameters(params['campaignId'])
+        return [{'parameter': p} for p in parameters]
+
+
+@blueprint.route('/helpers/expenses-distribution-parameter-values')
+class FilterCampaignExpensesDistributionParameterValues(MethodView):
+    @blueprint.arguments(ExpensesDistributionParameterValuesRequestSchema, location='query')
+    @blueprint.response(200, ExpensesDistributionParameterValuesResponseSchema(many=True))
+    @auth.login_required
+    def get(self, params):
+        helpers_service = container.get(ReportHelperService)
+        values = helpers_service.list_expenses_distribution_parameter_values(params['campaignId'], params['parameter'])
+        return [{'value': v} for v in values]

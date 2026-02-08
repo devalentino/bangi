@@ -129,7 +129,72 @@ class TestExpensesReport:
             },
         }
 
-    def test_get_expenses_report__no_expenses(self, client, authorization, campaign, today, read_from_db):
+    def test_get_expenses_report__no_expenses__clicks_exist(
+        self, client, authorization, campaign, today, timestamp, read_from_db, write_to_db
+    ):
+        write_to_db(
+            'track_click',
+            {
+                'click_id': 'click-1',
+                'campaign_id': campaign['id'],
+                'parameters': {'utm_source': 'fb', 'ad_name': 'ad1'},
+                'created_at': timestamp - 24 * 60 * 60,
+            },
+        )
+
+        write_to_db(
+            'track_click',
+            {
+                'click_id': 'click-2',
+                'campaign_id': campaign['id'],
+                'parameters': {'utm_source': 'fb', 'ad_name': 'ad2'},
+                'created_at': timestamp,
+            },
+        )
+
+        write_to_db(  # out of filter
+            'track_click',
+            {
+                'click_id': 'click-2',
+                'campaign_id': campaign['id'],
+                'parameters': {'utm_source': 'fb', 'ad_name': 'ad2'},
+                'created_at': timestamp - 2 * 24 * 60 * 60,
+            },
+        )
+
+        yesterday = today - timedelta(days=1)
+        response = client.get(
+            '/api/v2/reports/expenses',
+            headers={'Authorization': authorization},
+            query_string={
+                'campaignId': campaign['id'],
+                'periodStart': yesterday.isoformat(),
+                'periodEnd': today.isoformat(),
+                'page': 1,
+                'pageSize': 10,
+                'sortBy': 'date',
+                'sortOrder': 'asc',
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [  # default template is returned
+                {'date': yesterday.isoformat(), 'distribution': {}},
+                {'date': today.isoformat(), 'distribution': {}},
+            ],
+            'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'date', 'sortOrder': 'asc', 'total': 0},
+            'filters': {
+                'campaignId': campaign['id'],
+                'periodStart': yesterday.isoformat(),
+                'periodEnd': today.isoformat(),
+            },
+        }
+
+        expenses = read_from_db('expense')
+        assert expenses is None
+
+    def test_get_expenses_report__no_expenses__no_clicks(self, client, authorization, campaign, today, read_from_db):
         response = client.get(
             '/api/v2/reports/expenses',
             headers={'Authorization': authorization},

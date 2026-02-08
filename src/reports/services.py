@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from wireup import service
 
@@ -10,6 +10,8 @@ from src.core.utils import utcnow
 from src.reports.entities import Expense
 from src.reports.exceptions import ExpensesDistributionParameterError
 from src.reports.repositories import BaseReportRepository
+from src.tracker.entities import TrackClick
+from src.tracker.services import TrackService
 
 
 @service
@@ -17,9 +19,11 @@ class ReportService:
     def __init__(
         self,
         campaign_service: CampaignService,
+        track_service: TrackService,
         base_report_repository: BaseReportRepository,
     ):
         self.campaign_service = campaign_service
+        self.track_service = track_service
         self.base_report_repository = base_report_repository
 
     def _build_base_report(self, report_rows, parameters):
@@ -100,7 +104,38 @@ class ReportService:
 
         # cover case for no reports
         campaign = self.campaign_service.get(campaign_id)
-        today = datetime.today()
-        expense = Expense(campaign=campaign, date=today, distribution={})
 
-        return [expense], 0
+        dates = self.track_service.get_click_dates(
+            campaign.id,
+            datetime.combine(period_start, time.min).timestamp(),
+            datetime.combine(period_end, time.max).timestamp(),
+        )
+        if len(dates) == 0:
+            dates = [datetime.today()]
+
+        expenses = [Expense(campaign=campaign, date=d, distribution={}) for d in dates]
+
+        return expenses, 0
+
+
+@service
+class ReportHelperService:
+    def list_expenses_distribution_parameters(self, campaign_id):
+        parameters = set()
+        query = TrackClick.select(TrackClick.parameters).where(TrackClick.campaign_id == campaign_id)
+        for click in query:
+            if click.parameters:
+                parameters.update(click.parameters.keys())
+
+        return sorted(parameters)
+
+    def list_expenses_distribution_parameter_values(self, campaign_id, parameter):
+        values = set()
+        query = TrackClick.select(TrackClick.parameters).where(TrackClick.campaign_id == campaign_id)
+        for click in query:
+            if not click.parameters or parameter not in click.parameters:
+                continue
+            value = click.parameters.get(parameter)
+            values.add(value)
+
+        return sorted(values)

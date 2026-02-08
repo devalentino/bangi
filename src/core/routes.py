@@ -12,7 +12,6 @@ from src.core.schemas import (
     CampaignListResponseSchema,
     CampaignResponseSchema,
     CampaignUpdateRequestSchema,
-    ExpensesDistributionParametersResponseSchema,
     FilterCampaignResponseSchema,
     FlowBulkOrderUpdateRequestSchema,
     FlowCreateRequestSchema,
@@ -102,16 +101,6 @@ class FilterCampaigns(MethodView):
         campaign_service = container.get(CampaignService)
         campaigns = campaign_service.all()
         return [c.to_dict() for c in campaigns]
-
-
-@blueprint.route('/filters/campaigns/<int:campaignId>/expenses-distribution-parameters')
-class FilterCampaignExpensesDistributionParameters(MethodView):
-    @blueprint.response(200, ExpensesDistributionParametersResponseSchema(many=True))
-    @auth.login_required
-    def get(self, campaignId):
-        campaign_service = container.get(CampaignService)
-        parameters = campaign_service.expenses_distribution_parameters(campaignId)
-        return [{'parameter': p} for p in parameters]
 
 
 @blueprint.route('/campaigns/<int:campaignId>/flows')

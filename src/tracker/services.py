@@ -3,6 +3,7 @@ from typing import Optional
 
 from wireup import service
 
+from peewee import fn
 from src.core.entities import Campaign
 from src.tracker.entities import TrackClick, TrackPostback
 from src.tracker.enums import Status
@@ -82,3 +83,17 @@ class TrackService:
             currency=currency,
         )
         postback.save()
+
+    def get_click_dates(self, campaign_id, start_period, end_period):
+        date = fn.date(fn.from_unixtime(TrackClick.created_at)).distinct().alias('date')
+        query = (
+            TrackClick.select(date)
+            .where(
+                (TrackClick.campaign_id == campaign_id)
+                & (TrackClick.created_at >= start_period)
+                & (TrackClick.created_at <= end_period)
+            )
+            .order_by(date)
+        )
+
+        return [tc.date for tc in query]
