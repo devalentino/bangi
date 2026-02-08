@@ -93,6 +93,15 @@ class ReportService:
 
         total = query.count()
 
-        expenses = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
+        query = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
+        expenses = [e for e in query]
+        if expenses:
+            return expenses, total
 
-        return [e for e in expenses], total
+        # cover case for no reports
+        campaign = self.campaign_service.get(campaign_id)
+        today = datetime.today()
+        distribution_parameters = self.campaign_service.expenses_distribution_parameters(campaign.id)
+        expense = Expense(campaign=campaign, date=today, distribution={p: 0 for p in distribution_parameters})
+
+        return [expense], 0
