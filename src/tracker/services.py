@@ -5,8 +5,8 @@ from wireup import service
 
 from peewee import fn
 from src.core.entities import Campaign
+from src.core.enums import LeadStatus
 from src.tracker.entities import TrackClick, TrackPostback
-from src.tracker.enums import Status
 
 logger = logging.getLogger(__name__)
 
@@ -27,33 +27,33 @@ class TrackService:
 
         return campaign
 
-    def _map_status(self, parameters: dict, status_mapper) -> Optional[str]:
+    def _map_status(self, parameters: dict, status_mapper) -> str:
         if not isinstance(status_mapper, dict):
             logger.warning('Failed to get status mapper', extra={'status_mapper': status_mapper})
-            return None
+            return LeadStatus.trash.value
 
         status_parameter = status_mapper.get('parameter')
         if not status_parameter:
             logger.warning('Failed to get external status parameter', extra={'status_mapper': status_mapper})
-            return None
+            return LeadStatus.trash.value
 
         external_status = parameters.get(status_parameter)
         if external_status is None:
             logger.warning(
                 'Failed to get external status', extra={'status_parameter': status_parameter, 'parameters': parameters}
             )
-            return None
+            return LeadStatus.trash.value
 
         status_mapping = status_mapper.get('mapping') or {}
         internal_status = status_mapping.get(external_status)
 
-        if internal_status in {s.value for s in Status}:
+        if internal_status in {s.value for s in LeadStatus}:
             return internal_status
 
         logger.warning(
             'Failed to mapped status', extra={'status_mapping': status_mapping, 'external_status': external_status}
         )
-        return None
+        return LeadStatus.trash.value
 
     def track_click(self, click_id: str, campaign_id: int, parameters: dict) -> None:
         click = TrackClick(click_id=click_id, campaign_id=campaign_id, parameters=parameters)
@@ -67,7 +67,7 @@ class TrackService:
         campaign = self._get_campaign_by_click_id(click_id)
         if campaign:
             status = self._map_status(parameters, campaign.status_mapper)
-            if status == Status.approved:
+            if status in {LeadStatus.accept.value, LeadStatus.expect.value}:
                 cost_value = campaign.cost_value
                 currency = campaign.currency
         else:

@@ -6,10 +6,35 @@ from marshmallow import Schema as MarshmallowSchema
 from marshmallow import ValidationError, fields, validates_schema
 
 from src.core.constants import PAGINATION_DEFAULT_PAGE_SIZE
-from src.core.enums import CostModel, Currency, FlowActionType, FlowSortBy, SortBy, SortOrder
+from src.core.enums import CostModel, Currency, FlowActionType, FlowSortBy, LeadStatus, SortBy, SortOrder
 from src.core.models import Client
 
 logger = logging.getLogger(__name__)
+
+_LEAD_STATUS_VALUES = {status.value for status in LeadStatus}
+
+
+def validate_status_mapper(status_mapper):
+    if status_mapper is None:
+        return
+
+    if not isinstance(status_mapper, dict):
+        raise ValidationError('statusMapper must be a dict.', field_name='statusMapper')
+
+    mapping = status_mapper.get('mapping')
+    if mapping is None:
+        return
+
+    if not isinstance(mapping, dict):
+        raise ValidationError('statusMapper.mapping must be a dict.', field_name='statusMapper')
+
+    invalid_values = sorted({value for value in mapping.values() if value not in _LEAD_STATUS_VALUES})
+    if invalid_values:
+        allowed_values = ', '.join(sorted(_LEAD_STATUS_VALUES))
+        raise ValidationError(
+            f'statusMapper.mapping values must be one of: {allowed_values}.',
+            field_name='statusMapper',
+        )
 
 
 class Schema(MarshmallowSchema):
@@ -46,6 +71,10 @@ class CampaignCreateRequestSchema(Schema):
     currency = fields.Enum(Currency, required=True)
     statusMapper = fields.Dict(required=True)
 
+    @validates_schema
+    def validate_status_mapper(self, data, **kwargs):
+        validate_status_mapper(data.get('statusMapper'))
+
 
 class CampaignUpdateRequestSchema(Schema):
     name = fields.String()
@@ -53,6 +82,10 @@ class CampaignUpdateRequestSchema(Schema):
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN)
     currency = fields.Enum(Currency)
     statusMapper = fields.Dict(allow_none=True, load_default=None)
+
+    @validates_schema
+    def validate_status_mapper(self, data, **kwargs):
+        validate_status_mapper(data.get('statusMapper'))
 
 
 class CampaignResponseSchema(Schema):

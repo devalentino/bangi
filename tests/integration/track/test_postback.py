@@ -89,6 +89,6 @@ class TestPostback:
         assert response.status_code == 201, response.text
 
         postback = read_from_db('track_postback')
-        assert postback['status'] == 'approved'
+        assert postback['status'] == 'accept'
         assert postback['cost_value'] == campaign['cost_value']
         assert postback['currency'] == campaign['currency']

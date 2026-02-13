@@ -20,7 +20,7 @@ def flow_is_deleted():
 def status_mapper():
     return {
         'parameter': 'state',
-        'mapping': {'executed': 'approved', 'failed': 'rejected'},
+        'mapping': {'executed': 'accept', 'failed': 'reject'},
     }
 
 

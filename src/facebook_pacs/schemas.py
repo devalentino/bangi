@@ -1,9 +1,9 @@
 import decimal
 
-from marshmallow import fields
+from marshmallow import fields, validates_schema
 
 from src.core.enums import CostModel, Currency
-from src.core.schemas import PaginationRequestSchema, PaginationResponseSchema, Schema
+from src.core.schemas import PaginationRequestSchema, PaginationResponseSchema, Schema, validate_status_mapper
 
 
 class NameFilterResponseSchema(Schema):
@@ -92,6 +92,10 @@ class CampaignRequestSchema(Schema):
     executorId = fields.Integer(required=True)
     adCabinetId = fields.Integer(required=True)
     businessPageId = fields.Integer(required=True)
+
+    @validates_schema
+    def validate_status_mapper(self, data, **kwargs):
+        validate_status_mapper(data.get('statusMapper'))
 
 
 class CampaignResponseSchema(Schema):
