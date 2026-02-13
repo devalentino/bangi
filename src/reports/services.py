@@ -69,7 +69,7 @@ class ReportService:
             statistics_container[group_parameter], group_parameters[1:], clicks_count, leads_count, payouts, lead_status
         )
 
-    def _build_statistics_report(self, report_rows, expenses_rows, parameters):
+    def _build_statistics_report(self, report_rows, expenses_rows, parameters, match_expenses_distribution):
         report = defaultdict(dict)
 
         for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
@@ -90,20 +90,7 @@ class ReportService:
                 report[date] = {}
 
             # extend records with expenses
-            if len(parameters['group_parameters']) == 0:
-
-                distribution = date2distribution.get(date)
-                if distribution:
-                    payouts_accepted, payouts_expected = self._get_payouts(report[date], parameters['group_parameters'])
-
-                    report[date]['expenses'] = sum(distribution.values())
-                    report[date]['roi_accepted'] = (
-                        (float(payouts_accepted) - report[date]['expenses']) / report[date]['expenses'] * 100
-                    )
-                    report[date]['roi_expected'] = (
-                        (float(payouts_expected) - report[date]['expenses']) / report[date]['expenses'] * 100
-                    )
-            else:
+            if match_expenses_distribution:
                 distribution = date2distribution.get(date)
                 if distribution:
                     for distribution_value, expenses in distribution.items():
@@ -122,6 +109,18 @@ class ReportService:
                             / report[date][distribution_value]['expenses']
                             * 100
                         )
+            else:
+                distribution = date2distribution.get(date)
+                if distribution:
+                    payouts_accepted, payouts_expected = self._get_payouts(report[date], parameters['group_parameters'])
+
+                    report[date]['expenses'] = sum(distribution.values())
+                    report[date]['roi_accepted'] = (
+                        (float(payouts_accepted) - report[date]['expenses']) / report[date]['expenses'] * 100
+                    )
+                    report[date]['roi_expected'] = (
+                        (float(payouts_expected) - report[date]['expenses']) / report[date]['expenses'] * 100
+                    )
 
         return report
 
@@ -134,8 +133,15 @@ class ReportService:
             group_parameters.insert(0, campaign.expenses_distribution_parameter)
         parameters['group_parameters'] = group_parameters
 
+        match_expenses_distribution = False
+        if (
+            len(parameters['group_parameters']) > 0
+            and parameters['group_parameters'][0] == campaign.expenses_distribution_parameter
+        ):
+            match_expenses_distribution = True
+
         report_rows, expenses_rows, available_parameters_row = self.statistics_report_repository.get(parameters)
-        report = self._build_statistics_report(report_rows, expenses_rows, parameters)
+        report = self._build_statistics_report(report_rows, expenses_rows, parameters, match_expenses_distribution)
 
         available_parameters = []
         if available_parameters_row:

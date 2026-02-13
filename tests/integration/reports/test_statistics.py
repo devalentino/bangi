@@ -228,6 +228,115 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
     }
 
 
+def test_get_report__group_by_parameter__not_expenses_distribution(
+    client, authorization, statistics_expenses, campaign, timestamp
+):
+    start_timestamp = timestamp - 4 * 24 * 60 * 60
+    end_timestamp = timestamp
+
+    response = client.get(
+        '/api/v2/reports/statistics',
+        headers={'Authorization': authorization},
+        query_string={
+            'campaignId': campaign['id'],
+            'periodStart': timestamp - 4 * 24 * 60 * 60,
+            'periodEnd': timestamp,
+            'groupParameters': 'utm_source',  # expense distribution is ad_name
+        },
+    )
+
+    assert response.status_code == 200, response.text
+
+    start_date = datetime.fromtimestamp(start_timestamp).date()
+    end_date = datetime.fromtimestamp(end_timestamp).date()
+    cost_value = float(campaign['cost_value'])
+
+    assert response.json == {
+        'content': {
+            'parameters': [
+                'utm_source',
+                'utm_content',
+                'utm_campaign',
+                'utm_medium',
+                'ad_name',
+                'utm_id',
+                'redirect_url',
+                'pixel',
+                'utm_term',
+                'adset_name',
+                'fbclid',
+            ],
+            'groupParameters': ['utm_source'],
+            'report': {
+                start_date.isoformat(): {},
+                (start_date + timedelta(days=1)).isoformat(): {},
+                (start_date + timedelta(days=2)).isoformat(): {
+                    'fb': {
+                        'statuses': {
+                            'accept': {'leads': 1, 'payouts': 1 * cost_value},
+                            'trash': {'leads': 1, 'payouts': 0},
+                        },
+                        'clicks': mock.ANY,
+                    },
+                    'inst': {'statuses': {}, 'clicks': mock.ANY},
+                    'expenses': sum(statistics_expenses[start_date + timedelta(days=2)].values()),
+                    'roi_accepted': (
+                        (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values()))
+                        / sum(statistics_expenses[start_date + timedelta(days=2)].values())
+                        * 100
+                    ),
+                    'roi_expected': (
+                        (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values()))
+                        / sum(statistics_expenses[start_date + timedelta(days=2)].values())
+                        * 100
+                    ),
+                },
+                (start_date + timedelta(days=3)).isoformat(): {
+                    'fb': {
+                        'statuses': {
+                            'accept': {'leads': 1, 'payouts': 1 * cost_value},
+                            'expect': {'leads': 1, 'payouts': 1 * cost_value},
+                            'reject': {'leads': 1, 'payouts': 0},
+                        },
+                        'clicks': mock.ANY,
+                    },
+                    'inst': {'statuses': {}, 'clicks': mock.ANY},
+                    'expenses': sum(statistics_expenses[start_date + timedelta(days=3)].values()),
+                    'roi_accepted': (
+                        (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
+                        / sum(statistics_expenses[start_date + timedelta(days=3)].values())
+                        * 100
+                    ),
+                    'roi_expected': (
+                        (
+                            1 * cost_value
+                            + 1 * cost_value
+                            - sum(statistics_expenses[start_date + timedelta(days=3)].values())
+                        )
+                        / sum(statistics_expenses[start_date + timedelta(days=3)].values())
+                        * 100
+                    ),
+                },
+                end_date.isoformat(): {
+                    'fb': {'statuses': {'accept': {'leads': 1, 'payouts': 1 * cost_value}}, 'clicks': mock.ANY},
+                    'inst': {'statuses': {}, 'clicks': mock.ANY},
+                    'expenses': sum(statistics_expenses[end_date].values()),
+                    'roi_accepted': (
+                        (1 * cost_value - sum(statistics_expenses[end_date].values()))
+                        / sum(statistics_expenses[end_date].values())
+                        * 100
+                    ),
+                    'roi_expected': (
+                        (1 * cost_value - sum(statistics_expenses[end_date].values()))
+                        / sum(statistics_expenses[end_date].values())
+                        * 100
+                    ),
+                },
+            },
+        }
+    }
+
+
 def test_get_report__no_statistics(client, authorization, timestamp):
     start_timestamp = timestamp - 4 * 24 * 60 * 60
     end_timestamp = timestamp
