@@ -59,7 +59,7 @@ class ReportService:
 
             statistics_container['clicks'] += clicks_count
             if lead_status:
-                statistics_container['statuses'][lead_status] = {'leads': leads_count, 'payouts': payouts}
+                statistics_container['statuses'][lead_status] = {'leads': leads_count, 'payouts': payouts or 0}
 
             return
 
