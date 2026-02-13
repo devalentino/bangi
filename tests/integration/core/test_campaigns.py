@@ -1,5 +1,4 @@
 import json
-from decimal import Decimal
 from unittest import mock
 
 import pytest
@@ -46,7 +45,7 @@ def test_campaigns_list(client, authorization, environment, campaign_payload, wr
         'content': [
             {
                 'costModel': 'cpm',
-                'costValue': '1.00',
+                'costValue': 1.0,
                 'currency': 'usd',
                 'expensesDistributionParameter': None,
                 'id': index + 1,
@@ -68,7 +67,7 @@ def test_get_campaign(client, authorization, campaign, environment):
         'id': campaign['id'],
         'name': campaign['name'],
         'costModel': campaign['cost_model'],
-        'costValue': str(campaign['cost_value'].quantize(Decimal('0.01'))),
+        'costValue': campaign['cost_value'],
         'currency': campaign['currency'],
         'expensesDistributionParameter': campaign['expenses_distribution_parameter'],
         'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{campaign["id"]}',

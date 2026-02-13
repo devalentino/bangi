@@ -1,15 +1,16 @@
 import json
+from collections import defaultdict
 from datetime import datetime, time, timedelta
 
 from wireup import service
 
 from src.core.entities import Campaign
-from src.core.enums import SortOrder
+from src.core.enums import LeadStatus, SortOrder
 from src.core.services import CampaignService
 from src.core.utils import utcnow
 from src.reports.entities import Expense
 from src.reports.exceptions import ExpensesDistributionParameterError
-from src.reports.repositories import BaseReportRepository
+from src.reports.repositories import StatisticsReportRepository
 from src.tracker.entities import TrackClick
 from src.tracker.services import TrackService
 
@@ -20,49 +21,128 @@ class ReportService:
         self,
         campaign_service: CampaignService,
         track_service: TrackService,
-        base_report_repository: BaseReportRepository,
+        statistics_report_repository: StatisticsReportRepository,
     ):
         self.campaign_service = campaign_service
         self.track_service = track_service
-        self.base_report_repository = base_report_repository
+        self.statistics_report_repository = statistics_report_repository
 
-    def _build_base_report(self, report_rows, parameters):
-        report = []
-        for clicks_count, leads_count, lead_status, date, *parameters_values in report_rows:
-            report.append(
-                {
-                    'date': date,
-                    'clicks': clicks_count,
-                    'leads': leads_count,
-                    'lead_status': lead_status,
-                    **dict(zip(parameters['group_parameters'], parameters_values)),
-                }
-            )
+    def _get_payouts(self, statistics_container, group_parameters):
+        if len(group_parameters) > 0:
+            payouts_accepted_sum = 0
+            payouts_expected_sum = 0
+
+            for stats in statistics_container.values():
+                payouts_accepted, payouts_expected = self._get_payouts(stats, group_parameters[1:])
+                payouts_accepted_sum += payouts_accepted
+                payouts_expected_sum += payouts_expected
+
+            return payouts_accepted_sum, payouts_expected_sum
+
+        payouts_accepted = sum(
+            stats['payouts']
+            for status, stats in statistics_container['statuses'].items()
+            if status == LeadStatus.accept
+        )
+        payouts_expected = sum(
+            stats['payouts']
+            for status, stats in statistics_container['statuses'].items()
+            if status in {LeadStatus.accept, LeadStatus.expect}
+        )
+
+        return payouts_accepted, payouts_expected
+
+    def _fill_clicks(self, statistics_container, group_parameters, clicks_count, leads_count, payouts, lead_status):
+        if len(group_parameters) == 0:
+            statistics_container.setdefault('statuses', {})
+            statistics_container.setdefault('clicks', 0)
+
+            statistics_container['clicks'] += clicks_count
+            if lead_status:
+                statistics_container['statuses'][lead_status] = {'leads': leads_count, 'payouts': payouts}
+
+            return
+
+        group_parameter = group_parameters[0]
+        statistics_container.setdefault(group_parameter, {})
+        self._fill_clicks(
+            statistics_container[group_parameter], group_parameters[1:], clicks_count, leads_count, payouts, lead_status
+        )
+
+    def _build_statistics_report(self, report_rows, expenses_rows, parameters):
+        report = defaultdict(dict)
+
+        for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
+            self._fill_clicks(report[date], parameters_values, clicks_count, leads_count, payouts, lead_status)
+
+        date2distribution = {date: json.loads(distribution) for date, distribution in expenses_rows}
 
         period_start_date = datetime.fromtimestamp(parameters['period_start']).date()
         period_end_date = utcnow().date()
         if parameters['period_end']:
             period_end_date = datetime.fromtimestamp(parameters['period_end']).date()
 
-        all_dates_report = []
         days_delta = period_end_date - period_start_date
         for day in range(days_delta.days + 1):
-            date = (period_start_date + timedelta(days=day)).strftime('%Y-%m-%d')
-            records = [r for r in report if r['date'] == date] or [{'date': date, 'clicks': 0}]
-            all_dates_report.extend(records)
+            date = period_start_date + timedelta(days=day)
 
-        return all_dates_report
+            if date not in report:
+                report[date] = {}
 
-    def base_report(self, parameters):
-        report_rows, available_parameters_row = self.base_report_repository.get(parameters)
-        report = self._build_base_report(report_rows, parameters)
+            # extend records with expenses
+            if len(parameters['group_parameters']) == 0:
+
+                distribution = date2distribution.get(date)
+                if distribution:
+                    payouts_accepted, payouts_expected = self._get_payouts(report[date], parameters['group_parameters'])
+
+                    report[date]['expenses'] = sum(distribution.values())
+                    report[date]['roi_accepted'] = (
+                        (float(payouts_accepted) - report[date]['expenses']) / report[date]['expenses'] * 100
+                    )
+                    report[date]['roi_expected'] = (
+                        (float(payouts_expected) - report[date]['expenses']) / report[date]['expenses'] * 100
+                    )
+            else:
+                distribution = date2distribution.get(date)
+                if distribution:
+                    for distribution_value, expenses in distribution.items():
+                        payouts_accepted, payouts_expected = self._get_payouts(
+                            report[date][distribution_value], parameters['group_parameters'][1:]
+                        )
+
+                        report[date][distribution_value]['expenses'] = expenses
+                        report[date][distribution_value]['roi_accepted'] = (
+                            (float(payouts_accepted) - report[date][distribution_value]['expenses'])
+                            / report[date][distribution_value]['expenses']
+                            * 100
+                        )
+                        report[date][distribution_value]['roi_expected'] = (
+                            (float(payouts_expected) - report[date][distribution_value]['expenses'])
+                            / report[date][distribution_value]['expenses']
+                            * 100
+                        )
+
+        return report
+
+    def statistics_report(self, parameters):
+        campaign = self.campaign_service.get(parameters['campaign_id'])
+
+        # make expenses_distribution_parameter in group parameters, expenses will be attached to same level
+        group_parameters = [p for p in parameters['group_parameters'] if p != campaign.expenses_distribution_parameter]
+        if campaign.expenses_distribution_parameter in parameters['group_parameters']:
+            group_parameters.insert(0, campaign.expenses_distribution_parameter)
+        parameters['group_parameters'] = group_parameters
+
+        report_rows, expenses_rows, available_parameters_row = self.statistics_report_repository.get(parameters)
+        report = self._build_statistics_report(report_rows, expenses_rows, parameters)
 
         available_parameters = []
         if available_parameters_row:
             (available_parameters_row,) = available_parameters_row
             available_parameters = list(json.loads(available_parameters_row).keys()) if available_parameters_row else []
 
-        return report, available_parameters
+        return report, available_parameters, group_parameters
 
     def submit_expenses(self, campaign_id, expenses_distribution_parameter, date_distributions):
         campaign = self.campaign_service.get(campaign_id)

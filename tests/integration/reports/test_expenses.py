@@ -227,6 +227,10 @@ class TestExpensesReport:
 
 
 class TestExpensesReportExpensesDistributionParameterNotSet:
+    @pytest.fixture
+    def expenses_distribution_parameter(self):
+        return None
+
     def test_post_expenses_report(self, client, authorization, campaign, today, read_from_db):
         assert campaign['expenses_distribution_parameter'] is None
 

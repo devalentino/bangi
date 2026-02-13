@@ -27,7 +27,7 @@ class StatisticsReport(MethodView):
     @auth.login_required
     def get(self, params):
         report_service = container.get(ReportService)
-        report, available_parameters = report_service.base_report(
+        report, available_parameters, group_parameters = report_service.statistics_report(
             {
                 'campaign_id': params['campaignId'],
                 'period_start': params['periodStart'],
@@ -35,7 +35,13 @@ class StatisticsReport(MethodView):
                 'group_parameters': params['groupParameters'],
             }
         )
-        return {'content': {'report': report, 'parameters': available_parameters}}
+        return {
+            'content': {
+                'report': {dt.isoformat(): stats for dt, stats in report.items()},
+                'parameters': available_parameters,
+                'groupParameters': group_parameters,
+            }
+        }
 
 
 @blueprint.route('/expenses')

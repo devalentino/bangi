@@ -1,8 +1,15 @@
+import json
+import random
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
+
+
+@pytest.fixture
+def expenses_distribution_parameter():
+    return 'ad_name'
 
 
 @pytest.fixture
@@ -39,48 +46,268 @@ def postback_parameters():
 
 
 @pytest.fixture
-def statistics(write_to_db, click_parameters, postback_parameters):
-    clicks = defaultdict(list)
+def statistics_clicks(write_to_db, campaign, click_parameters, postback_parameters, timestamp):
+    clicks = []
 
-    for ci in range(2):
-        campaign = write_to_db('campaign', {'name': f'Campaign {ci}'})
-        for tci in range(2):
-            for day in range(3):
-                click = write_to_db(
-                    'track_click',
-                    {
-                        'click_id': uuid4(),
-                        'campaign_id': campaign['id'],
-                        'parameters': click_parameters
-                        | {'redirect_url': f'http://localhost/?ci={ci}', 'ad_name': f'ad{ci}_{tci}'},
-                        'created_at': (
-                            datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=day)
-                        ).timestamp(),
-                    },
-                )
-                clicks[campaign['id']].append(click)
-
-                for status in 'accept', 'expect':
-                    write_to_db(
-                        'track_postback',
-                        {
-                            'click_id': click['click_id'],
-                            'parameters': postback_parameters | {'status': status},
-                            'created_at': (
-                                datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=day)
-                            ).timestamp(),
-                        },
-                    )
-
-    # first campaign and first click, second campaign and last click got rejected
-    for click in clicks[1][0], clicks[2][-1]:
-        write_to_db(
-            'track_postback',
+    # ad_1 10 clicks, no leads 2 days ago
+    for _ in range(10):
+        click = write_to_db(
+            'track_click',
             {
-                'click_id': click['click_id'],
-                'parameters': postback_parameters | {'status': 'reject'},
-                'created_at': (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=day)).timestamp(),
+                'click_id': uuid4(),
+                'campaign_id': campaign['id'],
+                'parameters': click_parameters
+                | {
+                    'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                    'ad_name': 'ad_1',
+                    'utm_source': random.choice(['fb', 'inst']),
+                },
+                'created_at': timestamp - timedelta(days=2).total_seconds(),
             },
         )
+        clicks.append(click)
+
+    # ad_1 15 clicks, 1 rejected lead 1 day ago
+    for _ in range(14):
+        click = write_to_db(
+            'track_click',
+            {
+                'click_id': uuid4(),
+                'campaign_id': campaign['id'],
+                'parameters': click_parameters
+                | {
+                    'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                    'ad_name': 'ad_1',
+                    'utm_source': random.choice(['fb', 'inst']),
+                },
+                'created_at': timestamp - timedelta(days=1).total_seconds(),
+            },
+        )
+        clicks.append(click)
+
+    click = write_to_db(
+        'track_click',
+        {
+            'click_id': uuid4(),
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters
+            | {
+                'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                'ad_name': 'ad_1',
+                'utm_source': 'fb',
+            },
+            'created_at': timestamp - timedelta(days=1).total_seconds(),
+        },
+    )
+    clicks.append(click)
+
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': click['click_id'],
+            'parameters': postback_parameters | {'status': 'reject'},
+            'cost_value': campaign['cost_value'],
+            'created_at': timestamp - timedelta(days=1).total_seconds(),
+        },
+    )
+
+    # ad_1 8 clicks, 1 accepted lead today
+    for _ in range(7):
+        click = write_to_db(
+            'track_click',
+            {
+                'click_id': uuid4(),
+                'campaign_id': campaign['id'],
+                'parameters': click_parameters
+                | {
+                    'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                    'ad_name': 'ad_1',
+                    'utm_source': random.choice(['fb', 'inst']),
+                },
+                'created_at': timestamp,
+            },
+        )
+        clicks.append(click)
+
+    click = write_to_db(
+        'track_click',
+        {
+            'click_id': uuid4(),
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters
+            | {
+                'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                'ad_name': 'ad_1',
+                'utm_source': 'fb',
+            },
+            'created_at': timestamp,
+        },
+    )
+    clicks.append(click)
+
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': click['click_id'],
+            'parameters': postback_parameters | {'status': 'accept'},
+            'cost_value': campaign['cost_value'],
+            'created_at': timestamp,
+        },
+    )
+
+    # ad_2 20 clicks, 1 accepted, 1 expected lead 2 days ago
+    for _ in range(18):
+        click = write_to_db(
+            'track_click',
+            {
+                'click_id': uuid4(),
+                'campaign_id': campaign['id'],
+                'parameters': click_parameters
+                | {
+                    'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                    'ad_name': 'ad_2',
+                    'utm_source': random.choice(['fb', 'inst']),
+                },
+                'created_at': timestamp - timedelta(days=2).total_seconds(),
+            },
+        )
+        clicks.append(click)
+
+    click_accepted = write_to_db(
+        'track_click',
+        {
+            'click_id': uuid4(),
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters
+            | {
+                'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                'ad_name': 'ad_2',
+                'utm_source': 'fb',
+            },
+            'created_at': timestamp - timedelta(days=2).total_seconds(),
+        },
+    )
+    clicks.append(click_accepted)
+
+    click_trash = write_to_db(
+        'track_click',
+        {
+            'click_id': uuid4(),
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters
+            | {
+                'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                'ad_name': 'ad_2',
+                'utm_source': 'fb',
+            },
+            'created_at': timestamp - timedelta(days=2).total_seconds(),
+        },
+    )
+    clicks.append(click_trash)
+
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': click_accepted['click_id'],
+            'parameters': postback_parameters | {'status': 'accept'},
+            'cost_value': campaign['cost_value'],
+            'created_at': timestamp - timedelta(days=2).total_seconds(),
+        },
+    )
+
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': click_trash['click_id'],
+            'parameters': postback_parameters | {'status': 'trash'},
+            'cost_value': campaign['cost_value'],
+            'created_at': timestamp - timedelta(days=2).total_seconds(),
+        },
+    )
+
+    # ad_2 10 clicks, 1 accepted, 1 expected lead 1 day ago
+    for _ in range(8):
+        click = write_to_db(
+            'track_click',
+            {
+                'click_id': uuid4(),
+                'campaign_id': campaign['id'],
+                'parameters': click_parameters
+                | {
+                    'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                    'ad_name': 'ad_2',
+                    'utm_source': random.choice(['fb', 'inst']),
+                },
+                'created_at': timestamp - timedelta(days=1).total_seconds(),
+            },
+        )
+        clicks.append(click)
+
+    click_accepted = write_to_db(
+        'track_click',
+        {
+            'click_id': uuid4(),
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters
+            | {
+                'redirect_url': 'http://localhost/?ci={campaign["id"]}',
+                'ad_name': 'ad_2',
+                'utm_source': 'fb',
+            },
+            'created_at': timestamp - timedelta(days=1).total_seconds(),
+        },
+    )
+    clicks.append(click_accepted)
+
+    click_expect = write_to_db(
+        'track_click',
+        {
+            'click_id': uuid4(),
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters
+            | {'redirect_url': 'http://localhost/?ci={campaign["id"]}', 'ad_name': 'ad_2', 'utm_source': 'fb'},
+            'created_at': timestamp - timedelta(days=1).total_seconds(),
+        },
+    )
+    clicks.append(click_expect)
+
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': click_accepted['click_id'],
+            'parameters': postback_parameters | {'status': 'accept'},
+            'cost_value': campaign['cost_value'],
+            'created_at': timestamp - timedelta(days=1).total_seconds(),
+        },
+    )
+
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': click_expect['click_id'],
+            'parameters': postback_parameters | {'status': 'expect'},
+            'cost_value': campaign['cost_value'],
+            'created_at': timestamp - timedelta(days=1).total_seconds(),
+        },
+    )
 
     return clicks
+
+
+@pytest.fixture
+def statistics_expenses(campaign, statistics_clicks, timestamp, write_to_db):
+    date2distribution = defaultdict(dict)
+    for click in statistics_clicks:
+        date = datetime.fromtimestamp(click['created_at']).date()
+        click_parameters = json.loads(click['parameters'])
+        ad_name = click_parameters['ad_name']
+
+        date2distribution[date][ad_name] = round(random.uniform(5, 10), 2)
+
+    for date, distribution in date2distribution.items():
+        write_to_db(
+            'expense',
+            {'campaign_id': campaign['id'], 'date': date, 'distribution': distribution, 'created_at': timestamp},
+        )
+
+    return date2distribution

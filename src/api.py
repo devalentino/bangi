@@ -1,4 +1,6 @@
+import simplejson
 from flask import Flask
+from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 from flask_smorest import Api
 
@@ -14,7 +16,17 @@ from src.tracker.routes import process_blueprint
 
 configure_logging()
 
+
+class SimpleJSONProvider(DefaultJSONProvider):
+    def dumps(self, obj, **kwargs):
+        return simplejson.dumps(obj, **kwargs)
+
+    def loads(self, s, **kwargs):
+        return simplejson.loads(s, **kwargs)
+
+
 app = Flask(__name__)
+app.json = SimpleJSONProvider(app)
 CORS(app)
 
 app.config['API_TITLE'] = 'Tracker API'

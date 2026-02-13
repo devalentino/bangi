@@ -25,6 +25,13 @@ class CostModel(str, Enum):
     cpi = 'cpi'
 
 
+class LeadStatus(str, Enum):
+    accept = 'accept'
+    expect = 'expect'
+    reject = 'reject'
+    trash = 'trash'
+
+
 class FlowActionType(str, Enum):
     redirect = 'redirect'
     render = 'render'
