@@ -1,24 +1,22 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest import mock
 
 
-def test_get_report(client, authorization, campaign, statistics_expenses, timestamp):
-    start_timestamp = timestamp - 5 * 24 * 60 * 60
-    end_timestamp = timestamp
+def test_get_report(client, authorization, campaign, statistics_expenses, today):
+    start_date = today - timedelta(days=5)
+    end_date = today
 
     response = client.get(
         '/api/v2/reports/statistics',
         headers={'Authorization': authorization},
         query_string={
             'campaignId': campaign['id'],
-            'periodStart': start_timestamp,
-            'periodEnd': end_timestamp,
+            'periodStart': start_date.isoformat(),
+            'periodEnd': end_date.isoformat(),
         },
     )
     assert response.status_code == 200, response.text
 
-    start_date = datetime.fromtimestamp(start_timestamp).date()
-    end_date = datetime.fromtimestamp(end_timestamp).date()
     cost_value = float(campaign['cost_value'])
 
     assert response.json == {
@@ -102,25 +100,23 @@ def test_get_report(client, authorization, campaign, statistics_expenses, timest
     }
 
 
-def test_get_report__group_by_parameter(client, authorization, statistics_expenses, campaign, timestamp):
-    start_timestamp = timestamp - 4 * 24 * 60 * 60
-    end_timestamp = timestamp
+def test_get_report__group_by_parameter(client, authorization, statistics_expenses, campaign, today):
+    start_date = today - timedelta(days=4)
+    end_date = today
 
     response = client.get(
         '/api/v2/reports/statistics',
         headers={'Authorization': authorization},
         query_string={
             'campaignId': campaign['id'],
-            'periodStart': timestamp - 4 * 24 * 60 * 60,
-            'periodEnd': timestamp,
+            'periodStart': start_date.isoformat(),
+            'periodEnd': end_date.isoformat(),
             'groupParameters': 'utm_source,ad_name',
         },
     )
 
     assert response.status_code == 200, response.text
 
-    start_date = datetime.fromtimestamp(start_timestamp).date()
-    end_date = datetime.fromtimestamp(end_timestamp).date()
     cost_value = float(campaign['cost_value'])
 
     assert response.json == {
@@ -229,26 +225,24 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
 
 
 def test_get_report__group_by_parameter__not_expenses_distribution(
-    client, authorization, statistics_expenses, campaign, timestamp
+    client, authorization, statistics_expenses, campaign, today
 ):
-    start_timestamp = timestamp - 4 * 24 * 60 * 60
-    end_timestamp = timestamp
+    start_date = today - timedelta(days=4)
+    end_date = today
 
     response = client.get(
         '/api/v2/reports/statistics',
         headers={'Authorization': authorization},
         query_string={
             'campaignId': campaign['id'],
-            'periodStart': timestamp - 4 * 24 * 60 * 60,
-            'periodEnd': timestamp,
+            'periodStart': start_date.isoformat(),
+            'periodEnd': end_date.isoformat(),
             'groupParameters': 'utm_source',  # expense distribution is ad_name
         },
     )
 
     assert response.status_code == 200, response.text
 
-    start_date = datetime.fromtimestamp(start_timestamp).date()
-    end_date = datetime.fromtimestamp(end_timestamp).date()
     cost_value = float(campaign['cost_value'])
 
     assert response.json == {
@@ -337,17 +331,17 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
     }
 
 
-def test_get_report__no_statistics(client, authorization, timestamp):
-    start_timestamp = timestamp - 4 * 24 * 60 * 60
-    end_timestamp = timestamp
+def test_get_report__no_statistics(client, authorization, today):
+    start_date = today - timedelta(days=4)
+    end_date = today
 
     response = client.get(
         '/api/v2/reports/statistics',
         headers={'Authorization': authorization},
         query_string={
             'campaignId': 100500,
-            'periodStart': start_timestamp,
-            'periodEnd': end_timestamp,
+            'periodStart': start_date.isoformat(),
+            'periodEnd': end_date.isoformat(),
         },
     )
     assert response.status_code == 404, response.text

@@ -12,8 +12,8 @@ from src.reports.schemas import (
     ExpensesReportCreateRequest,
     ExpensesReportListResponse,
     ExpensesReportRequestSchema,
+    StatisticsReportRequest,
     StatisticsReportResponse,
-    StisticsReportRequest,
 )
 from src.reports.services import ReportHelperService, ReportService
 
@@ -22,7 +22,7 @@ blueprint = Blueprint('reports', __name__, description='Reports')
 
 @blueprint.route('/statistics')
 class StatisticsReport(MethodView):
-    @blueprint.arguments(StisticsReportRequest, location='query')
+    @blueprint.arguments(StatisticsReportRequest, location='query')
     @blueprint.response(200, StatisticsReportResponse)
     @auth.login_required
     def get(self, params):
@@ -31,7 +31,7 @@ class StatisticsReport(MethodView):
             {
                 'campaign_id': params['campaignId'],
                 'period_start': params['periodStart'],
-                'period_end': params['periodEnd'],
+                'period_end': params.get('periodEnd'),
                 'group_parameters': params['groupParameters'],
             }
         )

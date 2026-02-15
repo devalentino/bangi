@@ -77,10 +77,12 @@ class ReportService:
 
         date2distribution = {date: json.loads(distribution) for date, distribution in expenses_rows}
 
-        period_start_date = datetime.fromtimestamp(parameters['period_start']).date()
+        period_start_date = parameters['period_start']
         period_end_date = utcnow().date()
         if parameters['period_end']:
-            period_end_date = datetime.fromtimestamp(parameters['period_end']).date()
+            period_end_date = parameters['period_end']
+
+        report = {d: s for d, s in report.items() if period_start_date <= d <= period_end_date}
 
         days_delta = period_end_date - period_start_date
         for day in range(days_delta.days + 1):

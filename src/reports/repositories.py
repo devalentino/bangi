@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import Annotated
 
 from pymysql.converters import escape_string
@@ -16,7 +16,19 @@ class StatisticsReportRepository:
         self.database = database
         self.gap_seconds = gap_seconds
 
+    @staticmethod
+    def _period_timestamps(parameters):
+        period_start = parameters['period_start']
+        period_end = parameters.get('period_end')
+        period_start_timestamp = datetime.combine(period_start, time.min).timestamp()
+        period_end_timestamp = None
+        if period_end:
+            period_end_timestamp = datetime.combine(period_end, time.max).timestamp()
+
+        return period_start_timestamp, period_end_timestamp
+
     def _leads_statistics(self, parameters):
+        period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
         status = fn.json_value(TrackPostback.parameters, '$.status')
         cost_value = Case(
             None, [((status == LeadStatus.accept.value) | (status == LeadStatus.expect), TrackPostback.cost_value)], 0
@@ -29,12 +41,10 @@ class StatisticsReportRepository:
             .over(partition_by=TrackPostback.click_id, order_by=TrackPostback.id.desc())
             .alias('row_number'),
             cost_value.alias('cost_value'),
-        ).where(TrackPostback.created_at >= parameters['period_start'] - self.gap_seconds)
+        ).where(TrackPostback.created_at >= period_start_timestamp - self.gap_seconds)
 
-        if 'period_end' in parameters:
-            leads_subquery = leads_subquery.where(
-                TrackPostback.created_at < parameters['period_end'] + self.gap_seconds
-            )
+        if period_end_timestamp:
+            leads_subquery = leads_subquery.where(TrackPostback.created_at < period_end_timestamp + self.gap_seconds)
 
         date = fn.date(fn.from_unixtime(TrackClick.created_at)).alias('date')
         lead_status = leads_subquery.c.status.alias('lead_status')
@@ -64,12 +74,12 @@ class StatisticsReportRepository:
             )
             .where(
                 (TrackClick.campaign_id == parameters['campaign_id'])
-                & (TrackClick.created_at >= parameters['period_start'] - self.gap_seconds)
+                & (TrackClick.created_at >= period_start_timestamp - self.gap_seconds)
             )
         )
 
-        if parameters['period_end']:
-            query = query.where(TrackClick.created_at < parameters['period_end'] + self.gap_seconds)
+        if period_end_timestamp:
+            query = query.where(TrackClick.created_at < period_end_timestamp + self.gap_seconds)
 
         query = query.group_by(*group_by).order_by(date)
 
@@ -77,26 +87,24 @@ class StatisticsReportRepository:
         return cursor.fetchall()
 
     def _expenses(self, parameters):
-        start = datetime.fromtimestamp(parameters['period_start']).date()
         query = Expense.select(Expense.date, Expense.distribution).where(
-            (Expense.campaign_id == parameters['campaign_id']) & (Expense.date >= start)
+            (Expense.campaign_id == parameters['campaign_id']) & (Expense.date >= parameters['period_start'])
         )
 
         if parameters['period_end']:
-            end = datetime.fromtimestamp(parameters['period_end']).date()
-            query = query.where(Expense.date <= end)
+            query = query.where(Expense.date <= parameters['period_end'])
 
         cursor = self.database.execute(query)
         return cursor.fetchall()
 
     def _available_parameters(self, parameters):
+        period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
         query = TrackClick.select(TrackClick.parameters).where(
-            (TrackClick.campaign_id == parameters['campaign_id'])
-            & (TrackClick.created_at >= parameters['period_start'])
+            (TrackClick.campaign_id == parameters['campaign_id']) & (TrackClick.created_at >= period_start_timestamp)
         )
 
-        if parameters['period_end']:
-            query = query.where(TrackClick.created_at <= parameters['period_end'])
+        if period_end_timestamp:
+            query = query.where(TrackClick.created_at <= period_end_timestamp)
 
         query = query.order_by(TrackClick.id.desc()).limit(1)
 

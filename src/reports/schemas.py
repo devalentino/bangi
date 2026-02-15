@@ -4,10 +4,10 @@ from src.core.schemas import ComaSeparatedStringsField, PaginationRequestSchema,
 from src.reports.enums import ExpenseSortBy
 
 
-class StisticsReportRequest(Schema):
+class StatisticsReportRequest(Schema):
     campaignId = fields.Integer(required=True)
-    periodStart = fields.Integer(required=True)
-    periodEnd = fields.Integer(required=False)
+    periodStart = fields.Date(required=True)
+    periodEnd = fields.Date(required=False)
     groupParameters = ComaSeparatedStringsField(dump_default=[], load_default=[])
 
     class Meta:
