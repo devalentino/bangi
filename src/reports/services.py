@@ -1,5 +1,4 @@
 import json
-from collections import defaultdict
 from datetime import datetime, time, timedelta
 
 from wireup import service
@@ -33,6 +32,9 @@ class ReportService:
             payouts_expected_sum = 0
 
             for stats in statistics_container.values():
+                if not isinstance(stats, dict):
+                    continue
+
                 payouts_accepted, payouts_expected = self._get_payouts(stats, group_parameters[1:])
                 payouts_accepted_sum += payouts_accepted
                 payouts_expected_sum += payouts_expected
@@ -52,45 +54,79 @@ class ReportService:
 
         return payouts_accepted, payouts_expected
 
-    def _fill_clicks(self, statistics_container, group_parameters, clicks_count, leads_count, payouts, lead_status):
-        if len(group_parameters) == 0:
-            statistics_container.setdefault('statuses', {})
-            statistics_container.setdefault('clicks', 0)
-
+    def _fill_clicks(self, statistics_container, group_values, clicks_count, leads_count, payouts, lead_status):
+        if len(group_values) == 0:
             statistics_container['clicks'] += clicks_count
             if lead_status:
-                statistics_container['statuses'][lead_status] = {'leads': leads_count, 'payouts': payouts or 0}
+                statistics_container['statuses'][lead_status]['leads'] = leads_count
+                statistics_container['statuses'][lead_status]['payouts'] = payouts or 0
 
             return
 
-        group_parameter = group_parameters[0]
-        statistics_container.setdefault(group_parameter, {})
+        group_value = group_values[0]
         self._fill_clicks(
-            statistics_container[group_parameter], group_parameters[1:], clicks_count, leads_count, payouts, lead_status
+            statistics_container[group_value], group_values[1:], clicks_count, leads_count, payouts, lead_status
         )
 
-    def _build_statistics_report(self, report_rows, expenses_rows, parameters, match_expenses_distribution):
-        report = defaultdict(dict)
+    def _fill_clicks_empty(self, statistics_container, grouped_values, set_expenses):
+        if len(grouped_values) == 0:
+            statistics_container['statuses'] = {status.value: {'leads': 0, 'payouts': 0} for status in LeadStatus}
 
-        for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
-            self._fill_clicks(report[date], parameters_values, clicks_count, leads_count, payouts, lead_status)
+            statistics_container['clicks'] = 0
+            return
 
-        date2distribution = {date: json.loads(distribution) for date, distribution in expenses_rows}
+        grouped_value = grouped_values[0]
+        statistics_container.setdefault(grouped_value, {})
+
+        if set_expenses:
+            statistics_container[grouped_value]['expenses'] = 0
+            statistics_container[grouped_value]['roi_accepted'] = 0
+            statistics_container[grouped_value]['roi_expected'] = 0
+
+            set_expenses = False
+
+        self._fill_clicks_empty(statistics_container[grouped_value], grouped_values[1:], set_expenses)
+
+    def _build_empty_statistics_report(self, parameters, match_expenses_distribution):
+        grouped_rows = [()]
+        if parameters['group_parameters']:
+            grouped_rows = self.statistics_report_repository.get_distribution_values(parameters)
+
+        report = {}
 
         period_start_date = parameters['period_start']
         period_end_date = utcnow().date()
         if parameters['period_end']:
             period_end_date = parameters['period_end']
 
-        report = {d: s for d, s in report.items() if period_start_date <= d <= period_end_date}
-
         days_delta = period_end_date - period_start_date
         for day in range(days_delta.days + 1):
             date = period_start_date + timedelta(days=day)
 
-            if date not in report:
-                report[date] = {}
+            report[date] = {}
 
+            if not match_expenses_distribution:
+                report[date]['expenses'] = 0
+                report[date]['roi_accepted'] = 0
+                report[date]['roi_expected'] = 0
+
+            for grouped_values in grouped_rows:
+                self._fill_clicks_empty(report[date], grouped_values, match_expenses_distribution)
+
+        return report
+
+    def _build_statistics_report(self, report_rows, expenses_rows, parameters, match_expenses_distribution):
+        report = self._build_empty_statistics_report(parameters, match_expenses_distribution)
+
+        for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
+            if date not in report:
+                continue
+
+            self._fill_clicks(report[date], parameters_values, clicks_count, leads_count, payouts, lead_status)
+
+        date2distribution = {date: json.loads(distribution) for date, distribution in expenses_rows}
+
+        for date in report:
             # extend records with expenses
             if match_expenses_distribution:
                 distribution = date2distribution.get(date)
