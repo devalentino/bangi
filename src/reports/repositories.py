@@ -29,14 +29,20 @@ class StatisticsReportRepository:
 
     def _leads_statistics(self, parameters):
         period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
-        status = fn.json_value(TrackPostback.parameters, '$.status')
         cost_value = Case(
-            None, [((status == LeadStatus.accept.value) | (status == LeadStatus.expect), TrackPostback.cost_value)], 0
+            None,
+            [
+                (
+                    (TrackPostback.status == LeadStatus.accept.value) | (TrackPostback.status == LeadStatus.expect),
+                    TrackPostback.cost_value,
+                )
+            ],
+            0,
         )
 
         leads_subquery = TrackPostback.select(
             TrackPostback.click_id,
-            status.alias('status'),
+            TrackPostback.status,
             fn.row_number()
             .over(partition_by=TrackPostback.click_id, order_by=TrackPostback.id.desc())
             .alias('row_number'),

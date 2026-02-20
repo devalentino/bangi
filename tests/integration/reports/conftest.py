@@ -105,7 +105,8 @@ def statistics_clicks(write_to_db, campaign, click_parameters, postback_paramete
         'track_postback',
         {
             'click_id': click['click_id'],
-            'parameters': postback_parameters | {'status': 'reject'},
+            'status': 'reject',
+            'parameters': postback_parameters,
             'cost_value': campaign['cost_value'],
             'created_at': timestamp - timedelta(days=1).total_seconds(),
         },
@@ -149,7 +150,8 @@ def statistics_clicks(write_to_db, campaign, click_parameters, postback_paramete
         'track_postback',
         {
             'click_id': click['click_id'],
-            'parameters': postback_parameters | {'status': 'accept'},
+            'status': 'accept',
+            'parameters': postback_parameters,
             'cost_value': campaign['cost_value'],
             'created_at': timestamp,
         },
@@ -209,7 +211,8 @@ def statistics_clicks(write_to_db, campaign, click_parameters, postback_paramete
         'track_postback',
         {
             'click_id': click_accepted['click_id'],
-            'parameters': postback_parameters | {'status': 'accept'},
+            'status': 'accept',
+            'parameters': postback_parameters,
             'cost_value': campaign['cost_value'],
             'created_at': timestamp - timedelta(days=2).total_seconds(),
         },
@@ -219,7 +222,8 @@ def statistics_clicks(write_to_db, campaign, click_parameters, postback_paramete
         'track_postback',
         {
             'click_id': click_trash['click_id'],
-            'parameters': postback_parameters | {'status': 'trash'},
+            'status': 'trash',
+            'parameters': postback_parameters,
             'cost_value': campaign['cost_value'],
             'created_at': timestamp - timedelta(days=2).total_seconds(),
         },
@@ -275,7 +279,8 @@ def statistics_clicks(write_to_db, campaign, click_parameters, postback_paramete
         'track_postback',
         {
             'click_id': click_accepted['click_id'],
-            'parameters': postback_parameters | {'status': 'accept'},
+            'status': 'accept',
+            'parameters': postback_parameters,
             'cost_value': campaign['cost_value'],
             'created_at': timestamp - timedelta(days=1).total_seconds(),
         },
@@ -285,7 +290,8 @@ def statistics_clicks(write_to_db, campaign, click_parameters, postback_paramete
         'track_postback',
         {
             'click_id': click_expect['click_id'],
-            'parameters': postback_parameters | {'status': 'expect'},
+            'status': 'expect',
+            'parameters': postback_parameters,
             'cost_value': campaign['cost_value'],
             'created_at': timestamp - timedelta(days=1).total_seconds(),
         },
