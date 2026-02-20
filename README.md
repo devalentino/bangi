@@ -73,7 +73,7 @@ make lint
 ## Build Image
 
 ```bash
-docker build -t ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-match) .
+docker build -f infra/core.Dockerfile -t ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-match) .
 ```
 
 ## Deploy Image
