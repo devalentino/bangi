@@ -1,9 +1,14 @@
 from typing import Annotated
 
 from playhouse.pool import PooledMySQLDatabase
+from playhouse.shortcuts import ReconnectMixin
 from wireup import Inject, service
 
-from peewee import MySQLDatabase
+from peewee import InterfaceError, MySQLDatabase
+
+
+class ReconnectPooledMySQLDatabase(ReconnectMixin, PooledMySQLDatabase):
+    reconnect_errors = ReconnectMixin.reconnect_errors + ((InterfaceError, ''),)
 
 
 @service(lifetime='singleton')
@@ -14,7 +19,7 @@ def database(
     password: Annotated[str, Inject(param='MARIADB_PASSWORD')],
     db_name: Annotated[str, Inject(param='MARIADB_DATABASE')],
 ) -> MySQLDatabase:
-    return PooledMySQLDatabase(
+    return ReconnectPooledMySQLDatabase(
         db_name,
         user=username,
         password=password,

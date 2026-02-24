@@ -87,6 +87,9 @@ class StatisticsReportRepository:
         if period_end_timestamp:
             query = query.where(TrackClick.created_at < period_end_timestamp + self.gap_seconds)
 
+        if parameters.get('skip_clicks_without_parameters'):
+            query = query.where(fn.json_length(TrackClick.parameters) > 0)
+
         query = query.group_by(*group_by).order_by(date)
 
         cursor = self.database.execute(query)
