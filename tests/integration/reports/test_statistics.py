@@ -651,3 +651,52 @@ def test_get_report__no_statistics(client, authorization, today):
     )
     assert response.status_code == 404, response.text
     assert response.json == {'message': 'Campaign does not exist'}
+
+
+def test_get_report__skip_clicks_without_parameters_filter(
+    client, authorization, campaign, write_to_db, timestamp, today
+):
+    write_to_db(
+        'track_click',
+        {
+            'click_id': 'click-empty-params',
+            'campaign_id': campaign['id'],
+            'parameters': {},
+            'created_at': timestamp,
+        },
+    )
+    write_to_db(
+        'track_click',
+        {
+            'click_id': 'click-with-params',
+            'campaign_id': campaign['id'],
+            'parameters': {'utm_source': 'fb'},
+            'created_at': timestamp,
+        },
+    )
+
+    default_response = client.get(
+        '/api/v2/reports/statistics',
+        headers={'Authorization': authorization},
+        query_string={
+            'campaignId': campaign['id'],
+            'periodStart': today.isoformat(),
+            'periodEnd': today.isoformat(),
+        },
+    )
+    assert default_response.status_code == 200, default_response.text
+
+    filtered_response = client.get(
+        '/api/v2/reports/statistics',
+        headers={'Authorization': authorization},
+        query_string={
+            'campaignId': campaign['id'],
+            'periodStart': today.isoformat(),
+            'periodEnd': today.isoformat(),
+            'skipClicksWithoutParameters': True,
+        },
+    )
+    assert filtered_response.status_code == 200, filtered_response.text
+
+    assert default_response.json['content']['report'][today.isoformat()]['clicks'] == 2
+    assert filtered_response.json['content']['report'][today.isoformat()]['clicks'] == 1

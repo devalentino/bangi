@@ -33,6 +33,7 @@ class StatisticsReport(MethodView):
                 'period_start': params['periodStart'],
                 'period_end': params.get('periodEnd'),
                 'group_parameters': params['groupParameters'],
+                'skip_clicks_without_parameters': params['skipClicksWithoutParameters'],
             }
         )
         return {
