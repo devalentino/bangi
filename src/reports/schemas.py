@@ -9,6 +9,7 @@ class StatisticsReportRequest(Schema):
     periodStart = fields.Date(required=True)
     periodEnd = fields.Date(required=False)
     groupParameters = ComaSeparatedStringsField(dump_default=[], load_default=[])
+    skipClicksWithoutParameters = fields.Boolean(dump_default=False, load_default=False)
 
     class Meta:
         unknown = INCLUDE
