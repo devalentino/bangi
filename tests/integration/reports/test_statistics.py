@@ -700,3 +700,64 @@ def test_get_report__skip_clicks_without_parameters_filter(
 
     assert default_response.json['content']['report'][today.isoformat()]['clicks'] == 2
     assert filtered_response.json['content']['report'][today.isoformat()]['clicks'] == 1
+
+
+def test_get_report__zero_expenses_does_not_cause_division_by_zero(
+    client, authorization, campaign, write_to_db, timestamp, today, click_parameters, postback_parameters
+):
+    click_id = 'click-zero-expenses'
+    write_to_db(
+        'track_click',
+        {
+            'click_id': click_id,
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters | {'ad_name': 'ad_zero', 'utm_source': 'fb'},
+            'created_at': timestamp,
+        },
+    )
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': click_id,
+            'status': 'accept',
+            'parameters': postback_parameters,
+            'cost_value': campaign['cost_value'],
+            'created_at': timestamp,
+        },
+    )
+    write_to_db(
+        'expense',
+        {
+            'campaign_id': campaign['id'],
+            'date': today,
+            'distribution': {'ad_zero': 0},
+            'created_at': timestamp,
+        },
+    )
+
+    response = client.get(
+        '/api/v2/reports/statistics',
+        headers={'Authorization': authorization},
+        query_string={
+            'campaignId': campaign['id'],
+            'periodStart': today.isoformat(),
+            'periodEnd': today.isoformat(),
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': {
+            'report': {
+                today.isoformat(): {
+                    'expenses': 0,
+                    'roi_accepted': 0,  # roi is zero, no division y zero
+                    'roi_expected': 0,  # roi is zero, no division y zero
+                    'statuses': mock.ANY,
+                    'clicks': mock.ANY,
+                }
+            },
+            'parameters': mock.ANY,
+            'groupParameters': mock.ANY,
+        }
+    }

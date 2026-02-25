@@ -137,28 +137,30 @@ class ReportService:
                         )
 
                         report[date][distribution_value]['expenses'] = expenses
-                        report[date][distribution_value]['roi_accepted'] = (
-                            (float(payouts_accepted) - report[date][distribution_value]['expenses'])
-                            / report[date][distribution_value]['expenses']
-                            * 100
-                        )
-                        report[date][distribution_value]['roi_expected'] = (
-                            (float(payouts_expected) - report[date][distribution_value]['expenses'])
-                            / report[date][distribution_value]['expenses']
-                            * 100
-                        )
+                        if report[date][distribution_value]['expenses'] > 0:
+                            report[date][distribution_value]['roi_accepted'] = (
+                                (float(payouts_accepted) - report[date][distribution_value]['expenses'])
+                                / report[date][distribution_value]['expenses']
+                                * 100
+                            )
+                            report[date][distribution_value]['roi_expected'] = (
+                                (float(payouts_expected) - report[date][distribution_value]['expenses'])
+                                / report[date][distribution_value]['expenses']
+                                * 100
+                            )
             else:
                 distribution = date2distribution.get(date)
                 if distribution:
                     payouts_accepted, payouts_expected = self._get_payouts(report[date], parameters['group_parameters'])
 
                     report[date]['expenses'] = sum(distribution.values())
-                    report[date]['roi_accepted'] = (
-                        (float(payouts_accepted) - report[date]['expenses']) / report[date]['expenses'] * 100
-                    )
-                    report[date]['roi_expected'] = (
-                        (float(payouts_expected) - report[date]['expenses']) / report[date]['expenses'] * 100
-                    )
+                    if report[date]['expenses'] > 0:
+                        report[date]['roi_accepted'] = (
+                            (float(payouts_accepted) - report[date]['expenses']) / report[date]['expenses'] * 100
+                        )
+                        report[date]['roi_expected'] = (
+                            (float(payouts_expected) - report[date]['expenses']) / report[date]['expenses'] * 100
+                        )
 
         return report
 
