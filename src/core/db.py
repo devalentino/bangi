@@ -1,13 +1,12 @@
 from typing import Annotated
 
-from playhouse.pool import PooledMySQLDatabase
 from playhouse.shortcuts import ReconnectMixin
 from wireup import Inject, service
 
 from peewee import InterfaceError, MySQLDatabase
 
 
-class ReconnectPooledMySQLDatabase(ReconnectMixin, PooledMySQLDatabase):
+class ReconnectPooledMySQLDatabase(ReconnectMixin, MySQLDatabase):
     reconnect_errors = ReconnectMixin.reconnect_errors + ((InterfaceError, ''),)
 
 
@@ -25,7 +24,4 @@ def database(
         password=password,
         host=host,
         port=int(port),
-        max_connections=4,
-        stale_timeout=300,
-        timeout=10,
     )
