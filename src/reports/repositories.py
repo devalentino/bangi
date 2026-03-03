@@ -127,17 +127,63 @@ class StatisticsReportRepository:
         return leads_statistics, expenses, available_parameters
 
     def get_distribution_values(self, parameters):
-        period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
-
         group_values = [fn.json_value(TrackClick.parameters, f'$.{p}').alias(p) for p in parameters['group_parameters']]
-
-        query = TrackClick.select(*group_values).where(
-            (TrackClick.campaign_id == parameters['campaign_id']) & (TrackClick.created_at >= period_start_timestamp)
+        query = (
+            TrackClick.select(*group_values)
+            .where(TrackClick.campaign_id == parameters['campaign_id'])
+            .group_by(*group_values)
         )
-
-        if period_end_timestamp:
-            query = query.where(TrackClick.created_at <= period_end_timestamp)
-
-        query = query.group_by(*group_values)
         cursor = self.database.execute(query)
         return cursor.fetchall()
+
+    def get_leads(self, page, page_size, sort_by, desc, campaign_id):
+        order_by = getattr(TrackClick, sort_by)
+        if desc:
+            order_by = order_by.desc()
+
+        row_number = (
+            fn.row_number()
+            .over(partition_by=TrackPostback.click_id, order_by=TrackPostback.id.desc())
+            .alias('row_number')
+        )
+
+        leads_subquery = TrackPostback.select(
+            TrackPostback.click_id,
+            TrackPostback.status,
+            TrackPostback.cost_value,
+            TrackPostback.currency,
+            row_number,
+        )
+
+        query = (
+            TrackClick.select(
+                TrackClick.click_id,
+                TrackClick.created_at,
+                leads_subquery.c.status,
+                leads_subquery.c.cost_value,
+                leads_subquery.c.currency,
+            )
+            .join(
+                leads_subquery,
+                JOIN.LEFT_OUTER,
+                on=((TrackClick.click_id == leads_subquery.c.click_id) & (leads_subquery.c.row_number == 1)),
+            )
+            .where(TrackClick.campaign_id == campaign_id)
+        )
+
+        total = query.count()
+
+        query = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
+
+        return list(query.dicts()), total
+
+    def get_lead(self, click_id):
+        click = TrackClick.get_or_none(TrackClick.click_id == click_id)
+        if click is None:
+            return None, []
+
+        postbacks_query = (
+            TrackPostback.select().where(TrackPostback.click_id == click_id).order_by(TrackPostback.id.desc())
+        )
+
+        return click, list(postbacks_query)

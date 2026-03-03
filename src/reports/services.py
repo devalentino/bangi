@@ -8,7 +8,7 @@ from src.core.enums import LeadStatus, SortOrder
 from src.core.services import CampaignService
 from src.core.utils import utcnow
 from src.reports.entities import Expense
-from src.reports.exceptions import ExpensesDistributionParameterError
+from src.reports.exceptions import ClickDoesNotExistError, ExpensesDistributionParameterError
 from src.reports.repositories import StatisticsReportRepository
 from src.tracker.entities import TrackClick
 from src.tracker.services import TrackService
@@ -242,6 +242,21 @@ class ReportService:
         expenses = [Expense(campaign=campaign, date=d, distribution={}) for d in dates]
 
         return expenses, 0
+
+    def list_postbacks(self, page, page_size, sort_by, sort_order, campaign_id):
+        self.campaign_service.get(campaign_id)
+        postbacks, total = self.statistics_report_repository.get_leads(
+            page, page_size, sort_by, sort_order == SortOrder.desc, campaign_id
+        )
+
+        return postbacks, total
+
+    def get_lead(self, click_id):
+        click, postbacks = self.statistics_report_repository.get_lead(click_id)
+        if click is None:
+            raise ClickDoesNotExistError()
+
+        return click, postbacks
 
 
 @service
