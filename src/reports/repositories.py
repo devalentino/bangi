@@ -127,18 +127,12 @@ class StatisticsReportRepository:
         return leads_statistics, expenses, available_parameters
 
     def get_distribution_values(self, parameters):
-        period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
-
         group_values = [fn.json_value(TrackClick.parameters, f'$.{p}').alias(p) for p in parameters['group_parameters']]
-
-        query = TrackClick.select(*group_values).where(
-            (TrackClick.campaign_id == parameters['campaign_id']) & (TrackClick.created_at >= period_start_timestamp)
+        query = (
+            TrackClick.select(*group_values)
+            .where(TrackClick.campaign_id == parameters['campaign_id'])
+            .group_by(*group_values)
         )
-
-        if period_end_timestamp:
-            query = query.where(TrackClick.created_at <= period_end_timestamp)
-
-        query = query.group_by(*group_values)
         cursor = self.database.execute(query)
         return cursor.fetchall()
 
