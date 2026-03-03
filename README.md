@@ -72,6 +72,23 @@ make lint
 
 ## Build Image
 
+### Development
+
+Build the latest development image on the `develop` branch
+
+```bash
+docker build -f infra/core.Dockerfile -t ghcr.io/devalentino/bangi-backend:dev-$(git rev-parse --short HEAD) .
+```
+
+## Deploy Image
+```bash
+docker push ghcr.io/devalentino/bangi-backend:dev-$(git rev-parse --short HEAD)
+```
+
+### Release
+
+For release please merge code to the `master` and create tag. Then build image with the tag
+
 ```bash
 docker build -f infra/core.Dockerfile -t ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-match) .
 ```
