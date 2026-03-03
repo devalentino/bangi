@@ -182,3 +182,14 @@ class StatisticsReportRepository:
         query = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
 
         return list(query.dicts()), total
+
+    def get_lead(self, click_id):
+        click = TrackClick.get_or_none(TrackClick.click_id == click_id)
+        if click is None:
+            return None, []
+
+        postbacks_query = (
+            TrackPostback.select().where(TrackPostback.click_id == click_id).order_by(TrackPostback.id.desc())
+        )
+
+        return click, list(postbacks_query)

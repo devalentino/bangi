@@ -82,8 +82,7 @@ class PostbacksReportRequestSchema(PaginationRequestSchema, PostbacksReportFilte
     pass
 
 
-class PostbacksReportResponseItem(Schema):
-    id = fields.Integer(required=True)
+class LeadReportResponseListItem(Schema):
     clickId = fields.String(required=True)
     status = fields.String(allow_none=True)
     costValue = fields.Decimal(places=2, allow_none=True)
@@ -91,7 +90,24 @@ class PostbacksReportResponseItem(Schema):
     createdAt = fields.Integer(required=True)
 
 
-class PostbacksReportListResponse(Schema):
-    content = fields.Nested(PostbacksReportResponseItem(many=True), required=True)
+class LeadReportListResponse(Schema):
+    content = fields.Nested(LeadReportResponseListItem(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
     filters = fields.Nested(PostbacksReportFilterSchema, required=True)
+
+
+class LeadResponsePostbackItem(Schema):
+    clickId = fields.String(required=True)
+    parameters = fields.Dict(required=True)
+    status = fields.String(allow_none=True)
+    costValue = fields.Decimal(places=2, allow_none=True)
+    currency = fields.String(allow_none=True)
+    createdAt = fields.Integer(required=True)
+
+
+class LeadResponseSchema(Schema):
+    clickId = fields.String(required=True)
+    campaignId = fields.Integer(required=True)
+    parameters = fields.Dict(required=True)
+    createdAt = fields.Integer(required=True)
+    postbacks = fields.Nested(LeadResponsePostbackItem(many=True), required=True)

@@ -12,7 +12,8 @@ from src.reports.schemas import (
     ExpensesReportCreateRequest,
     ExpensesReportListResponse,
     ExpensesReportRequestSchema,
-    PostbacksReportListResponse,
+    LeadReportListResponse,
+    LeadResponseSchema,
     PostbacksReportRequestSchema,
     StatisticsReportRequest,
     StatisticsReportResponse,
@@ -86,7 +87,7 @@ class ExpensesReport(MethodView):
 @blueprint.route('/leads')
 class PostbacksReport(MethodView):
     @blueprint.arguments(PostbacksReportRequestSchema, location='query')
-    @blueprint.response(200, PostbacksReportListResponse)
+    @blueprint.response(200, LeadReportListResponse)
     @auth.login_required
     def get(self, params):
         report_service = container.get(ReportService)
@@ -110,6 +111,34 @@ class PostbacksReport(MethodView):
             ],
             'pagination': params | {'total': total},
             'filters': {'campaignId': params['campaignId']},
+        }
+
+
+@blueprint.route('/leads/<string:clickId>')
+class Lead(MethodView):
+    @blueprint.response(200, LeadResponseSchema)
+    @auth.login_required
+    def get(self, clickId):
+        report_service = container.get(ReportService)
+        click, postbacks = report_service.get_lead(clickId)
+
+        return {
+            'clickId': click.click_id,
+            'campaignId': click.campaign_id,
+            'parameters': click.parameters,
+            'createdAt': int(click.created_at.timestamp()),
+            'postbacks': [
+                {
+                    'id': postback.id,
+                    'clickId': postback.click_id,
+                    'parameters': postback.parameters,
+                    'status': postback.status,
+                    'costValue': postback.cost_value,
+                    'currency': postback.currency,
+                    'createdAt': int(postback.created_at.timestamp()),
+                }
+                for postback in postbacks
+            ],
         }
 
 
