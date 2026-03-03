@@ -141,3 +141,44 @@ class StatisticsReportRepository:
         query = query.group_by(*group_values)
         cursor = self.database.execute(query)
         return cursor.fetchall()
+
+    def get_postbacks(self, page, page_size, sort_by, desc, campaign_id):
+        order_by = getattr(TrackClick, sort_by)
+        if desc:
+            order_by = order_by.desc()
+
+        row_number = (
+            fn.row_number()
+            .over(partition_by=TrackPostback.click_id, order_by=TrackPostback.id.desc())
+            .alias('row_number')
+        )
+
+        leads_subquery = TrackPostback.select(
+            TrackPostback.click_id,
+            TrackPostback.status,
+            TrackPostback.cost_value,
+            TrackPostback.currency,
+            row_number,
+        )
+
+        query = (
+            TrackClick.select(
+                TrackClick.click_id,
+                TrackClick.created_at,
+                leads_subquery.c.status,
+                leads_subquery.c.cost_value,
+                leads_subquery.c.currency,
+            )
+            .join(
+                leads_subquery,
+                JOIN.LEFT_OUTER,
+                on=((TrackClick.click_id == leads_subquery.c.click_id) & (leads_subquery.c.row_number == 1)),
+            )
+            .where(TrackClick.campaign_id == campaign_id)
+        )
+
+        total = query.count()
+
+        query = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
+
+        return list(query.dicts()), total

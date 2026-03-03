@@ -72,3 +72,26 @@ class ExpensesDistributionParameterValuesRequestSchema(Schema):
 
 class ExpensesDistributionParameterValuesResponseSchema(Schema):
     value = fields.String(required=True)
+
+
+class PostbacksReportFilterSchema(Schema):
+    campaignId = fields.Integer(required=True)
+
+
+class PostbacksReportRequestSchema(PaginationRequestSchema, PostbacksReportFilterSchema):
+    pass
+
+
+class PostbacksReportResponseItem(Schema):
+    id = fields.Integer(required=True)
+    clickId = fields.String(required=True)
+    status = fields.String(allow_none=True)
+    costValue = fields.Decimal(places=2, allow_none=True)
+    currency = fields.String(allow_none=True)
+    createdAt = fields.Integer(required=True)
+
+
+class PostbacksReportListResponse(Schema):
+    content = fields.Nested(PostbacksReportResponseItem(many=True), required=True)
+    pagination = fields.Nested(PaginationResponseSchema, required=True)
+    filters = fields.Nested(PostbacksReportFilterSchema, required=True)

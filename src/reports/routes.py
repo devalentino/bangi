@@ -12,6 +12,8 @@ from src.reports.schemas import (
     ExpensesReportCreateRequest,
     ExpensesReportListResponse,
     ExpensesReportRequestSchema,
+    PostbacksReportListResponse,
+    PostbacksReportRequestSchema,
     StatisticsReportRequest,
     StatisticsReportResponse,
 )
@@ -79,6 +81,36 @@ class ExpensesReport(MethodView):
         report_service.submit_expenses(
             expenses_payload['campaignId'], expenses_payload['distributionParameter'], expenses_payload['dates']
         )
+
+
+@blueprint.route('/postbacks')
+class PostbacksReport(MethodView):
+    @blueprint.arguments(PostbacksReportRequestSchema, location='query')
+    @blueprint.response(200, PostbacksReportListResponse)
+    @auth.login_required
+    def get(self, params):
+        report_service = container.get(ReportService)
+        postbacks, total = report_service.list_postbacks(
+            params['page'],
+            params['pageSize'],
+            humps.decamelize(params['sortBy'].value),
+            params['sortOrder'],
+            params['campaignId'],
+        )
+        return {
+            'content': [
+                {
+                    'clickId': p['click_id'],
+                    'status': p['status'],
+                    'costValue': p['cost_value'],
+                    'currency': p['currency'],
+                    'createdAt': int(p['created_at'].timestamp()),
+                }
+                for p in postbacks
+            ],
+            'pagination': params | {'total': total},
+            'filters': {'campaignId': params['campaignId']},
+        }
 
 
 @blueprint.route('/helpers/expenses-distribution-parameters')
