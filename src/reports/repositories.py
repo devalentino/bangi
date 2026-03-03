@@ -142,7 +142,7 @@ class StatisticsReportRepository:
         cursor = self.database.execute(query)
         return cursor.fetchall()
 
-    def get_postbacks(self, page, page_size, sort_by, desc, campaign_id):
+    def get_leads(self, page, page_size, sort_by, desc, campaign_id):
         order_by = getattr(TrackClick, sort_by)
         if desc:
             order_by = order_by.desc()

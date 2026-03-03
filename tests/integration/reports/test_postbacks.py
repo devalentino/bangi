@@ -2,8 +2,8 @@ import json
 from unittest import mock
 
 
-class TestPostbacksReport:
-    def test_get_postbacks_report(self, client, authorization, campaign, campaign_payload, timestamp, write_to_db):
+class TestGetLeads:
+    def test_get_leads(self, client, authorization, campaign, campaign_payload, timestamp, write_to_db):
         other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Other Campaign'})
 
         first_click = write_to_db(

@@ -245,7 +245,7 @@ class ReportService:
 
     def list_postbacks(self, page, page_size, sort_by, sort_order, campaign_id):
         self.campaign_service.get(campaign_id)
-        postbacks, total = self.statistics_report_repository.get_postbacks(
+        postbacks, total = self.statistics_report_repository.get_leads(
             page, page_size, sort_by, sort_order == SortOrder.desc, campaign_id
         )
 
