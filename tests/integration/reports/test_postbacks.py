@@ -68,7 +68,7 @@ class TestPostbacksReport:
         )
 
         response = client.get(
-            '/api/v2/reports/postbacks',
+            '/api/v2/reports/leads',
             headers={'Authorization': authorization},
             query_string={
                 'campaignId': campaign['id'],

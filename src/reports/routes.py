@@ -83,7 +83,7 @@ class ExpensesReport(MethodView):
         )
 
 
-@blueprint.route('/postbacks')
+@blueprint.route('/leads')
 class PostbacksReport(MethodView):
     @blueprint.arguments(PostbacksReportRequestSchema, location='query')
     @blueprint.response(200, PostbacksReportListResponse)
