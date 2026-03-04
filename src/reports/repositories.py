@@ -165,7 +165,7 @@ class StatisticsReportRepository:
             )
             .join(
                 leads_subquery,
-                JOIN.LEFT_OUTER,
+                JOIN.INNER,
                 on=((TrackClick.click_id == leads_subquery.c.click_id) & (leads_subquery.c.row_number == 1)),
             )
             .where(TrackClick.campaign_id == campaign_id)
