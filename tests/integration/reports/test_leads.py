@@ -199,11 +199,11 @@ class TestGetLeads:
         assert response.json == {
             'clickId': click['click_id'],
             'campaignId': click['campaign_id'],
+            'campaignName': campaign['name'],
             'parameters': json.loads(click['parameters']),
             'createdAt': mock.ANY,
             'postbacks': [
                 {
-                    'clickId': newer_postback['click_id'],
                     'parameters': json.loads(newer_postback['parameters']),
                     'status': newer_postback['status'],
                     'costValue': float(newer_postback['cost_value']),
@@ -211,7 +211,6 @@ class TestGetLeads:
                     'createdAt': mock.ANY,
                 },
                 {
-                    'clickId': older_postback['click_id'],
                     'parameters': json.loads(older_postback['parameters']),
                     'status': older_postback['status'],
                     'costValue': float(older_postback['cost_value']),

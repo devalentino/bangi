@@ -97,7 +97,6 @@ class LeadReportListResponse(Schema):
 
 
 class LeadResponsePostbackItem(Schema):
-    clickId = fields.String(required=True)
     parameters = fields.Dict(required=True)
     status = fields.String(allow_none=True)
     costValue = fields.Decimal(places=2, allow_none=True)
@@ -108,6 +107,7 @@ class LeadResponsePostbackItem(Schema):
 class LeadResponseSchema(Schema):
     clickId = fields.String(required=True)
     campaignId = fields.Integer(required=True)
+    campaignName = fields.String(required=True)
     parameters = fields.Dict(required=True)
     createdAt = fields.Integer(required=True)
     postbacks = fields.Nested(LeadResponsePostbackItem(many=True), required=True)
