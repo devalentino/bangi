@@ -123,7 +123,7 @@ class Lead(MethodView):
         campaign_service = container.get(CampaignService)
         report_service = container.get(ReportService)
 
-        click, postbacks = report_service.get_lead(clickId)
+        click, leads, postbacks = report_service.get_lead(clickId)
         campaign = campaign_service.get(click.campaign_id)
 
         return {
@@ -132,6 +132,13 @@ class Lead(MethodView):
             'campaignName': campaign.name,
             'parameters': click.parameters,
             'createdAt': int(click.created_at.timestamp()),
+            'leads': [
+                {
+                    'parameters': lead.parameters,
+                    'createdAt': int(lead.created_at.timestamp()),
+                }
+                for lead in leads
+            ],
             'postbacks': [
                 {
                     'id': postback.id,

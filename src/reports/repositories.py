@@ -7,7 +7,7 @@ from wireup import Inject, service
 from peewee import JOIN, Case, MySQLDatabase, fn
 from src.core.enums import LeadStatus
 from src.reports.entities import Expense
-from src.tracker.entities import TrackClick, TrackPostback
+from src.tracker.entities import TrackClick, TrackLead, TrackPostback
 
 
 @service
@@ -180,10 +180,12 @@ class StatisticsReportRepository:
     def get_lead(self, click_id):
         click = TrackClick.get_or_none(TrackClick.click_id == click_id)
         if click is None:
-            return None, []
+            return None, [], []
+
+        leads_query = TrackLead.select().where(TrackLead.click_id == click_id).order_by(TrackLead.id.desc())
 
         postbacks_query = (
             TrackPostback.select().where(TrackPostback.click_id == click_id).order_by(TrackPostback.id.desc())
         )
 
-        return click, list(postbacks_query)
+        return click, list(leads_query), list(postbacks_query)

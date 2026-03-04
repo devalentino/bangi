@@ -181,6 +181,14 @@ class TestGetLeads:
                 'created_at': timestamp - 10,
             },
         )
+        older_lead = write_to_db(
+            'track_lead',
+            {
+                'click_id': click['click_id'],
+                'parameters': {'state': 'queued'},
+                'created_at': timestamp - 15,
+            },
+        )
         newer_postback = write_to_db(
             'track_postback',
             {
@@ -190,6 +198,14 @@ class TestGetLeads:
                 'cost_value': 10,
                 'currency': 'usd',
                 'created_at': timestamp,
+            },
+        )
+        newer_lead = write_to_db(
+            'track_lead',
+            {
+                'click_id': click['click_id'],
+                'parameters': {'state': 'executed'},
+                'created_at': timestamp - 5,
             },
         )
 
@@ -202,6 +218,16 @@ class TestGetLeads:
             'campaignName': campaign['name'],
             'parameters': json.loads(click['parameters']),
             'createdAt': mock.ANY,
+            'leads': [
+                {
+                    'parameters': json.loads(newer_lead['parameters']),
+                    'createdAt': mock.ANY,
+                },
+                {
+                    'parameters': json.loads(older_lead['parameters']),
+                    'createdAt': mock.ANY,
+                },
+            ],
             'postbacks': [
                 {
                     'parameters': json.loads(newer_postback['parameters']),
