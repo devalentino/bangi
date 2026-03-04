@@ -6,7 +6,7 @@ from wireup import service
 from peewee import fn
 from src.core.entities import Campaign
 from src.core.enums import LeadStatus
-from src.tracker.entities import TrackClick, TrackPostback
+from src.tracker.entities import TrackClick, TrackLead, TrackPostback
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,10 @@ class TrackService:
             currency=currency,
         )
         postback.save()
+
+    def track_lead(self, click_id: str, parameters: dict) -> None:
+        lead = TrackLead(click_id=click_id, parameters=parameters)
+        lead.save()
 
     def get_click_dates(self, campaign_id, start_period, end_period):
         date = fn.date(fn.from_unixtime(TrackClick.created_at)).distinct().alias('date')

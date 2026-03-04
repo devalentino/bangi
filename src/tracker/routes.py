@@ -7,7 +7,12 @@ from src.blueprint import Blueprint
 from src.container import container
 from src.core.enums import FlowActionType
 from src.core.services import ClientService, FlowService
-from src.tracker.schemas import TrackClickRequestSchema, TrackPostbackRequestSchema, TrackProcessRequestSchema
+from src.tracker.schemas import (
+    TrackClickRequestSchema,
+    TrackLeadRequestSchema,
+    TrackPostbackRequestSchema,
+    TrackProcessRequestSchema,
+)
 from src.tracker.services import TrackService
 
 blueprint = Blueprint('tracker', __name__, description='Tracker')
@@ -41,6 +46,23 @@ class TrackPostback(MethodView):
         track_click_service = container.get(TrackService)
 
         track_click_service.track_postback(track_payload.pop('clickId'), parameters=track_payload)
+
+
+@blueprint.route('/lead')
+class TrackLead(MethodView):
+    @blueprint.arguments(TrackLeadRequestSchema, location='query')
+    @blueprint.response(201)
+    def get(self, track_payload):
+        track_click_service = container.get(TrackService)
+
+        track_click_service.track_lead(track_payload.pop('clickId'), parameters=track_payload)
+
+    @blueprint.arguments(TrackLeadRequestSchema)
+    @blueprint.response(201)
+    def post(self, track_payload):
+        track_click_service = container.get(TrackService)
+
+        track_click_service.track_lead(track_payload.pop('clickId'), parameters=track_payload)
 
 
 @process_blueprint.route('/<int:campaignId>')

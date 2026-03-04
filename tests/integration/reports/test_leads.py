@@ -24,6 +24,15 @@ class TestGetLeads:
                 'created_at': timestamp - 10,
             },
         )
+        third_click = write_to_db(
+            'track_click',
+            {
+                'click_id': 'click-4',
+                'campaign_id': campaign['id'],
+                'parameters': {'source': 'gg'},
+                'created_at': timestamp - 5,
+            },
+        )
         other_click = write_to_db(
             'track_click',
             {
@@ -67,6 +76,22 @@ class TestGetLeads:
                 'created_at': timestamp + 5,
             },
         )
+        write_to_db(
+            'track_lead',
+            {
+                'click_id': third_click['click_id'],
+                'parameters': {'state': 'queued'},
+                'created_at': timestamp + 10,
+            },
+        )
+        write_to_db(
+            'track_lead',
+            {
+                'click_id': other_click['click_id'],
+                'parameters': {'state': 'queued'},
+                'created_at': timestamp + 15,
+            },
+        )
 
         response = client.get(
             '/api/v2/reports/leads',
@@ -84,6 +109,13 @@ class TestGetLeads:
         assert response.json == {
             'content': [
                 {
+                    'clickId': third_click['click_id'],
+                    'status': None,
+                    'costValue': None,
+                    'currency': None,
+                    'createdAt': mock.ANY,
+                },
+                {
                     'clickId': second_postback['click_id'],
                     'status': second_postback['status'],
                     'costValue': second_postback['cost_value'],
@@ -98,11 +130,13 @@ class TestGetLeads:
                     'createdAt': mock.ANY,
                 },
             ],
-            'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'createdAt', 'sortOrder': 'desc', 'total': 2},
+            'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'createdAt', 'sortOrder': 'desc', 'total': 3},
             'filters': {'campaignId': 1},
         }
 
-    def test_get_leads__skips_clicks_without_postbacks(self, client, authorization, campaign, timestamp, write_to_db):
+    def test_get_leads__skips_clicks_without_postbacks_or_leads(
+        self, client, authorization, campaign, timestamp, write_to_db
+    ):
         write_to_db(
             'track_click',
             {
@@ -110,6 +144,15 @@ class TestGetLeads:
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'fb'},
                 'created_at': timestamp - 20,
+            },
+        )
+        click_with_lead = write_to_db(
+            'track_click',
+            {
+                'click_id': 'click-with-lead',
+                'campaign_id': campaign['id'],
+                'parameters': {'source': 'gg'},
+                'created_at': timestamp - 15,
             },
         )
         click_with_postback = write_to_db(
@@ -130,6 +173,14 @@ class TestGetLeads:
                 'cost_value': 10,
                 'currency': 'usd',
                 'created_at': timestamp,
+            },
+        )
+        lead = write_to_db(
+            'track_lead',
+            {
+                'click_id': click_with_lead['click_id'],
+                'parameters': {'state': 'queued'},
+                'created_at': timestamp - 5,
             },
         )
 
@@ -155,9 +206,16 @@ class TestGetLeads:
                     'currency': postback['currency'],
                     'createdAt': mock.ANY,
                 },
+                {
+                    'clickId': lead['click_id'],
+                    'status': None,
+                    'costValue': None,
+                    'currency': None,
+                    'createdAt': mock.ANY,
+                },
             ],
-            'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'createdAt', 'sortOrder': 'desc', 'total': 1},
-            'filters': {'campaignId': campaign['id']},
+            'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'createdAt', 'sortOrder': 'desc', 'total': 2},
+            'filters': {'campaignId': 1},
         }
 
     def test_get_lead(self, client, authorization, campaign, timestamp, write_to_db):
@@ -181,6 +239,14 @@ class TestGetLeads:
                 'created_at': timestamp - 10,
             },
         )
+        older_lead = write_to_db(
+            'track_lead',
+            {
+                'click_id': click['click_id'],
+                'parameters': {'state': 'queued'},
+                'created_at': timestamp - 15,
+            },
+        )
         newer_postback = write_to_db(
             'track_postback',
             {
@@ -190,6 +256,14 @@ class TestGetLeads:
                 'cost_value': 10,
                 'currency': 'usd',
                 'created_at': timestamp,
+            },
+        )
+        newer_lead = write_to_db(
+            'track_lead',
+            {
+                'click_id': click['click_id'],
+                'parameters': {'state': 'executed'},
+                'created_at': timestamp - 5,
             },
         )
 
@@ -202,6 +276,16 @@ class TestGetLeads:
             'campaignName': campaign['name'],
             'parameters': json.loads(click['parameters']),
             'createdAt': mock.ANY,
+            'leads': [
+                {
+                    'parameters': json.loads(newer_lead['parameters']),
+                    'createdAt': mock.ANY,
+                },
+                {
+                    'parameters': json.loads(older_lead['parameters']),
+                    'createdAt': mock.ANY,
+                },
+            ],
             'postbacks': [
                 {
                     'parameters': json.loads(newer_postback['parameters']),

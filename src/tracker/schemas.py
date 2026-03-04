@@ -18,6 +18,13 @@ class TrackPostbackRequestSchema(Schema):
         unknown = INCLUDE
 
 
+class TrackLeadRequestSchema(Schema):
+    clickId = fields.UUID(required=True)
+
+    class Meta:
+        unknown = INCLUDE
+
+
 class TrackProcessRequestSchema(Schema):
     clickId = fields.String(required=False)
 
