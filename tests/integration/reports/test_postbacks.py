@@ -102,6 +102,64 @@ class TestGetLeads:
             'filters': {'campaignId': 1},
         }
 
+    def test_get_leads__skips_clicks_without_postbacks(self, client, authorization, campaign, timestamp, write_to_db):
+        write_to_db(
+            'track_click',
+            {
+                'click_id': 'click-without-postback',
+                'campaign_id': campaign['id'],
+                'parameters': {'source': 'fb'},
+                'created_at': timestamp - 20,
+            },
+        )
+        click_with_postback = write_to_db(
+            'track_click',
+            {
+                'click_id': 'click-with-postback',
+                'campaign_id': campaign['id'],
+                'parameters': {'source': 'tt'},
+                'created_at': timestamp - 10,
+            },
+        )
+        postback = write_to_db(
+            'track_postback',
+            {
+                'click_id': click_with_postback['click_id'],
+                'parameters': {'state': 'executed'},
+                'status': 'accept',
+                'cost_value': 10,
+                'currency': 'usd',
+                'created_at': timestamp,
+            },
+        )
+
+        response = client.get(
+            '/api/v2/reports/leads',
+            headers={'Authorization': authorization},
+            query_string={
+                'campaignId': campaign['id'],
+                'page': 1,
+                'pageSize': 10,
+                'sortBy': 'createdAt',
+                'sortOrder': 'desc',
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'clickId': postback['click_id'],
+                    'status': postback['status'],
+                    'costValue': float(postback['cost_value']),
+                    'currency': postback['currency'],
+                    'createdAt': mock.ANY,
+                },
+            ],
+            'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'createdAt', 'sortOrder': 'desc', 'total': 1},
+            'filters': {'campaignId': campaign['id']},
+        }
+
     def test_get_lead(self, client, authorization, campaign, timestamp, write_to_db):
         click = write_to_db(
             'track_click',
