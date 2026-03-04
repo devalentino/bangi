@@ -15,3 +15,8 @@ class TrackPostback(Entity):
     status = CharField(null=True)
     cost_value = DecimalField(null=True)
     currency = CharField(null=True)
+
+
+class TrackLead(Entity):
+    click_id = CharField()
+    parameters = JSONField()
