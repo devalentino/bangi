@@ -4,6 +4,7 @@ from flask.views import MethodView
 from src.auth import auth
 from src.blueprint import Blueprint
 from src.container import container
+from src.core.services import CampaignService
 from src.reports.schemas import (
     ExpensesDistributionParametersRequestSchema,
     ExpensesDistributionParametersResponseSchema,
@@ -119,18 +120,21 @@ class Lead(MethodView):
     @blueprint.response(200, LeadResponseSchema)
     @auth.login_required
     def get(self, clickId):
+        campaign_service = container.get(CampaignService)
         report_service = container.get(ReportService)
+
         click, postbacks = report_service.get_lead(clickId)
+        campaign = campaign_service.get(click.campaign_id)
 
         return {
             'clickId': click.click_id,
             'campaignId': click.campaign_id,
+            'campaignName': campaign.name,
             'parameters': click.parameters,
             'createdAt': int(click.created_at.timestamp()),
             'postbacks': [
                 {
                     'id': postback.id,
-                    'clickId': postback.click_id,
                     'parameters': postback.parameters,
                     'status': postback.status,
                     'costValue': postback.cost_value,
