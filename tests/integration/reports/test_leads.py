@@ -207,7 +207,7 @@ class TestGetLeads:
                     'createdAt': mock.ANY,
                 },
                 {
-                    'clickId': click_with_lead['click_id'],
+                    'clickId': lead['click_id'],
                     'status': None,
                     'costValue': None,
                     'currency': None,
