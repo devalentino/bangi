@@ -7,7 +7,7 @@ from wireup import Inject, service
 from peewee import JOIN, Case, MySQLDatabase, fn
 from src.core.enums import LeadStatus
 from src.reports.entities import Expense
-from src.tracker.entities import TrackClick, TrackPostback
+from src.tracker.entities import TrackClick, TrackLead, TrackPostback
 
 
 @service
@@ -141,34 +141,51 @@ class StatisticsReportRepository:
         if desc:
             order_by = order_by.desc()
 
-        row_number = (
+        postback_row_number = (
             fn.row_number()
             .over(partition_by=TrackPostback.click_id, order_by=TrackPostback.id.desc())
             .alias('row_number')
         )
 
-        leads_subquery = TrackPostback.select(
+        postbacks_subquery = TrackPostback.select(
             TrackPostback.click_id,
             TrackPostback.status,
             TrackPostback.cost_value,
             TrackPostback.currency,
-            row_number,
+            postback_row_number,
+        )
+
+        lead_row_number = (
+            fn.row_number().over(partition_by=TrackLead.click_id, order_by=TrackLead.id.desc()).alias('row_number')
+        )
+
+        leads_subquery = TrackLead.select(
+            TrackLead.click_id,
+            lead_row_number,
         )
 
         query = (
             TrackClick.select(
                 TrackClick.click_id,
                 TrackClick.created_at,
-                leads_subquery.c.status,
-                leads_subquery.c.cost_value,
-                leads_subquery.c.currency,
+                postbacks_subquery.c.status,
+                postbacks_subquery.c.cost_value,
+                postbacks_subquery.c.currency,
+            )
+            .join(
+                postbacks_subquery,
+                JOIN.LEFT_OUTER,
+                on=((TrackClick.click_id == postbacks_subquery.c.click_id) & (postbacks_subquery.c.row_number == 1)),
             )
             .join(
                 leads_subquery,
-                JOIN.INNER,
+                JOIN.LEFT_OUTER,
                 on=((TrackClick.click_id == leads_subquery.c.click_id) & (leads_subquery.c.row_number == 1)),
             )
-            .where(TrackClick.campaign_id == campaign_id)
+            .where(
+                (TrackClick.campaign_id == campaign_id)
+                & (postbacks_subquery.c.click_id.is_null(False) | leads_subquery.c.click_id.is_null(False))
+            )
         )
 
         total = query.count()
@@ -180,10 +197,12 @@ class StatisticsReportRepository:
     def get_lead(self, click_id):
         click = TrackClick.get_or_none(TrackClick.click_id == click_id)
         if click is None:
-            return None, []
+            return None, [], []
+
+        leads_query = TrackLead.select().where(TrackLead.click_id == click_id).order_by(TrackLead.id.desc())
 
         postbacks_query = (
             TrackPostback.select().where(TrackPostback.click_id == click_id).order_by(TrackPostback.id.desc())
         )
 
-        return click, list(postbacks_query)
+        return click, list(leads_query), list(postbacks_query)

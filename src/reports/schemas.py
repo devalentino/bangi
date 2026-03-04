@@ -104,10 +104,16 @@ class LeadResponsePostbackItem(Schema):
     createdAt = fields.Integer(required=True)
 
 
+class LeadResponseLeadItem(Schema):
+    parameters = fields.Dict(required=True)
+    createdAt = fields.Integer(required=True)
+
+
 class LeadResponseSchema(Schema):
     clickId = fields.String(required=True)
     campaignId = fields.Integer(required=True)
     campaignName = fields.String(required=True)
     parameters = fields.Dict(required=True)
     createdAt = fields.Integer(required=True)
+    leads = fields.Nested(LeadResponseLeadItem(many=True), required=True)
     postbacks = fields.Nested(LeadResponsePostbackItem(many=True), required=True)

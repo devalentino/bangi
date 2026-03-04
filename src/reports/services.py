@@ -252,11 +252,11 @@ class ReportService:
         return postbacks, total
 
     def get_lead(self, click_id):
-        click, postbacks = self.statistics_report_repository.get_lead(click_id)
+        click, leads, postbacks = self.statistics_report_repository.get_lead(click_id)
         if click is None:
             raise ClickDoesNotExistError()
 
-        return click, postbacks
+        return click, leads, postbacks
 
 
 @service
