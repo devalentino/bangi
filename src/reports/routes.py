@@ -31,7 +31,7 @@ class StatisticsReport(MethodView):
     @auth.login_required
     def get(self, params):
         report_service = container.get(ReportService)
-        report, available_parameters, group_parameters = report_service.statistics_report(
+        report, total, available_parameters, group_parameters = report_service.statistics_report(
             {
                 'campaign_id': params['campaignId'],
                 'period_start': params['periodStart'],
@@ -43,6 +43,7 @@ class StatisticsReport(MethodView):
         return {
             'content': {
                 'report': {dt.isoformat(): stats for dt, stats in report.items()},
+                'total': total,
                 'parameters': available_parameters,
                 'groupParameters': group_parameters,
             }
