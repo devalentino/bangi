@@ -418,7 +418,9 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                             1 * cost_value - statistics_expenses[start_date + timedelta(days=3)]['ad_2']
                         ),
                         'profit_expected': quantize_float(
-                            1 * cost_value + 1 * cost_value - statistics_expenses[start_date + timedelta(days=3)]['ad_2']
+                            1 * cost_value
+                            + 1 * cost_value
+                            - statistics_expenses[start_date + timedelta(days=3)]['ad_2']
                         ),
                         'fb': {
                             'statuses': {
@@ -650,7 +652,9 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                         1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
                     ),
                     'profit_expected': quantize_float(
-                        1 * cost_value + 1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
+                        1 * cost_value
+                        + 1 * cost_value
+                        - sum(statistics_expenses[start_date + timedelta(days=3)].values())
                     ),
                     'fb': {
                         'statuses': {
