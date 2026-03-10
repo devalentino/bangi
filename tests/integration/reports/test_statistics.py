@@ -1,5 +1,10 @@
 from datetime import timedelta
+from decimal import ROUND_FLOOR, Decimal
 from unittest import mock
+
+
+def quantize_float(value):
+    return float(Decimal.from_float(value).quantize(Decimal('0.00'), rounding=ROUND_FLOOR))
 
 
 def test_get_report(client, authorization, campaign, statistics_expenses, today):
@@ -40,6 +45,8 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'expenses': 0,
                     'roi_accepted': 0,
                     'roi_expected': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
                     'statuses': {
                         'accept': {'leads': 0, 'payouts': 0},
                         'expect': {'leads': 0, 'payouts': 0},
@@ -52,6 +59,8 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'expenses': 0,
                     'roi_accepted': 0,
                     'roi_expected': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
                     'statuses': {
                         'accept': {'leads': 0, 'payouts': 0},
                         'expect': {'leads': 0, 'payouts': 0},
@@ -64,6 +73,8 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'expenses': 0,
                     'roi_accepted': 0,
                     'roi_expected': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
                     'statuses': {
                         'accept': {'leads': 0, 'payouts': 0},
                         'expect': {'leads': 0, 'payouts': 0},
@@ -73,16 +84,22 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'clicks': 0,
                 },
                 (start_date + timedelta(days=3)).isoformat(): {
-                    'expenses': sum(statistics_expenses[start_date + timedelta(days=3)].values()),
-                    'roi_accepted': (
+                    'expenses': quantize_float(sum(statistics_expenses[start_date + timedelta(days=3)].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
                         * 100
                     ),
-                    'roi_expected': (
+                    'roi_expected': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
                         * 100
+                    ),
+                    'profit_accepted': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
+                    ),
+                    'profit_expected': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
                     ),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 1 * cost_value},
@@ -93,13 +110,13 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'clicks': 30,
                 },
                 (start_date + timedelta(days=4)).isoformat(): {
-                    'expenses': sum(statistics_expenses[start_date + timedelta(days=4)].values()),
-                    'roi_accepted': (
+                    'expenses': quantize_float(sum(statistics_expenses[start_date + timedelta(days=4)].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=4)].values())
                         * 100
                     ),
-                    'roi_expected': (
+                    'roi_expected': quantize_float(
                         (
                             1 * cost_value
                             + 1 * cost_value
@@ -107,6 +124,14 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                         )
                         / sum(statistics_expenses[start_date + timedelta(days=4)].values())
                         * 100
+                    ),
+                    'profit_accepted': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values())
+                    ),
+                    'profit_expected': quantize_float(
+                        1 * cost_value
+                        + 1 * cost_value
+                        - sum(statistics_expenses[start_date + timedelta(days=4)].values())
                     ),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 10.0},
@@ -117,17 +142,19 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'clicks': 25,
                 },
                 end_date.isoformat(): {
-                    'expenses': sum(statistics_expenses[end_date].values()),
-                    'roi_accepted': (
+                    'expenses': quantize_float(sum(statistics_expenses[end_date].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
                         * 100
                     ),
-                    'roi_expected': (
+                    'roi_expected': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
                         * 100
                     ),
+                    'profit_accepted': quantize_float(1 * cost_value - sum(statistics_expenses[end_date].values())),
+                    'profit_expected': quantize_float(1 * cost_value - sum(statistics_expenses[end_date].values())),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 1 * cost_value},
                         'expect': {'leads': 0, 'payouts': 0},
@@ -182,6 +209,8 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         'expenses': 0,
                         'roi_accepted': 0,
                         'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -205,6 +234,8 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         'expenses': 0,
                         'roi_accepted': 0,
                         'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -230,6 +261,8 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         'expenses': 0,
                         'roi_accepted': 0,
                         'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -253,6 +286,8 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         'expenses': 0,
                         'roi_accepted': 0,
                         'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -275,9 +310,11 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                 },
                 (start_date + timedelta(days=2)).isoformat(): {
                     'ad_1': {
-                        'expenses': statistics_expenses[start_date + timedelta(days=2)]['ad_1'],
+                        'expenses': quantize_float(statistics_expenses[start_date + timedelta(days=2)]['ad_1']),
                         'roi_accepted': -100.0,
                         'roi_expected': -100.0,
+                        'profit_accepted': quantize_float(-statistics_expenses[start_date + timedelta(days=2)]['ad_1']),
+                        'profit_expected': quantize_float(-statistics_expenses[start_date + timedelta(days=2)]['ad_1']),
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -298,16 +335,22 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         },
                     },
                     'ad_2': {
-                        'expenses': statistics_expenses[start_date + timedelta(days=2)]['ad_2'],
-                        'roi_accepted': (
+                        'expenses': quantize_float(statistics_expenses[start_date + timedelta(days=2)]['ad_2']),
+                        'roi_accepted': quantize_float(
                             (1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2'])
                             / statistics_expenses[start_date + timedelta(days=2)]['ad_2']
                             * 100
                         ),
-                        'roi_expected': (
+                        'roi_expected': quantize_float(
                             (1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2'])
                             / statistics_expenses[start_date + timedelta(days=2)]['ad_2']
                             * 100
+                        ),
+                        'profit_accepted': quantize_float(
+                            1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2']
+                        ),
+                        'profit_expected': quantize_float(
+                            1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2']
                         ),
                         'fb': {
                             'statuses': {
@@ -331,9 +374,11 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                 },
                 (start_date + timedelta(days=3)).isoformat(): {
                     'ad_1': {
-                        'expenses': statistics_expenses[start_date + timedelta(days=3)]['ad_1'],
+                        'expenses': quantize_float(statistics_expenses[start_date + timedelta(days=3)]['ad_1']),
                         'roi_accepted': -100.0,
                         'roi_expected': -100.0,
+                        'profit_accepted': quantize_float(-statistics_expenses[start_date + timedelta(days=3)]['ad_1']),
+                        'profit_expected': quantize_float(-statistics_expenses[start_date + timedelta(days=3)]['ad_1']),
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -354,13 +399,13 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         },
                     },
                     'ad_2': {
-                        'expenses': statistics_expenses[start_date + timedelta(days=3)]['ad_2'],
-                        'roi_accepted': (
+                        'expenses': quantize_float(statistics_expenses[start_date + timedelta(days=3)]['ad_2']),
+                        'roi_accepted': quantize_float(
                             (1 * cost_value - statistics_expenses[start_date + timedelta(days=3)]['ad_2'])
                             / statistics_expenses[start_date + timedelta(days=3)]['ad_2']
                             * 100
                         ),
-                        'roi_expected': (
+                        'roi_expected': quantize_float(
                             (
                                 1 * cost_value
                                 + 1 * cost_value
@@ -368,6 +413,14 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                             )
                             / statistics_expenses[start_date + timedelta(days=3)]['ad_2']
                             * 100
+                        ),
+                        'profit_accepted': quantize_float(
+                            1 * cost_value - statistics_expenses[start_date + timedelta(days=3)]['ad_2']
+                        ),
+                        'profit_expected': quantize_float(
+                            1 * cost_value
+                            + 1 * cost_value
+                            - statistics_expenses[start_date + timedelta(days=3)]['ad_2']
                         ),
                         'fb': {
                             'statuses': {
@@ -391,17 +444,19 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                 },
                 end_date.isoformat(): {
                     'ad_1': {
-                        'expenses': statistics_expenses[end_date]['ad_1'],
-                        'roi_accepted': (
+                        'expenses': quantize_float(statistics_expenses[end_date]['ad_1']),
+                        'roi_accepted': quantize_float(
                             (1 * cost_value - statistics_expenses[end_date]['ad_1'])
                             / statistics_expenses[end_date]['ad_1']
                             * 100
                         ),
-                        'roi_expected': (
+                        'roi_expected': quantize_float(
                             (1 * cost_value - statistics_expenses[end_date]['ad_1'])
                             / statistics_expenses[end_date]['ad_1']
                             * 100
                         ),
+                        'profit_accepted': quantize_float(1 * cost_value - statistics_expenses[end_date]['ad_1']),
+                        'profit_expected': quantize_float(1 * cost_value - statistics_expenses[end_date]['ad_1']),
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 1, 'payouts': 1 * cost_value},
@@ -425,6 +480,8 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         'expenses': 0,
                         'roi_accepted': 0,
                         'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -492,6 +549,8 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     'expenses': 0,
                     'roi_accepted': 0,
                     'roi_expected': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
                     'fb': {
                         'statuses': {
                             'accept': {'leads': 0, 'payouts': 0},
@@ -515,6 +574,8 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     'expenses': 0,
                     'roi_accepted': 0,
                     'roi_expected': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
                     'fb': {
                         'statuses': {
                             'accept': {'leads': 0, 'payouts': 0},
@@ -535,16 +596,22 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     },
                 },
                 (start_date + timedelta(days=2)).isoformat(): {
-                    'expenses': sum(statistics_expenses[start_date + timedelta(days=2)].values()),
-                    'roi_accepted': (
+                    'expenses': quantize_float(sum(statistics_expenses[start_date + timedelta(days=2)].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=2)].values())
                         * 100
                     ),
-                    'roi_expected': (
+                    'roi_expected': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=2)].values())
                         * 100
+                    ),
+                    'profit_accepted': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values())
+                    ),
+                    'profit_expected': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values())
                     ),
                     'fb': {
                         'statuses': {
@@ -566,13 +633,13 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     },
                 },
                 (start_date + timedelta(days=3)).isoformat(): {
-                    'expenses': sum(statistics_expenses[start_date + timedelta(days=3)].values()),
-                    'roi_accepted': (
+                    'expenses': quantize_float(sum(statistics_expenses[start_date + timedelta(days=3)].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
                         * 100
                     ),
-                    'roi_expected': (
+                    'roi_expected': quantize_float(
                         (
                             1 * cost_value
                             + 1 * cost_value
@@ -580,6 +647,14 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                         )
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
                         * 100
+                    ),
+                    'profit_accepted': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
+                    ),
+                    'profit_expected': quantize_float(
+                        1 * cost_value
+                        + 1 * cost_value
+                        - sum(statistics_expenses[start_date + timedelta(days=3)].values())
                     ),
                     'fb': {
                         'statuses': {
@@ -601,17 +676,19 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     },
                 },
                 end_date.isoformat(): {
-                    'expenses': sum(statistics_expenses[end_date].values()),
-                    'roi_accepted': (
+                    'expenses': quantize_float(sum(statistics_expenses[end_date].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
                         * 100
                     ),
-                    'roi_expected': (
+                    'roi_expected': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
                         * 100
                     ),
+                    'profit_accepted': quantize_float(1 * cost_value - sum(statistics_expenses[end_date].values())),
+                    'profit_expected': quantize_float(1 * cost_value - sum(statistics_expenses[end_date].values())),
                     'fb': {
                         'statuses': {
                             'accept': {'leads': 1, 'payouts': 1 * cost_value},
@@ -753,6 +830,8 @@ def test_get_report__zero_expenses_does_not_cause_division_by_zero(
                     'expenses': 0,
                     'roi_accepted': 0,  # roi is zero, no division y zero
                     'roi_expected': 0,  # roi is zero, no division y zero
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
                     'statuses': mock.ANY,
                     'clicks': mock.ANY,
                 }
