@@ -211,28 +211,30 @@ class ReportService:
                 total['statuses'][lead_status]['leads'] += leads_count
                 total['statuses'][lead_status]['payouts'] += payouts or 0
 
+        expenses = 0
         for date, distribution_raw in expenses_rows:
             distribution = json.loads(distribution_raw)
 
-            expenses = Decimal.from_float(sum(distribution.values()))
-            payouts_accepted = sum(
-                stats['payouts'] for status, stats in total['statuses'].items() if status == LeadStatus.accept
-            )
-            payouts_expected = sum(
-                stats['payouts']
-                for status, stats in total['statuses'].items()
-                if status in (LeadStatus.accept, LeadStatus.expect)
-            )
-            profit_accepted = payouts_accepted - expenses
-            profit_expected = payouts_expected - expenses
-            roi_accepted = profit_accepted / expenses * 100
-            roi_expected = profit_expected / expenses * 100
+            expenses += Decimal.from_float(sum(distribution.values()))
 
-            total['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
-            total['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
-            total['profit_expected'] = profit_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
-            total['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
-            total['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        payouts_accepted = sum(
+            stats['payouts'] for status, stats in total['statuses'].items() if status == LeadStatus.accept
+        )
+        payouts_expected = sum(
+            stats['payouts']
+            for status, stats in total['statuses'].items()
+            if status in (LeadStatus.accept, LeadStatus.expect)
+        )
+        profit_accepted = payouts_accepted - expenses
+        profit_expected = payouts_expected - expenses
+        roi_accepted = profit_accepted / expenses * 100
+        roi_expected = profit_expected / expenses * 100
+
+        total['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['profit_expected'] = profit_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
 
         return total
 

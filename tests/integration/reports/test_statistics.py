@@ -23,6 +23,7 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
     assert response.status_code == 200, response.text
 
     cost_value = float(campaign['cost_value'])
+    total_expenses = sum(sum(day_distribution.values()) for day_distribution in statistics_expenses.values())
 
     assert response.json == {
         'content': {
@@ -163,6 +164,20 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     },
                     'clicks': 8,
                 },
+            },
+            'total': {
+                'clicks': 63,
+                'statuses': {
+                    'accept': {'leads': 3, 'payouts': 3 * cost_value},
+                    'expect': {'leads': 1, 'payouts': 1 * cost_value},
+                    'reject': {'leads': 1, 'payouts': 0},
+                    'trash': {'leads': 1, 'payouts': 0},
+                },
+                'expenses': quantize_float(total_expenses),
+                'profit_accepted': quantize_float(3 * cost_value - total_expenses),
+                'profit_expected': quantize_float(4 * cost_value - total_expenses),
+                'roi_accepted': quantize_float((3 * cost_value - total_expenses) / total_expenses * 100),
+                'roi_expected': quantize_float((4 * cost_value - total_expenses) / total_expenses * 100),
             },
         }
     }
@@ -503,6 +518,7 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                     },
                 },
             },
+            'total': mock.ANY,
         }
     }
 
@@ -709,6 +725,7 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     },
                 },
             },
+            'total': mock.ANY,
         }
     }
 
@@ -836,6 +853,7 @@ def test_get_report__zero_expenses_does_not_cause_division_by_zero(
                     'clicks': mock.ANY,
                 }
             },
+            'total': mock.ANY,
             'parameters': mock.ANY,
             'groupParameters': mock.ANY,
         }
