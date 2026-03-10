@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, time, timedelta
+from decimal import ROUND_FLOOR, Decimal
 
 from wireup import service
 
@@ -82,6 +83,8 @@ class ReportService:
             statistics_container[grouped_value]['expenses'] = 0
             statistics_container[grouped_value]['roi_accepted'] = 0
             statistics_container[grouped_value]['roi_expected'] = 0
+            statistics_container[grouped_value]['profit_accepted'] = 0
+            statistics_container[grouped_value]['profit_expected'] = 0
 
             set_expenses = False
 
@@ -109,6 +112,8 @@ class ReportService:
                 report[date]['expenses'] = 0
                 report[date]['roi_accepted'] = 0
                 report[date]['roi_expected'] = 0
+                report[date]['profit_accepted'] = 0
+                report[date]['profit_expected'] = 0
 
             for grouped_values in grouped_rows:
                 self._fill_clicks_empty(report[date], grouped_values, match_expenses_distribution)
@@ -136,31 +141,36 @@ class ReportService:
                             report[date][distribution_value], parameters['group_parameters'][1:]
                         )
 
-                        report[date][distribution_value]['expenses'] = expenses
-                        if report[date][distribution_value]['expenses'] > 0:
-                            report[date][distribution_value]['roi_accepted'] = (
-                                (float(payouts_accepted) - report[date][distribution_value]['expenses'])
-                                / report[date][distribution_value]['expenses']
-                                * 100
-                            )
-                            report[date][distribution_value]['roi_expected'] = (
-                                (float(payouts_expected) - report[date][distribution_value]['expenses'])
-                                / report[date][distribution_value]['expenses']
-                                * 100
-                            )
+                        expenses = Decimal.from_float(expenses)
+                        report[date][distribution_value]['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+
+                        if expenses > 0:
+                            profit_accepted = payouts_accepted - expenses
+                            profit_expected = payouts_expected - expenses
+                            roi_accepted = profit_accepted / expenses * 100
+                            roi_expected = profit_expected / expenses * 100
+
+                            report[date][distribution_value]['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                            report[date][distribution_value]['profit_expected'] = profit_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                            report[date][distribution_value]['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                            report[date][distribution_value]['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
             else:
                 distribution = date2distribution.get(date)
                 if distribution:
                     payouts_accepted, payouts_expected = self._get_payouts(report[date], parameters['group_parameters'])
+                    expenses = Decimal.from_float(sum(distribution.values()))
 
-                    report[date]['expenses'] = sum(distribution.values())
-                    if report[date]['expenses'] > 0:
-                        report[date]['roi_accepted'] = (
-                            (float(payouts_accepted) - report[date]['expenses']) / report[date]['expenses'] * 100
-                        )
-                        report[date]['roi_expected'] = (
-                            (float(payouts_expected) - report[date]['expenses']) / report[date]['expenses'] * 100
-                        )
+                    report[date]['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                    if expenses > 0:
+                        profit_accepted = payouts_accepted - expenses
+                        profit_expected = payouts_expected - expenses
+                        roi_accepted = profit_accepted / expenses * 100
+                        roi_expected = profit_expected / expenses * 100
+
+                        report[date]['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                        report[date]['profit_expected'] = profit_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                        report[date]['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                        report[date]['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
 
         return report
 
