@@ -2,6 +2,8 @@ from datetime import timedelta
 from decimal import ROUND_FLOOR, Decimal
 from unittest import mock
 
+import pytest
+
 
 def quantize_float(value):
     return float(Decimal.from_float(value).quantize(Decimal('0.00'), rounding=ROUND_FLOOR))
@@ -173,11 +175,11 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'reject': {'leads': 1, 'payouts': 0},
                     'trash': {'leads': 1, 'payouts': 0},
                 },
-                'expenses': quantize_float(total_expenses),
-                'profit_accepted': quantize_float(3 * cost_value - total_expenses),
-                'profit_expected': quantize_float(4 * cost_value - total_expenses),
-                'roi_accepted': quantize_float((3 * cost_value - total_expenses) / total_expenses * 100),
-                'roi_expected': quantize_float((4 * cost_value - total_expenses) / total_expenses * 100),
+                'expenses': pytest.approx(total_expenses, abs=0.02),
+                'profit_accepted': pytest.approx(3 * cost_value - total_expenses, abs=0.02),
+                'profit_expected': pytest.approx(4 * cost_value - total_expenses, abs=0.02),
+                'roi_accepted': pytest.approx((3 * cost_value - total_expenses) / total_expenses * 100, abs=0.02),
+                'roi_expected': pytest.approx((4 * cost_value - total_expenses) / total_expenses * 100, abs=0.02),
             },
         }
     }
@@ -201,6 +203,7 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
     assert response.status_code == 200, response.text
 
     cost_value = float(campaign['cost_value'])
+    total_expenses = sum(sum(day_distribution.values()) for day_distribution in statistics_expenses.values())
 
     assert response.json == {
         'content': {
@@ -518,7 +521,20 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                     },
                 },
             },
-            'total': mock.ANY,
+            'total': {
+                'clicks': 63,
+                'statuses': {
+                    'accept': {'leads': 3, 'payouts': 3 * cost_value},
+                    'expect': {'leads': 1, 'payouts': 1 * cost_value},
+                    'reject': {'leads': 1, 'payouts': 0},
+                    'trash': {'leads': 1, 'payouts': 0},
+                },
+                'expenses': pytest.approx(total_expenses, abs=0.02),
+                'profit_accepted': pytest.approx(3 * cost_value - total_expenses, abs=0.02),
+                'profit_expected': pytest.approx(4 * cost_value - total_expenses, abs=0.02),
+                'roi_accepted': pytest.approx((3 * cost_value - total_expenses) / total_expenses * 100, abs=0.02),
+                'roi_expected': pytest.approx((4 * cost_value - total_expenses) / total_expenses * 100, abs=0.02),
+            },
         }
     }
 
@@ -543,6 +559,7 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
     assert response.status_code == 200, response.text
 
     cost_value = float(campaign['cost_value'])
+    total_expenses = sum(sum(day_distribution.values()) for day_distribution in statistics_expenses.values())
 
     assert response.json == {
         'content': {
@@ -725,7 +742,20 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     },
                 },
             },
-            'total': mock.ANY,
+            'total': {
+                'clicks': 63,
+                'statuses': {
+                    'accept': {'leads': 3, 'payouts': 3 * cost_value},
+                    'expect': {'leads': 1, 'payouts': 1 * cost_value},
+                    'reject': {'leads': 1, 'payouts': 0},
+                    'trash': {'leads': 1, 'payouts': 0},
+                },
+                'expenses': pytest.approx(total_expenses, abs=0.02),
+                'profit_accepted': pytest.approx(3 * cost_value - total_expenses, abs=0.02),
+                'profit_expected': pytest.approx(4 * cost_value - total_expenses, abs=0.02),
+                'roi_accepted': pytest.approx((3 * cost_value - total_expenses) / total_expenses * 100, abs=0.02),
+                'roi_expected': pytest.approx((4 * cost_value - total_expenses) / total_expenses * 100, abs=0.02),
+            },
         }
     }
 

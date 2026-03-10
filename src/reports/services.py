@@ -1,5 +1,4 @@
 import json
-from collections import Counter, defaultdict
 from datetime import datetime, time, timedelta
 from decimal import ROUND_FLOOR, Decimal
 
@@ -211,7 +210,7 @@ class ReportService:
                 total['statuses'][lead_status]['leads'] += leads_count
                 total['statuses'][lead_status]['payouts'] += payouts or 0
 
-        expenses = 0
+        expenses = Decimal('0.00')
         for date, distribution_raw in expenses_rows:
             distribution = json.loads(distribution_raw)
 
@@ -227,8 +226,8 @@ class ReportService:
         )
         profit_accepted = payouts_accepted - expenses
         profit_expected = payouts_expected - expenses
-        roi_accepted = profit_accepted / expenses * 100
-        roi_expected = profit_expected / expenses * 100
+        roi_accepted = profit_accepted / expenses * 100 if expenses else Decimal('0.00')
+        roi_expected = profit_expected / expenses * 100 if expenses else Decimal('0.00')
 
         total['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
         total['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
