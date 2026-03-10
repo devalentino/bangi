@@ -142,7 +142,9 @@ class ReportService:
                         )
 
                         expenses = Decimal.from_float(expenses)
-                        report[date][distribution_value]['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                        report[date][distribution_value]['expenses'] = expenses.quantize(
+                            Decimal('0.01'), rounding=ROUND_FLOOR
+                        )
 
                         if expenses > 0:
                             profit_accepted = payouts_accepted - expenses
@@ -150,10 +152,18 @@ class ReportService:
                             roi_accepted = profit_accepted / expenses * 100
                             roi_expected = profit_expected / expenses * 100
 
-                            report[date][distribution_value]['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
-                            report[date][distribution_value]['profit_expected'] = profit_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
-                            report[date][distribution_value]['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
-                            report[date][distribution_value]['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                            report[date][distribution_value]['profit_accepted'] = profit_accepted.quantize(
+                                Decimal('0.01'), rounding=ROUND_FLOOR
+                            )
+                            report[date][distribution_value]['profit_expected'] = profit_expected.quantize(
+                                Decimal('0.01'), rounding=ROUND_FLOOR
+                            )
+                            report[date][distribution_value]['roi_accepted'] = roi_accepted.quantize(
+                                Decimal('0.01'), rounding=ROUND_FLOOR
+                            )
+                            report[date][distribution_value]['roi_expected'] = roi_expected.quantize(
+                                Decimal('0.01'), rounding=ROUND_FLOOR
+                            )
             else:
                 distribution = date2distribution.get(date)
                 if distribution:
@@ -167,8 +177,12 @@ class ReportService:
                         roi_accepted = profit_accepted / expenses * 100
                         roi_expected = profit_expected / expenses * 100
 
-                        report[date]['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
-                        report[date]['profit_expected'] = profit_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                        report[date]['profit_accepted'] = profit_accepted.quantize(
+                            Decimal('0.01'), rounding=ROUND_FLOOR
+                        )
+                        report[date]['profit_expected'] = profit_expected.quantize(
+                            Decimal('0.01'), rounding=ROUND_FLOOR
+                        )
                         report[date]['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
                         report[date]['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
 

@@ -1,6 +1,10 @@
 from datetime import timedelta
-from decimal import Decimal, ROUND_FLOOR
+from decimal import ROUND_FLOOR, Decimal
 from unittest import mock
+
+
+def quantize_float(value):
+    return float(Decimal.from_float(value).quantize(Decimal('0.00'), rounding=ROUND_FLOOR))
 
 
 def test_get_report(client, authorization, campaign, statistics_expenses, today):
@@ -80,19 +84,23 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'clicks': 0,
                 },
                 (start_date + timedelta(days=3)).isoformat(): {
-                    'expenses': float(Decimal.from_float(sum(statistics_expenses[start_date + timedelta(days=3)].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'roi_accepted': float(Decimal.from_float(
+                    'expenses': quantize_float(sum(statistics_expenses[start_date + timedelta(days=3)].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
                         * 100
-                    ).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'roi_expected': float(Decimal.from_float(
+                    ),
+                    'roi_expected': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
                         * 100
-                    ).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'profit_accepted': float(Decimal.from_float(1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'profit_expected': float(Decimal.from_float(1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
+                    ),
+                    'profit_accepted': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
+                    ),
+                    'profit_expected': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
+                    ),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 1 * cost_value},
                         'expect': {'leads': 0, 'payouts': 0},
@@ -102,13 +110,13 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'clicks': 30,
                 },
                 (start_date + timedelta(days=4)).isoformat(): {
-                    'expenses': float(Decimal.from_float(sum(statistics_expenses[start_date + timedelta(days=4)].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'roi_accepted': float(Decimal.from_float(
+                    'expenses': quantize_float(sum(statistics_expenses[start_date + timedelta(days=4)].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=4)].values())
                         * 100
-                    ).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'roi_expected': float(Decimal.from_float(
+                    ),
+                    'roi_expected': quantize_float(
                         (
                             1 * cost_value
                             + 1 * cost_value
@@ -116,9 +124,15 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                         )
                         / sum(statistics_expenses[start_date + timedelta(days=4)].values())
                         * 100
-                    ).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'profit_accepted': float(Decimal.from_float(1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'profit_expected': float(Decimal.from_float(1 * cost_value + 1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
+                    ),
+                    'profit_accepted': quantize_float(
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values())
+                    ),
+                    'profit_expected': quantize_float(
+                        1 * cost_value
+                        + 1 * cost_value
+                        - sum(statistics_expenses[start_date + timedelta(days=4)].values())
+                    ),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 10.0},
                         'expect': {'leads': 1, 'payouts': 10.0},
@@ -128,19 +142,19 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'clicks': 25,
                 },
                 end_date.isoformat(): {
-                    'expenses': float(Decimal.from_float(sum(statistics_expenses[end_date].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'roi_accepted': float(Decimal.from_float(
+                    'expenses': quantize_float(sum(statistics_expenses[end_date].values())),
+                    'roi_accepted': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
                         * 100
-                    ).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'roi_expected': float(Decimal.from_float(
+                    ),
+                    'roi_expected': quantize_float(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
                         * 100
-                    ).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'profit_accepted': float(Decimal.from_float(1 * cost_value - sum(statistics_expenses[end_date].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
-                    'profit_expected': float(Decimal.from_float(1 * cost_value - sum(statistics_expenses[end_date].values())).quantize(Decimal('0.00'), rounding=ROUND_FLOOR)),
+                    ),
+                    'profit_accepted': quantize_float(1 * cost_value - sum(statistics_expenses[end_date].values())),
+                    'profit_expected': quantize_float(1 * cost_value - sum(statistics_expenses[end_date].values())),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 1 * cost_value},
                         'expect': {'leads': 0, 'payouts': 0},
