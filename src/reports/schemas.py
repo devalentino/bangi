@@ -17,6 +17,7 @@ class StatisticsReportRequest(Schema):
 
 class StatisticsReportContent(Schema):
     report = fields.Dict()
+    total = fields.Dict()
     parameters = fields.List(fields.String)
     groupParameters = fields.List(fields.String)
 
