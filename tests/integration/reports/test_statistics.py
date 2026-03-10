@@ -82,23 +82,27 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'clicks': 0,
                 },
                 (start_date + timedelta(days=3)).isoformat(): {
-                    'expenses': pytest.approx(sum(statistics_expenses[start_date + timedelta(days=3)].values()), abs=0.02),
+                    'expenses': pytest.approx(
+                        sum(statistics_expenses[start_date + timedelta(days=3)].values()), abs=0.02
+                    ),
                     'roi_accepted': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'roi_expected': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'profit_accepted': pytest.approx(
-                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
-                    , abs=0.02),
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()), abs=0.02
+                    ),
                     'profit_expected': pytest.approx(
-                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
-                    , abs=0.02),
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()), abs=0.02
+                    ),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 1 * cost_value},
                         'expect': {'leads': 0, 'payouts': 0},
@@ -108,12 +112,15 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'clicks': 30,
                 },
                 (start_date + timedelta(days=4)).isoformat(): {
-                    'expenses': pytest.approx(sum(statistics_expenses[start_date + timedelta(days=4)].values()), abs=0.02),
+                    'expenses': pytest.approx(
+                        sum(statistics_expenses[start_date + timedelta(days=4)].values()), abs=0.02
+                    ),
                     'roi_accepted': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=4)].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'roi_expected': pytest.approx(
                         (
                             1 * cost_value
@@ -121,16 +128,18 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                             - sum(statistics_expenses[start_date + timedelta(days=4)].values())
                         )
                         / sum(statistics_expenses[start_date + timedelta(days=4)].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'profit_accepted': pytest.approx(
-                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values())
-                    , abs=0.02),
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=4)].values()), abs=0.02
+                    ),
                     'profit_expected': pytest.approx(
                         1 * cost_value
                         + 1 * cost_value
-                        - sum(statistics_expenses[start_date + timedelta(days=4)].values())
-                    , abs=0.02),
+                        - sum(statistics_expenses[start_date + timedelta(days=4)].values()),
+                        abs=0.02,
+                    ),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 10.0},
                         'expect': {'leads': 1, 'payouts': 10.0},
@@ -144,15 +153,21 @@ def test_get_report(client, authorization, campaign, statistics_expenses, today)
                     'roi_accepted': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'roi_expected': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
-                        * 100
-                    , abs=0.02),
-                    'profit_accepted': pytest.approx(1 * cost_value - sum(statistics_expenses[end_date].values()), abs=0.02),
-                    'profit_expected': pytest.approx(1 * cost_value - sum(statistics_expenses[end_date].values()), abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
+                    'profit_accepted': pytest.approx(
+                        1 * cost_value - sum(statistics_expenses[end_date].values()), abs=0.02
+                    ),
+                    'profit_expected': pytest.approx(
+                        1 * cost_value - sum(statistics_expenses[end_date].values()), abs=0.02
+                    ),
                     'statuses': {
                         'accept': {'leads': 1, 'payouts': 1 * cost_value},
                         'expect': {'leads': 0, 'payouts': 0},
@@ -323,11 +338,17 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                 },
                 (start_date + timedelta(days=2)).isoformat(): {
                     'ad_1': {
-                        'expenses': pytest.approx(statistics_expenses[start_date + timedelta(days=2)]['ad_1'], abs=0.02),
+                        'expenses': pytest.approx(
+                            statistics_expenses[start_date + timedelta(days=2)]['ad_1'], abs=0.02
+                        ),
                         'roi_accepted': -100.0,
                         'roi_expected': -100.0,
-                        'profit_accepted': pytest.approx(-statistics_expenses[start_date + timedelta(days=2)]['ad_1'], abs=0.02),
-                        'profit_expected': pytest.approx(-statistics_expenses[start_date + timedelta(days=2)]['ad_1'], abs=0.02),
+                        'profit_accepted': pytest.approx(
+                            -statistics_expenses[start_date + timedelta(days=2)]['ad_1'], abs=0.02
+                        ),
+                        'profit_expected': pytest.approx(
+                            -statistics_expenses[start_date + timedelta(days=2)]['ad_1'], abs=0.02
+                        ),
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -348,23 +369,27 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         },
                     },
                     'ad_2': {
-                        'expenses': pytest.approx(statistics_expenses[start_date + timedelta(days=2)]['ad_2'], abs=0.02),
+                        'expenses': pytest.approx(
+                            statistics_expenses[start_date + timedelta(days=2)]['ad_2'], abs=0.02
+                        ),
                         'roi_accepted': pytest.approx(
                             (1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2'])
                             / statistics_expenses[start_date + timedelta(days=2)]['ad_2']
-                            * 100
-                        , abs=0.02),
+                            * 100,
+                            abs=0.02,
+                        ),
                         'roi_expected': pytest.approx(
                             (1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2'])
                             / statistics_expenses[start_date + timedelta(days=2)]['ad_2']
-                            * 100
-                        , abs=0.02),
+                            * 100,
+                            abs=0.02,
+                        ),
                         'profit_accepted': pytest.approx(
-                            1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2']
-                        , abs=0.02),
+                            1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2'], abs=0.02
+                        ),
                         'profit_expected': pytest.approx(
-                            1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2']
-                        , abs=0.02),
+                            1 * cost_value - statistics_expenses[start_date + timedelta(days=2)]['ad_2'], abs=0.02
+                        ),
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 1, 'payouts': 10.0},
@@ -387,11 +412,17 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                 },
                 (start_date + timedelta(days=3)).isoformat(): {
                     'ad_1': {
-                        'expenses': pytest.approx(statistics_expenses[start_date + timedelta(days=3)]['ad_1'], abs=0.02),
+                        'expenses': pytest.approx(
+                            statistics_expenses[start_date + timedelta(days=3)]['ad_1'], abs=0.02
+                        ),
                         'roi_accepted': -100.0,
                         'roi_expected': -100.0,
-                        'profit_accepted': pytest.approx(-statistics_expenses[start_date + timedelta(days=3)]['ad_1'], abs=0.02),
-                        'profit_expected': pytest.approx(-statistics_expenses[start_date + timedelta(days=3)]['ad_1'], abs=0.02),
+                        'profit_accepted': pytest.approx(
+                            -statistics_expenses[start_date + timedelta(days=3)]['ad_1'], abs=0.02
+                        ),
+                        'profit_expected': pytest.approx(
+                            -statistics_expenses[start_date + timedelta(days=3)]['ad_1'], abs=0.02
+                        ),
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 0, 'payouts': 0},
@@ -412,12 +443,15 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         },
                     },
                     'ad_2': {
-                        'expenses': pytest.approx(statistics_expenses[start_date + timedelta(days=3)]['ad_2'], abs=0.02),
+                        'expenses': pytest.approx(
+                            statistics_expenses[start_date + timedelta(days=3)]['ad_2'], abs=0.02
+                        ),
                         'roi_accepted': pytest.approx(
                             (1 * cost_value - statistics_expenses[start_date + timedelta(days=3)]['ad_2'])
                             / statistics_expenses[start_date + timedelta(days=3)]['ad_2']
-                            * 100
-                        , abs=0.02),
+                            * 100,
+                            abs=0.02,
+                        ),
                         'roi_expected': pytest.approx(
                             (
                                 1 * cost_value
@@ -425,16 +459,18 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                                 - statistics_expenses[start_date + timedelta(days=3)]['ad_2']
                             )
                             / statistics_expenses[start_date + timedelta(days=3)]['ad_2']
-                            * 100
-                        , abs=0.02),
+                            * 100,
+                            abs=0.02,
+                        ),
                         'profit_accepted': pytest.approx(
-                            1 * cost_value - statistics_expenses[start_date + timedelta(days=3)]['ad_2']
-                        , abs=0.02),
+                            1 * cost_value - statistics_expenses[start_date + timedelta(days=3)]['ad_2'], abs=0.02
+                        ),
                         'profit_expected': pytest.approx(
                             1 * cost_value
                             + 1 * cost_value
-                            - statistics_expenses[start_date + timedelta(days=3)]['ad_2']
-                        , abs=0.02),
+                            - statistics_expenses[start_date + timedelta(days=3)]['ad_2'],
+                            abs=0.02,
+                        ),
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 1, 'payouts': 1 * cost_value},
@@ -461,15 +497,21 @@ def test_get_report__group_by_parameter(client, authorization, statistics_expens
                         'roi_accepted': pytest.approx(
                             (1 * cost_value - statistics_expenses[end_date]['ad_1'])
                             / statistics_expenses[end_date]['ad_1']
-                            * 100
-                        , abs=0.02),
+                            * 100,
+                            abs=0.02,
+                        ),
                         'roi_expected': pytest.approx(
                             (1 * cost_value - statistics_expenses[end_date]['ad_1'])
                             / statistics_expenses[end_date]['ad_1']
-                            * 100
-                        , abs=0.02),
-                        'profit_accepted': pytest.approx(1 * cost_value - statistics_expenses[end_date]['ad_1'], abs=0.02),
-                        'profit_expected': pytest.approx(1 * cost_value - statistics_expenses[end_date]['ad_1'], abs=0.02),
+                            * 100,
+                            abs=0.02,
+                        ),
+                        'profit_accepted': pytest.approx(
+                            1 * cost_value - statistics_expenses[end_date]['ad_1'], abs=0.02
+                        ),
+                        'profit_expected': pytest.approx(
+                            1 * cost_value - statistics_expenses[end_date]['ad_1'], abs=0.02
+                        ),
                         'fb': {
                             'statuses': {
                                 'accept': {'leads': 1, 'payouts': 1 * cost_value},
@@ -624,23 +666,27 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     },
                 },
                 (start_date + timedelta(days=2)).isoformat(): {
-                    'expenses': pytest.approx(sum(statistics_expenses[start_date + timedelta(days=2)].values()), abs=0.02),
+                    'expenses': pytest.approx(
+                        sum(statistics_expenses[start_date + timedelta(days=2)].values()), abs=0.02
+                    ),
                     'roi_accepted': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=2)].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'roi_expected': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=2)].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'profit_accepted': pytest.approx(
-                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values())
-                    , abs=0.02),
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values()), abs=0.02
+                    ),
                     'profit_expected': pytest.approx(
-                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values())
-                    , abs=0.02),
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=2)].values()), abs=0.02
+                    ),
                     'fb': {
                         'statuses': {
                             'accept': {'leads': 1, 'payouts': 1 * cost_value},
@@ -661,12 +707,15 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     },
                 },
                 (start_date + timedelta(days=3)).isoformat(): {
-                    'expenses': pytest.approx(sum(statistics_expenses[start_date + timedelta(days=3)].values()), abs=0.02),
+                    'expenses': pytest.approx(
+                        sum(statistics_expenses[start_date + timedelta(days=3)].values()), abs=0.02
+                    ),
                     'roi_accepted': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()))
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'roi_expected': pytest.approx(
                         (
                             1 * cost_value
@@ -674,16 +723,18 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                             - sum(statistics_expenses[start_date + timedelta(days=3)].values())
                         )
                         / sum(statistics_expenses[start_date + timedelta(days=3)].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'profit_accepted': pytest.approx(
-                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values())
-                    , abs=0.02),
+                        1 * cost_value - sum(statistics_expenses[start_date + timedelta(days=3)].values()), abs=0.02
+                    ),
                     'profit_expected': pytest.approx(
                         1 * cost_value
                         + 1 * cost_value
-                        - sum(statistics_expenses[start_date + timedelta(days=3)].values())
-                    , abs=0.02),
+                        - sum(statistics_expenses[start_date + timedelta(days=3)].values()),
+                        abs=0.02,
+                    ),
                     'fb': {
                         'statuses': {
                             'accept': {'leads': 1, 'payouts': 10.0},
@@ -708,15 +759,21 @@ def test_get_report__group_by_parameter__not_expenses_distribution(
                     'roi_accepted': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
-                        * 100
-                    , abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
                     'roi_expected': pytest.approx(
                         (1 * cost_value - sum(statistics_expenses[end_date].values()))
                         / sum(statistics_expenses[end_date].values())
-                        * 100
-                    , abs=0.02),
-                    'profit_accepted': pytest.approx(1 * cost_value - sum(statistics_expenses[end_date].values()), abs=0.02),
-                    'profit_expected': pytest.approx(1 * cost_value - sum(statistics_expenses[end_date].values()), abs=0.02),
+                        * 100,
+                        abs=0.02,
+                    ),
+                    'profit_accepted': pytest.approx(
+                        1 * cost_value - sum(statistics_expenses[end_date].values()), abs=0.02
+                    ),
+                    'profit_expected': pytest.approx(
+                        1 * cost_value - sum(statistics_expenses[end_date].values()), abs=0.02
+                    ),
                     'fb': {
                         'statuses': {
                             'accept': {'leads': 1, 'payouts': 1 * cost_value},
@@ -878,7 +935,15 @@ def test_get_report__zero_expenses_does_not_cause_division_by_zero(
                     'clicks': mock.ANY,
                 }
             },
-            'total': mock.ANY,
+            'total': {
+                'expenses': 0.0,
+                'profit_accepted': 0.0,
+                'profit_expected': 0.0,
+                'roi_accepted': 0.0,
+                'roi_expected': 0.0,
+                'statuses': mock.ANY,
+                'clicks': mock.ANY,
+            },
             'parameters': mock.ANY,
             'groupParameters': mock.ANY,
         }

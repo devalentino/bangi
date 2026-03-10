@@ -203,6 +203,10 @@ class ReportService:
             'roi_expected': 0,
         }
 
+        date2distribution = {date: sum(json.loads(distribution).values()) for date, distribution in expenses_rows}
+
+        payouts_accepted = 0
+        payouts_expected = 0
         for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
             total['clicks'] += clicks_count
 
@@ -210,20 +214,17 @@ class ReportService:
                 total['statuses'][lead_status]['leads'] += leads_count
                 total['statuses'][lead_status]['payouts'] += payouts or 0
 
+                if date2distribution.get(date) and lead_status == LeadStatus.accept:
+                    payouts_accepted += payouts or 0
+                    payouts_expected += payouts or 0
+
+                if date2distribution.get(date) and lead_status == LeadStatus.expect:
+                    payouts_expected += payouts or 0
+
         expenses = Decimal('0.00')
-        for date, distribution_raw in expenses_rows:
-            distribution = json.loads(distribution_raw)
+        for date, daily_expenses in date2distribution.items():
+            expenses += Decimal.from_float(daily_expenses)
 
-            expenses += Decimal.from_float(sum(distribution.values()))
-
-        payouts_accepted = sum(
-            stats['payouts'] for status, stats in total['statuses'].items() if status == LeadStatus.accept
-        )
-        payouts_expected = sum(
-            stats['payouts']
-            for status, stats in total['statuses'].items()
-            if status in (LeadStatus.accept, LeadStatus.expect)
-        )
         profit_accepted = payouts_accepted - expenses
         profit_expected = payouts_expected - expenses
         roi_accepted = profit_accepted / expenses * 100 if expenses else Decimal('0.00')
