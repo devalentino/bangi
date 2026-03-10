@@ -27,6 +27,10 @@ class ReportService:
         self.track_service = track_service
         self.statistics_report_repository = statistics_report_repository
 
+    def _calculate_sum_of_clicks(self, stats):
+        print(stats)
+        return 0
+
     def _get_payouts(self, statistics_container, group_parameters):
         if len(group_parameters) > 0:
             payouts_accepted_sum = 0
@@ -188,6 +192,52 @@ class ReportService:
 
         return report
 
+    def _build_total(self, report_rows, expenses_rows):
+        total = {
+            'clicks': 0,
+            'statuses': {s.value: {'leads': 0, 'payouts': 0} for s in LeadStatus},
+            'expenses': 0,
+            'profit_accepted': 0,
+            'profit_expected': 0,
+            'roi_accepted': 0,
+            'roi_expected': 0,
+        }
+
+        date2distribution = {date: sum(json.loads(distribution).values()) for date, distribution in expenses_rows}
+
+        payouts_accepted = 0
+        payouts_expected = 0
+        for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
+            total['clicks'] += clicks_count
+
+            if lead_status:
+                total['statuses'][lead_status]['leads'] += leads_count
+                total['statuses'][lead_status]['payouts'] += payouts or 0
+
+                if date2distribution.get(date) and lead_status == LeadStatus.accept:
+                    payouts_accepted += payouts or 0
+                    payouts_expected += payouts or 0
+
+                if date2distribution.get(date) and lead_status == LeadStatus.expect:
+                    payouts_expected += payouts or 0
+
+        expenses = Decimal('0.00')
+        for date, daily_expenses in date2distribution.items():
+            expenses += Decimal.from_float(daily_expenses)
+
+        profit_accepted = payouts_accepted - expenses
+        profit_expected = payouts_expected - expenses
+        roi_accepted = profit_accepted / expenses * 100 if expenses else Decimal('0.00')
+        roi_expected = profit_expected / expenses * 100 if expenses else Decimal('0.00')
+
+        total['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['profit_expected'] = profit_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+
+        return total
+
     def statistics_report(self, parameters):
         campaign = self.campaign_service.get(parameters['campaign_id'])
 
@@ -206,13 +256,14 @@ class ReportService:
 
         report_rows, expenses_rows, available_parameters_row = self.statistics_report_repository.get(parameters)
         report = self._build_statistics_report(report_rows, expenses_rows, parameters, match_expenses_distribution)
+        total = self._build_total(report_rows, expenses_rows)
 
         available_parameters = []
         if available_parameters_row:
             (available_parameters_row,) = available_parameters_row
             available_parameters = list(json.loads(available_parameters_row).keys()) if available_parameters_row else []
 
-        return report, available_parameters, group_parameters
+        return report, total, available_parameters, group_parameters
 
     def submit_expenses(self, campaign_id, expenses_distribution_parameter, date_distributions):
         campaign = self.campaign_service.get(campaign_id)
