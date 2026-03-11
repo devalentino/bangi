@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest import mock
 
 import pytest
@@ -946,5 +946,136 @@ def test_get_report__zero_expenses_does_not_cause_division_by_zero(
             },
             'parameters': mock.ANY,
             'groupParameters': mock.ANY,
+        }
+    }
+
+
+def test_get_report__does_not_count_statistics_outside_filter_boundaries(
+    client, authorization, campaign, write_to_db, today, click_parameters, postback_parameters
+):
+    period_start_timestamp = int(datetime.combine(today, datetime.min.time()).timestamp())
+    period_end_timestamp = int(datetime.combine(today, datetime.max.time()).timestamp())
+
+    in_filter_click_id = 'click-in-filter'
+    before_filter_click_id = 'click-before-filter'
+    after_filter_click_id = 'click-after-filter'
+
+    write_to_db(
+        'track_click',
+        {
+            'click_id': in_filter_click_id,
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters | {'ad_name': 'ad_in_filter', 'utm_source': 'fb'},
+            'created_at': period_start_timestamp,
+        },
+    )
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': in_filter_click_id,
+            'status': 'accept',
+            'parameters': postback_parameters,
+            'cost_value': campaign['cost_value'],
+            'created_at': period_start_timestamp,
+        },
+    )
+
+    write_to_db(
+        'track_click',
+        {
+            'click_id': before_filter_click_id,
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters | {'ad_name': 'ad_before_filter', 'utm_source': 'fb'},
+            'created_at': period_start_timestamp - 1,
+        },
+    )
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': before_filter_click_id,
+            'status': 'accept',
+            'parameters': postback_parameters,
+            'cost_value': campaign['cost_value'],
+            'created_at': period_start_timestamp - 1,
+        },
+    )
+
+    write_to_db(
+        'track_click',
+        {
+            'click_id': after_filter_click_id,
+            'campaign_id': campaign['id'],
+            'parameters': click_parameters | {'ad_name': 'ad_after_filter', 'utm_source': 'fb'},
+            'created_at': period_end_timestamp + 1,
+        },
+    )
+    write_to_db(
+        'track_postback',
+        {
+            'click_id': after_filter_click_id,
+            'status': 'accept',
+            'parameters': postback_parameters,
+            'cost_value': campaign['cost_value'],
+            'created_at': period_end_timestamp + 1,
+        },
+    )
+
+    response = client.get(
+        '/api/v2/reports/statistics',
+        headers={'Authorization': authorization},
+        query_string={
+            'campaignId': campaign['id'],
+            'periodStart': today.isoformat(),
+            'periodEnd': today.isoformat(),
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': {
+            'parameters': [
+                'utm_source',
+                'utm_content',
+                'utm_campaign',
+                'utm_medium',
+                'ad_name',
+                'utm_id',
+                'redirect_url',
+                'pixel',
+                'utm_term',
+                'adset_name',
+                'fbclid',
+            ],
+            'groupParameters': [],
+            'report': {
+                today.isoformat(): {  # only statistics that matches filter
+                    'expenses': 0,
+                    'roi_accepted': 0,
+                    'roi_expected': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
+                    'statuses': {
+                        'accept': {'leads': 1, 'payouts': float(campaign['cost_value'])},
+                        'expect': {'leads': 0, 'payouts': 0},
+                        'reject': {'leads': 0, 'payouts': 0},
+                        'trash': {'leads': 0, 'payouts': 0},
+                    },
+                    'clicks': 1,
+                }
+            },
+            'total': {
+                'clicks': 1,  # only statistics that matches filter
+                'statuses': {
+                    'accept': {'leads': 1, 'payouts': float(campaign['cost_value'])},
+                    'expect': {'leads': 0, 'payouts': 0},
+                    'reject': {'leads': 0, 'payouts': 0},
+                    'trash': {'leads': 0, 'payouts': 0},
+                },
+                'expenses': 0.0,
+                'profit_accepted': 0.0,
+                'profit_expected': 0.0,
+                'roi_accepted': 0.0,
+                'roi_expected': 0.0,
+            },
         }
     }
