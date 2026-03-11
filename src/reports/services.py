@@ -192,7 +192,7 @@ class ReportService:
 
         return report
 
-    def _build_total(self, report_rows, expenses_rows):
+    def _build_total(self, report_rows, expenses_rows, start, end):
         total = {
             'clicks': 0,
             'statuses': {s.value: {'leads': 0, 'payouts': 0} for s in LeadStatus},
@@ -203,11 +203,18 @@ class ReportService:
             'roi_expected': 0,
         }
 
-        date2distribution = {date: sum(json.loads(distribution).values()) for date, distribution in expenses_rows}
+        date2distribution = {
+            date: sum(json.loads(distribution).values())
+            for date, distribution in expenses_rows
+            if date < start or date > end
+        }
 
         payouts_accepted = 0
         payouts_expected = 0
         for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
+            if date < start or date > end:
+                continue
+
             total['clicks'] += clicks_count
 
             if lead_status:
@@ -256,7 +263,7 @@ class ReportService:
 
         report_rows, expenses_rows, available_parameters_row = self.statistics_report_repository.get(parameters)
         report = self._build_statistics_report(report_rows, expenses_rows, parameters, match_expenses_distribution)
-        total = self._build_total(report_rows, expenses_rows)
+        total = self._build_total(report_rows, expenses_rows, parameters['period_start'], parameters['period_end'])
 
         available_parameters = []
         if available_parameters_row:
