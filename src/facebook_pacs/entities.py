@@ -1,8 +1,9 @@
 from playhouse.shortcuts import model_to_dict
 
-from peewee import BooleanField, CharField, ForeignKeyField, ManyToManyField, TimestampField
+from peewee import BooleanField, CharField, ForeignKeyField, ManyToManyField
 from src.core.entities import Campaign as CoreCampaign
 from src.core.entities import Entity
+from src.peewee import UTCTimestampField
 
 TABLE_NAME_PREFIX = 'facebook_pacs_'
 
@@ -72,7 +73,7 @@ class BusinessPortfolioAccessUrl(Entity):
     business_portfolio = ForeignKeyField(BusinessPortfolio, backref='access_urls', null=True)
     url = CharField()
     email = CharField(null=True)
-    expires_at = TimestampField(utc=True)
+    expires_at = UTCTimestampField(utc=True)
 
     class Meta:
         table_name = f'{TABLE_NAME_PREFIX}business_portfolio_access_url'

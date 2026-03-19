@@ -289,6 +289,7 @@ class TestBusinessPortfolioManageAccessUrls:
                 {
                     'id': access_url['id'],
                     'url': access_url['url'],
+                    'email': None,
                     'expiresAt': date.fromtimestamp(access_url['expires_at']).isoformat(),
                 }
             ],
@@ -311,6 +312,7 @@ class TestBusinessPortfolioManageAccessUrls:
         assert response.json == {
             'id': mock.ANY,
             'url': request_payload['url'],
+            'email': None,
             'expiresAt': request_payload['expiresAt'],
         }
 
@@ -320,6 +322,7 @@ class TestBusinessPortfolioManageAccessUrls:
             'created_at': mock.ANY,
             'business_portfolio_id': business_portfolio['id'],
             'url': request_payload['url'],
+            'email': None,
             'expires_at': datetime.combine(expires_at, time.min).timestamp(),
         }
 

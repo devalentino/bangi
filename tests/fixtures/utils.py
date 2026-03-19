@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 
 import pytest
@@ -10,7 +11,7 @@ def utcnow():
 
 @pytest.fixture
 def timestamp(utcnow):
-    return int(utcnow.timestamp())
+    return int(time.time())
 
 
 @pytest.fixture

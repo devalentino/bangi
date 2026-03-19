@@ -1,4 +1,5 @@
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timezone
+from time import time as timestamp
 from typing import Annotated
 
 from wireup import Inject, service
@@ -168,20 +169,15 @@ class BusinessPortfolioService:
         )
         query.execute()
 
-    def list_expired_and_expiring_access_urls(self, today=None, expiring_soon_days=None):
-        if today is None:
-            today = date.today()
-        if expiring_soon_days is None:
-            expiring_soon_days = self.access_url_expiring_soon_days
+    def list_expired_and_expiring_access_urls(self, threshold_already_expired=None):
 
-        expires_before = today + timedelta(days=expiring_soon_days)
-        return [
-            access_url
-            for access_url in BusinessPortfolioAccessUrl.select(BusinessPortfolioAccessUrl, BusinessPortfolio).join(
-                BusinessPortfolio
-            )
-            if (expires_at := date.fromtimestamp(access_url.expires_at)) < today or expires_at <= expires_before
-        ]
+        threshold_expires_soon = threshold_already_expired + self.access_url_expiring_soon_days * 24 * 60 * 60
+
+        return list(
+            BusinessPortfolioAccessUrl.select(BusinessPortfolioAccessUrl, BusinessPortfolio)
+            .join(BusinessPortfolio)
+            .where(BusinessPortfolioAccessUrl.expires_at <= threshold_expires_soon)
+        )
 
 
 @service
@@ -395,18 +391,22 @@ class CampaignService:
 def collect_business_portfolio_access_url_alerts(container):
     business_portfolio_service = container.get(BusinessPortfolioService)
 
-    today = date.today()
     alerts = []
 
-    for access_url in business_portfolio_service.list_expired_and_expiring_access_urls(today=today):
-        expires_at = date.fromtimestamp(access_url.expires_at)
-        if expires_at < today:
+    threshold_already_expired_timestamp = int(timestamp())
+    access_urls = business_portfolio_service.list_expired_and_expiring_access_urls(
+        threshold_already_expired=threshold_already_expired_timestamp
+    )
+
+    for access_url in access_urls:
+        expires_at = access_url.expires_at.timestamp()
+        if expires_at < threshold_already_expired_timestamp:
             alerts.append(
                 Alert(
                     code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRED,
                     message=(
                         f'Business portfolio access URL expired for "{access_url.business_portfolio.name}" '
-                        f'on {expires_at.isoformat()}.'
+                        f'on {access_url.expires_at.isoformat()}.'
                     ),
                     severity=AlertSeverity.WARNING,
                     payload={
@@ -415,7 +415,7 @@ def collect_business_portfolio_access_url_alerts(container):
                         'businessPortfolioName': access_url.business_portfolio.name,
                         'url': access_url.url,
                         'email': access_url.email,
-                        'expiresAt': expires_at.isoformat(),
+                        'expiresAt': access_url.expires_at.timestamp(),
                     },
                 )
             )
@@ -426,7 +426,7 @@ def collect_business_portfolio_access_url_alerts(container):
                 code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRING_SOON,
                 message=(
                     f'Business portfolio access URL for "{access_url.business_portfolio.name}" '
-                    f'expires on {expires_at.isoformat()}.'
+                    f'expires on {access_url.expires_at.isoformat()}.'
                 ),
                 severity=AlertSeverity.INFO,
                 payload={
@@ -435,8 +435,9 @@ def collect_business_portfolio_access_url_alerts(container):
                     'businessPortfolioName': access_url.business_portfolio.name,
                     'url': access_url.url,
                     'email': access_url.email,
-                    'expiresAt': expires_at.isoformat(),
-                    'daysUntilExpiration': (expires_at - today).days,
+                    'expiresAt': access_url.expires_at.timestamp(),
+                    'daysUntilExpiration': (access_url.expires_at - datetime.today().replace(tzinfo=timezone.utc)).days
+                    + 1,
                 },
             )
         )
