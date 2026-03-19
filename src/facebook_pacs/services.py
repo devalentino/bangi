@@ -1,8 +1,11 @@
-from datetime import datetime, time
+from datetime import datetime, time, timezone
+from time import time as timestamp
+from typing import Annotated
 
-from wireup import service
+from wireup import Inject, service
 
 from peewee import IntegrityError, fn
+from src.alerts import Alert, AlertCode, AlertSeverity, register_alert_callback
 from src.core.enums import SortOrder
 from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError
 from src.core.services import CampaignService as CoreCampaignService
@@ -63,8 +66,13 @@ class ExecutorService:
 
 @service
 class BusinessPortfolioService:
-    def __init__(self, executor_service: ExecutorService):
+    def __init__(
+        self,
+        executor_service: ExecutorService,
+        access_url_expiring_soon_days: Annotated[int, Inject(param='ACCESS_URL_EXPIRING_SOON_DAYS')],
+    ):
         self.executor_service = executor_service
+        self.access_url_expiring_soon_days = access_url_expiring_soon_days
 
     def get(self, id):
         try:
@@ -128,11 +136,11 @@ class BusinessPortfolioService:
 
         return business_portfolio
 
-    def create_access_url(self, business_portfolio_id, url, expires_at):
+    def create_access_url(self, business_portfolio_id, url, expires_at, email=None):
         business_portfolio = self.get(business_portfolio_id)
         expires_at_timestamp = datetime.combine(expires_at, time.min).timestamp()
         access_url = BusinessPortfolioAccessUrl(
-            business_portfolio=business_portfolio, url=url, expires_at=expires_at_timestamp
+            business_portfolio=business_portfolio, url=url, email=email, expires_at=expires_at_timestamp
         )
         access_url.save()
         return access_url
@@ -160,6 +168,16 @@ class BusinessPortfolioService:
             & (BusinessPortfolioAccessUrl.business_portfolio == business_portfolio_id)
         )
         query.execute()
+
+    def list_expired_and_expiring_access_urls(self, threshold_already_expired=None):
+
+        threshold_expires_soon = threshold_already_expired + self.access_url_expiring_soon_days * 24 * 60 * 60
+
+        return list(
+            BusinessPortfolioAccessUrl.select(BusinessPortfolioAccessUrl, BusinessPortfolio)
+            .join(BusinessPortfolio)
+            .where(BusinessPortfolioAccessUrl.expires_at <= threshold_expires_soon)
+        )
 
 
 @service
@@ -367,3 +385,61 @@ class CampaignService:
 
     def count(self):
         return Campaign.select(fn.count(Campaign.id)).scalar()
+
+
+@register_alert_callback
+def collect_business_portfolio_access_url_alerts(container):
+    business_portfolio_service = container.get(BusinessPortfolioService)
+
+    alerts = []
+
+    threshold_already_expired_timestamp = int(timestamp())
+    access_urls = business_portfolio_service.list_expired_and_expiring_access_urls(
+        threshold_already_expired=threshold_already_expired_timestamp
+    )
+
+    for access_url in access_urls:
+        expires_at = access_url.expires_at.timestamp()
+        if expires_at <= threshold_already_expired_timestamp:
+            alerts.append(
+                Alert(
+                    code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRED,
+                    message=(
+                        f'Business portfolio access URL expired for "{access_url.business_portfolio.name}" '
+                        f'on {access_url.expires_at.isoformat()}.'
+                    ),
+                    severity=AlertSeverity.WARNING,
+                    payload={
+                        'accessUrlId': access_url.id,
+                        'businessPortfolioId': access_url.business_portfolio.id,
+                        'businessPortfolioName': access_url.business_portfolio.name,
+                        'url': access_url.url,
+                        'email': access_url.email,
+                        'expiresAt': access_url.expires_at.timestamp(),
+                    },
+                )
+            )
+            continue
+
+        alerts.append(
+            Alert(
+                code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRING_SOON,
+                message=(
+                    f'Business portfolio access URL for "{access_url.business_portfolio.name}" '
+                    f'expires on {access_url.expires_at.isoformat()}.'
+                ),
+                severity=AlertSeverity.INFO,
+                payload={
+                    'accessUrlId': access_url.id,
+                    'businessPortfolioId': access_url.business_portfolio.id,
+                    'businessPortfolioName': access_url.business_portfolio.name,
+                    'url': access_url.url,
+                    'email': access_url.email,
+                    'expiresAt': access_url.expires_at.timestamp(),
+                    'daysUntilExpiration': (access_url.expires_at - datetime.today().replace(tzinfo=timezone.utc)).days
+                    + 1,
+                },
+            )
+        )
+
+    return alerts

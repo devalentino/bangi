@@ -113,6 +113,7 @@ class CampaignListResponseSchema(Schema):
 
 class BusinessPortfolioAccessUrlRequestSchema(Schema):
     url = fields.String(required=True)
+    email = fields.Email(allow_none=True, load_default=None)
     expiresAt = fields.Date(required=True)
 
 

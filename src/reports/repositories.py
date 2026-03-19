@@ -12,7 +12,7 @@ from src.tracker.entities import TrackClick, TrackLead, TrackPostback
 
 @service
 class StatisticsReportRepository:
-    def __init__(self, database: MySQLDatabase, gap_seconds: Annotated[str, Inject(param='REPORT_GAP_SECONDS')]):
+    def __init__(self, database: MySQLDatabase, gap_seconds: Annotated[int, Inject(param='REPORT_GAP_SECONDS')]):
         self.database = database
         self.gap_seconds = gap_seconds
 
