@@ -3,6 +3,7 @@ import os
 from wireup import create_sync_container
 
 from peewee import MySQLDatabase
+from src.alerts.services import AlertService
 from src.auth.services import AuthenticationService
 from src.core.db import database
 from src.core.entities import database_proxy
@@ -34,6 +35,7 @@ container = create_sync_container(
     services=[
         database,
         StatisticsReportRepository,
+        AlertService,
         AuthenticationService,
         CampaignService,
         ClientService,
