@@ -190,7 +190,10 @@ class BusinessPortfolioAccessUrls(MethodView):
     def post(self, access_url_payload, businessPortfolioId):
         business_portfolio_service = container.get(BusinessPortfolioService)
         access_url = business_portfolio_service.create_access_url(
-            businessPortfolioId, access_url_payload['url'], access_url_payload['expiresAt']
+            businessPortfolioId,
+            access_url_payload['url'],
+            access_url_payload['expiresAt'],
+            access_url_payload.get('email'),
         )
         return humps.camelize(access_url.to_dict() | {'expiresAt': date.fromtimestamp(access_url.expires_at)})
 

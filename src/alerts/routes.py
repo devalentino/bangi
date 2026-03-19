@@ -15,4 +15,4 @@ class Alerts(MethodView):
     @auth.login_required
     def get(self):
         alert_service = container.get(AlertService)
-        return {'content': alert_service.serialize(alert_service.collect())}
+        return {'content': alert_service.serialize(alert_service.collect(container))}

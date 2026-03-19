@@ -10,25 +10,30 @@ from src.alerts.models import Alert
 logger = logging.getLogger(__name__)
 
 AlertCallbackResult: TypeAlias = Alert | Iterable[Alert] | None
-AlertCallback: TypeAlias = Callable[[], AlertCallbackResult]
+AlertCallback: TypeAlias = Callable[[object], AlertCallbackResult]
+_REGISTERED_ALERT_CALLBACKS: list[AlertCallback] = []
+
+
+def register_alert_callback(callback: AlertCallback) -> AlertCallback:
+    if callback not in _REGISTERED_ALERT_CALLBACKS:
+        _REGISTERED_ALERT_CALLBACKS.append(callback)
+    return callback
 
 
 @service(lifetime='singleton')
 class AlertService:
     def __init__(self):
-        self._callbacks: list[AlertCallback] = []
+        self._callbacks = _REGISTERED_ALERT_CALLBACKS
 
     def register_callback(self, callback: AlertCallback) -> AlertCallback:
-        if callback not in self._callbacks:
-            self._callbacks.append(callback)
-        return callback
+        return register_alert_callback(callback)
 
-    def collect(self) -> list[Alert]:
+    def collect(self, container) -> list[Alert]:
         alerts: list[Alert] = []
 
         for callback in self._callbacks:
             try:
-                result = callback()
+                result = callback(container)
             except Exception:
                 logger.exception('Failed to collect alerts from callback %s', callback)
                 continue

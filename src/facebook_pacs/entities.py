@@ -71,7 +71,8 @@ class Campaign(Entity):
 class BusinessPortfolioAccessUrl(Entity):
     business_portfolio = ForeignKeyField(BusinessPortfolio, backref='access_urls', null=True)
     url = CharField()
-    expires_at = TimestampField(null=True, utc=True)
+    email = CharField(null=True)
+    expires_at = TimestampField(utc=True)
 
     class Meta:
         table_name = f'{TABLE_NAME_PREFIX}business_portfolio_access_url'
