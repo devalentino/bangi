@@ -400,7 +400,7 @@ def collect_business_portfolio_access_url_alerts(container):
 
     for access_url in access_urls:
         expires_at = access_url.expires_at.timestamp()
-        if expires_at < threshold_already_expired_timestamp:
+        if expires_at <= threshold_already_expired_timestamp:
             alerts.append(
                 Alert(
                     code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRED,
