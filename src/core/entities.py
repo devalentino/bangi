@@ -14,10 +14,9 @@ from peewee import (
 from peewee import Model as PeeweeModel
 from peewee import (
     TextField,
-    TimestampField,
 )
 from src.core.enums import CostModel, Currency, FlowActionType
-from src.peewee import JSONField
+from src.peewee import JSONField, UTCTimestampField
 
 database_proxy = DatabaseProxy()
 
@@ -35,7 +34,7 @@ class Model(PeeweeModel):
 
 class Entity(Model):
     id = AutoField(primary_key=True)
-    created_at = TimestampField(null=True, utc=True)
+    created_at = UTCTimestampField(null=True, utc=True)
 
     class Meta:
         evolve = False

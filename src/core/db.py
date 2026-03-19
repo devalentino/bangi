@@ -13,7 +13,7 @@ class ReconnectPooledMySQLDatabase(ReconnectMixin, MySQLDatabase):
 @service(lifetime='singleton')
 def database(
     host: Annotated[str, Inject(param='MARIADB_HOST')],
-    port: Annotated[str, Inject(param='MARIADB_PORT')],
+    port: Annotated[int, Inject(param='MARIADB_PORT')],
     username: Annotated[str, Inject(param='MARIADB_USER')],
     password: Annotated[str, Inject(param='MARIADB_PASSWORD')],
     db_name: Annotated[str, Inject(param='MARIADB_DATABASE')],
@@ -23,5 +23,5 @@ def database(
         user=username,
         password=password,
         host=host,
-        port=int(port),
+        port=port,
     )
