@@ -39,7 +39,11 @@ class BusinessPortfolioRepository:
                 JOIN.LEFT_OUTER,
                 on=(expiration_statuses_subquery.c.business_portfolio_id == BusinessPortfolio.id),
             )
-            .group_by(expiration_statuses_subquery.c.expiration_status)
+            .group_by(
+                BusinessPortfolio.id,
+                BusinessPortfolio.name,
+                expiration_statuses_subquery.c.expiration_status,
+            )
         )
 
         cursor = self.database.execute(query)

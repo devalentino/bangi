@@ -441,7 +441,7 @@ def collect_business_portfolio_access_url_alerts(container):
         alerts.append(
             Alert(
                 code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_MISSING,
-                message=(f'Business portfolio access URLs "{stats["name"]}" expired'),
+                message=(f'Business portfolio "{stats["name"]}" does not have access URLs'),
                 severity=AlertSeverity.WARNING,
                 payload={
                     'businessPortfolioId': business_portfolio_id,
