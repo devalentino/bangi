@@ -1,4 +1,5 @@
-from datetime import datetime, time, timezone
+from collections import defaultdict
+from datetime import datetime, time
 from time import time as timestamp
 from typing import Annotated
 
@@ -6,6 +7,7 @@ from wireup import Inject, service
 
 from peewee import IntegrityError, fn
 from src.alerts import Alert, AlertCode, AlertSeverity, register_alert_callback
+from src.alerts.repositories import BusinessPortfolioRepository
 from src.core.enums import SortOrder
 from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError
 from src.core.services import CampaignService as CoreCampaignService
@@ -68,9 +70,11 @@ class ExecutorService:
 class BusinessPortfolioService:
     def __init__(
         self,
+        business_portfolio_repository: BusinessPortfolioRepository,
         executor_service: ExecutorService,
         access_url_expiring_soon_days: Annotated[int, Inject(param='ACCESS_URL_EXPIRING_SOON_DAYS')],
     ):
+        self.business_portfolio_repository = business_portfolio_repository
         self.executor_service = executor_service
         self.access_url_expiring_soon_days = access_url_expiring_soon_days
 
@@ -169,15 +173,19 @@ class BusinessPortfolioService:
         )
         query.execute()
 
-    def list_expired_and_expiring_access_urls(self, threshold_already_expired=None):
-
-        threshold_expires_soon = threshold_already_expired + self.access_url_expiring_soon_days * 24 * 60 * 60
-
-        return list(
-            BusinessPortfolioAccessUrl.select(BusinessPortfolioAccessUrl, BusinessPortfolio)
-            .join(BusinessPortfolio)
-            .where(BusinessPortfolioAccessUrl.expires_at <= threshold_expires_soon)
+    def access_urls_expiration_statuses(self, threshold_already_expired):
+        rows = self.business_portfolio_repository.access_urls_expiration_statuses(
+            threshold_already_expired, self.access_url_expiring_soon_days
         )
+
+        grouped = defaultdict(dict)
+        for business_portfolio_id, business_portfolio_name, expiration_status, expiration_status_count in rows:
+            grouped[business_portfolio_id]['name'] = business_portfolio_name
+
+            grouped[business_portfolio_id].setdefault('statuses', {})
+            grouped[business_portfolio_id]['statuses'][expiration_status] = expiration_status_count
+
+        return grouped
 
 
 @service
@@ -394,28 +402,37 @@ def collect_business_portfolio_access_url_alerts(container):
     alerts = []
 
     threshold_already_expired_timestamp = int(timestamp())
-    access_urls = business_portfolio_service.list_expired_and_expiring_access_urls(
+    business_portfolios = business_portfolio_service.access_urls_expiration_statuses(
         threshold_already_expired=threshold_already_expired_timestamp
     )
 
-    for access_url in access_urls:
-        expires_at = access_url.expires_at.timestamp()
-        if expires_at <= threshold_already_expired_timestamp:
+    for business_portfolio_id, stats in business_portfolios.items():
+        if stats['statuses'].get('in_date', 0) > 0:
+            continue
+
+        if stats['statuses'].get('expires_soon', 0) > 0:
+            alerts.append(
+                Alert(
+                    code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRING_SOON,
+                    message=(f'Business portfolio access URL "{stats["name"]}" expires soon'),
+                    severity=AlertSeverity.INFO,
+                    payload={
+                        'businessPortfolioId': business_portfolio_id,
+                        'businessPortfolioName': stats["name"],
+                    },
+                )
+            )
+            continue
+
+        if stats['statuses'].get('already_expired', 0) > 0:
             alerts.append(
                 Alert(
                     code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRED,
-                    message=(
-                        f'Business portfolio access URL expired for "{access_url.business_portfolio.name}" '
-                        f'on {access_url.expires_at.isoformat()}.'
-                    ),
+                    message=(f'Business portfolio access URLs "{stats["name"]}" expired'),
                     severity=AlertSeverity.WARNING,
                     payload={
-                        'accessUrlId': access_url.id,
-                        'businessPortfolioId': access_url.business_portfolio.id,
-                        'businessPortfolioName': access_url.business_portfolio.name,
-                        'url': access_url.url,
-                        'email': access_url.email,
-                        'expiresAt': access_url.expires_at.timestamp(),
+                        'businessPortfolioId': business_portfolio_id,
+                        'businessPortfolioName': stats["name"],
                     },
                 )
             )
@@ -423,21 +440,12 @@ def collect_business_portfolio_access_url_alerts(container):
 
         alerts.append(
             Alert(
-                code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRING_SOON,
-                message=(
-                    f'Business portfolio access URL for "{access_url.business_portfolio.name}" '
-                    f'expires on {access_url.expires_at.isoformat()}.'
-                ),
-                severity=AlertSeverity.INFO,
+                code=AlertCode.FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_MISSING,
+                message=(f'Business portfolio access URLs "{stats["name"]}" expired'),
+                severity=AlertSeverity.WARNING,
                 payload={
-                    'accessUrlId': access_url.id,
-                    'businessPortfolioId': access_url.business_portfolio.id,
-                    'businessPortfolioName': access_url.business_portfolio.name,
-                    'url': access_url.url,
-                    'email': access_url.email,
-                    'expiresAt': access_url.expires_at.timestamp(),
-                    'daysUntilExpiration': (access_url.expires_at - datetime.today().replace(tzinfo=timezone.utc)).days
-                    + 1,
+                    'businessPortfolioId': business_portfolio_id,
+                    'businessPortfolioName': stats["name"],
                 },
             )
         )
