@@ -3,7 +3,7 @@ from datetime import datetime, time
 from time import time as timestamp
 from typing import Annotated
 
-from wireup import Inject, service
+from wireup import Inject, injectable
 
 from peewee import IntegrityError, fn
 from src.alerts import Alert, AlertCode, AlertSeverity, register_alert_callback
@@ -23,7 +23,7 @@ from src.facebook_pacs.entities import (
 from src.facebook_pacs.exceptions import ExecutorIsAlreadyBindError
 
 
-@service
+@injectable
 class ExecutorService:
     def get(self, id):
         try:
@@ -66,13 +66,13 @@ class ExecutorService:
         return query.scalar()
 
 
-@service
+@injectable
 class BusinessPortfolioService:
     def __init__(
         self,
         business_portfolio_repository: BusinessPortfolioRepository,
         executor_service: ExecutorService,
-        access_url_expiring_soon_days: Annotated[int, Inject(param='ACCESS_URL_EXPIRING_SOON_DAYS')],
+        access_url_expiring_soon_days: Annotated[int, Inject(config='ACCESS_URL_EXPIRING_SOON_DAYS')],
     ):
         self.business_portfolio_repository = business_portfolio_repository
         self.executor_service = executor_service
@@ -188,7 +188,7 @@ class BusinessPortfolioService:
         return grouped
 
 
-@service
+@injectable
 class AdCabinetService:
     def __init__(self, business_portfolio_service: BusinessPortfolioService):
         self.business_portfolio_service = business_portfolio_service
@@ -251,7 +251,7 @@ class AdCabinetService:
         ad_cabinet.save()
 
 
-@service
+@injectable
 class BusinessPageService:
     def get(self, id):
         try:
@@ -294,7 +294,7 @@ class BusinessPageService:
         return query.scalar()
 
 
-@service
+@injectable
 class CampaignService:
     def __init__(
         self,

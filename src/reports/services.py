@@ -2,7 +2,7 @@ import json
 from datetime import datetime, time, timedelta
 from decimal import ROUND_FLOOR, Decimal
 
-from wireup import service
+from wireup import injectable
 
 from src.core.entities import Campaign
 from src.core.enums import LeadStatus, SortOrder
@@ -15,7 +15,7 @@ from src.tracker.entities import TrackClick
 from src.tracker.services import TrackService
 
 
-@service
+@injectable
 class ReportService:
     def __init__(
         self,
@@ -341,7 +341,7 @@ class ReportService:
         return click, leads, postbacks
 
 
-@service
+@injectable
 class ReportHelperService:
     def list_expenses_distribution_parameters(self, campaign_id):
         parameters = set()

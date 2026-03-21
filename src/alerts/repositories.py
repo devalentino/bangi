@@ -1,10 +1,10 @@
-from wireup import service
+from wireup import injectable
 
 from peewee import JOIN, Case, MySQLDatabase, fn
 from src.facebook_pacs.entities import BusinessPortfolio, BusinessPortfolioAccessUrl
 
 
-@service
+@injectable
 class BusinessPortfolioRepository:
     def __init__(self, database: MySQLDatabase):
         self.database = database

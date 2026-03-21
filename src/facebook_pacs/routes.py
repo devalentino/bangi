@@ -8,25 +8,25 @@ from src.blueprint import Blueprint
 from src.container import container
 from src.core.schemas import PaginationRequestSchema
 from src.facebook_pacs.schemas import (
-    AdCabinetListResponseSchema,
-    AdCabinetRequestSchema,
-    AdCabinetResponseSchema,
-    BusinessPageListResponseSchema,
-    BusinessPageRequestSchema,
-    BusinessPageResponseSchema,
-    BusinessPortfolioAccessUrlListResponseSchema,
-    BusinessPortfolioAccessUrlRequestSchema,
-    BusinessPortfolioAccessUrlResponseSchema,
-    BusinessPortfolioListResponseSchema,
-    BusinessPortfolioRequestSchema,
-    BusinessPortfolioResponseSchema,
-    CampaignListResponseSchema,
-    CampaignRequestSchema,
-    CampaignResponseSchema,
-    ExecutorListResponseSchema,
-    ExecutorRequestSchema,
-    ExecutorResponseSchema,
-    NameFilterRequestSchema,
+    FacebookPacsAdCabinetListResponseSchema,
+    FacebookPacsAdCabinetRequestSchema,
+    FacebookPacsAdCabinetResponseSchema,
+    FacebookPacsBusinessPageListResponseSchema,
+    FacebookPacsBusinessPageRequestSchema,
+    FacebookPacsBusinessPageResponseSchema,
+    FacebookPacsBusinessPortfolioAccessUrlListResponseSchema,
+    FacebookPacsBusinessPortfolioAccessUrlRequestSchema,
+    FacebookPacsBusinessPortfolioAccessUrlResponseSchema,
+    FacebookPacsBusinessPortfolioListResponseSchema,
+    FacebookPacsBusinessPortfolioRequestSchema,
+    FacebookPacsBusinessPortfolioResponseSchema,
+    FacebookPacsCampaignListResponseSchema,
+    FacebookPacsCampaignRequestSchema,
+    FacebookPacsCampaignResponseSchema,
+    FacebookPacsExecutorListResponseSchema,
+    FacebookPacsExecutorRequestSchema,
+    FacebookPacsExecutorResponseSchema,
+    FacebookPacsNameFilterRequestSchema,
 )
 from src.facebook_pacs.services import (
     AdCabinetService,
@@ -41,8 +41,8 @@ blueprint = Blueprint('facebook_pacs', __name__, description='Facebook PACs (Per
 
 @blueprint.route('/executors')
 class Executors(MethodView):
-    @blueprint.arguments(NameFilterRequestSchema, location='query')
-    @blueprint.response(200, ExecutorListResponseSchema)
+    @blueprint.arguments(FacebookPacsNameFilterRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsExecutorListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         executor_service = container.get(ExecutorService)
@@ -64,8 +64,8 @@ class Executors(MethodView):
             'filters': {'partialName': partial_name},
         }
 
-    @blueprint.arguments(ExecutorRequestSchema)
-    @blueprint.response(201, ExecutorResponseSchema)
+    @blueprint.arguments(FacebookPacsExecutorRequestSchema)
+    @blueprint.response(201, FacebookPacsExecutorResponseSchema)
     @auth.login_required
     def post(self, executor_payload):
         executor_service = container.get(ExecutorService)
@@ -75,15 +75,15 @@ class Executors(MethodView):
 
 @blueprint.route('/executors/<int:executorId>')
 class Executor(MethodView):
-    @blueprint.response(200, ExecutorResponseSchema)
+    @blueprint.response(200, FacebookPacsExecutorResponseSchema)
     @auth.login_required
     def get(self, executorId):
         executor_service = container.get(ExecutorService)
         executor = executor_service.get(executorId)
         return humps.camelize(executor.to_dict())
 
-    @blueprint.arguments(ExecutorRequestSchema)
-    @blueprint.response(200, ExecutorResponseSchema)
+    @blueprint.arguments(FacebookPacsExecutorRequestSchema)
+    @blueprint.response(200, FacebookPacsExecutorResponseSchema)
     @auth.login_required
     def patch(self, executor_payload, executorId):
         executor_service = container.get(ExecutorService)
@@ -93,8 +93,8 @@ class Executor(MethodView):
 
 @blueprint.route('/business-portfolios')
 class BusinessPosrfolios(MethodView):
-    @blueprint.arguments(NameFilterRequestSchema, location='query')
-    @blueprint.response(200, BusinessPortfolioListResponseSchema)
+    @blueprint.arguments(FacebookPacsNameFilterRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsBusinessPortfolioListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         business_portfolio_service = container.get(BusinessPortfolioService)
@@ -116,8 +116,8 @@ class BusinessPosrfolios(MethodView):
             'filters': {'partialName': partial_name},
         }
 
-    @blueprint.arguments(BusinessPortfolioRequestSchema)
-    @blueprint.response(201, BusinessPortfolioResponseSchema)
+    @blueprint.arguments(FacebookPacsBusinessPortfolioRequestSchema)
+    @blueprint.response(201, FacebookPacsBusinessPortfolioResponseSchema)
     @auth.login_required
     def post(self, business_portfolio_payload):
         business_portfolio_service = container.get(BusinessPortfolioService)
@@ -129,15 +129,15 @@ class BusinessPosrfolios(MethodView):
 
 @blueprint.route('/business-portfolios/<int:businessPortfolioId>')
 class BusinessPortfolio(MethodView):
-    @blueprint.response(200, BusinessPortfolioResponseSchema)
+    @blueprint.response(200, FacebookPacsBusinessPortfolioResponseSchema)
     @auth.login_required
     def get(self, businessPortfolioId):
         business_portfolio_service = container.get(BusinessPortfolioService)
         business_portfolio = business_portfolio_service.get(businessPortfolioId)
         return humps.camelize(business_portfolio.to_dict())
 
-    @blueprint.arguments(BusinessPortfolioRequestSchema)
-    @blueprint.response(200, BusinessPortfolioResponseSchema)
+    @blueprint.arguments(FacebookPacsBusinessPortfolioRequestSchema)
+    @blueprint.response(200, FacebookPacsBusinessPortfolioResponseSchema)
     @auth.login_required
     def patch(self, business_portfolio_payload, businessPortfolioId):
         business_portfolio_service = container.get(BusinessPortfolioService)
@@ -149,14 +149,14 @@ class BusinessPortfolio(MethodView):
 
 @blueprint.route('/business-portfolios/<int:businessPortfolioId>/executors/<int:executorId>')
 class BusinessPortfolioAssignExecutor(MethodView):
-    @blueprint.response(201, BusinessPortfolioResponseSchema)
+    @blueprint.response(201, FacebookPacsBusinessPortfolioResponseSchema)
     @auth.login_required
     def post(self, businessPortfolioId, executorId):
         business_portfolio_service = container.get(BusinessPortfolioService)
         business_portfolio = business_portfolio_service.bind_executor(businessPortfolioId, executorId)
         return humps.camelize(business_portfolio.to_dict())
 
-    @blueprint.response(204, BusinessPortfolioResponseSchema)
+    @blueprint.response(204, FacebookPacsBusinessPortfolioResponseSchema)
     @auth.login_required
     def delete(self, businessPortfolioId, executorId):
         business_portfolio_service = container.get(BusinessPortfolioService)
@@ -166,7 +166,7 @@ class BusinessPortfolioAssignExecutor(MethodView):
 @blueprint.route('/business-portfolios/<int:businessPortfolioId>/access-urls')
 class BusinessPortfolioAccessUrls(MethodView):
     @blueprint.arguments(PaginationRequestSchema, location='query')
-    @blueprint.response(200, BusinessPortfolioAccessUrlListResponseSchema)
+    @blueprint.response(200, FacebookPacsBusinessPortfolioAccessUrlListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload, businessPortfolioId):
         business_portfolio_service = container.get(BusinessPortfolioService)
@@ -184,8 +184,8 @@ class BusinessPortfolioAccessUrls(MethodView):
             'pagination': parameters_payload | {'total': count},
         }
 
-    @blueprint.arguments(BusinessPortfolioAccessUrlRequestSchema)
-    @blueprint.response(201, BusinessPortfolioAccessUrlResponseSchema)
+    @blueprint.arguments(FacebookPacsBusinessPortfolioAccessUrlRequestSchema)
+    @blueprint.response(201, FacebookPacsBusinessPortfolioAccessUrlResponseSchema)
     @auth.login_required
     def post(self, access_url_payload, businessPortfolioId):
         business_portfolio_service = container.get(BusinessPortfolioService)
@@ -209,8 +209,8 @@ class BusinessPortfolioAccessUrl(MethodView):
 
 @blueprint.route('/ad-cabinets')
 class AdCabinets(MethodView):
-    @blueprint.arguments(NameFilterRequestSchema, location='query')
-    @blueprint.response(200, AdCabinetListResponseSchema)
+    @blueprint.arguments(FacebookPacsNameFilterRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsAdCabinetListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         ad_cabinet_service = container.get(AdCabinetService)
@@ -232,8 +232,8 @@ class AdCabinets(MethodView):
             'filters': {'partialName': partial_name},
         }
 
-    @blueprint.arguments(AdCabinetRequestSchema)
-    @blueprint.response(201, AdCabinetResponseSchema)
+    @blueprint.arguments(FacebookPacsAdCabinetRequestSchema)
+    @blueprint.response(201, FacebookPacsAdCabinetResponseSchema)
     @auth.login_required
     def post(self, ad_cabinet_payload):
         ad_cabinet_service = container.get(AdCabinetService)
@@ -243,15 +243,15 @@ class AdCabinets(MethodView):
 
 @blueprint.route('/ad-cabinets/<int:adCabinetId>')
 class AdCabinet(MethodView):
-    @blueprint.response(200, AdCabinetResponseSchema)
+    @blueprint.response(200, FacebookPacsAdCabinetResponseSchema)
     @auth.login_required
     def get(self, adCabinetId):
         ad_cabinet_service = container.get(AdCabinetService)
         ad_cabinet = ad_cabinet_service.get(adCabinetId)
         return humps.camelize(ad_cabinet.to_dict())
 
-    @blueprint.arguments(AdCabinetRequestSchema)
-    @blueprint.response(200, AdCabinetResponseSchema)
+    @blueprint.arguments(FacebookPacsAdCabinetRequestSchema)
+    @blueprint.response(200, FacebookPacsAdCabinetResponseSchema)
     @auth.login_required
     def patch(self, ad_cabinet_payload, adCabinetId):
         ad_cabinet_service = container.get(AdCabinetService)
@@ -263,7 +263,7 @@ class AdCabinet(MethodView):
 
 @blueprint.route('/ad-cabinets/<int:adCabinetId>/business-portfolio/<int:businessPortfolioId>')
 class AdCabinetAssignBusinessPortfolio(MethodView):
-    @blueprint.response(201, AdCabinetResponseSchema)
+    @blueprint.response(201, FacebookPacsAdCabinetResponseSchema)
     @auth.login_required
     def post(self, adCabinetId, businessPortfolioId):
         ad_cabinet_service = container.get(AdCabinetService)
@@ -280,7 +280,7 @@ class AdCabinetAssignBusinessPortfolio(MethodView):
 @blueprint.route('/campaigns')
 class Campaigns(MethodView):
     @blueprint.arguments(PaginationRequestSchema, location='query')
-    @blueprint.response(200, CampaignListResponseSchema)
+    @blueprint.response(200, FacebookPacsCampaignListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         campaign_service = container.get(CampaignService)
@@ -297,7 +297,7 @@ class Campaigns(MethodView):
             'pagination': parameters_payload | {'total': count},
         }
 
-    @blueprint.arguments(CampaignRequestSchema)
+    @blueprint.arguments(FacebookPacsCampaignRequestSchema)
     @blueprint.response(201)
     @auth.login_required
     def post(self, campaign_payload):
@@ -316,14 +316,14 @@ class Campaigns(MethodView):
 
 @blueprint.route('/campaigns/<int:campaignId>')
 class Campaign(MethodView):
-    @blueprint.response(200, CampaignResponseSchema)
+    @blueprint.response(200, FacebookPacsCampaignResponseSchema)
     @auth.login_required
     def get(self, campaignId):
         campaign_service = container.get(CampaignService)
         campaign = campaign_service.get(campaignId)
         return humps.camelize(campaign.to_dict() | {'name': campaign.core_campaign.name})
 
-    @blueprint.arguments(CampaignRequestSchema)
+    @blueprint.arguments(FacebookPacsCampaignRequestSchema)
     @blueprint.response(200)
     @auth.login_required
     def patch(self, campaign_payload, campaignId):
@@ -345,8 +345,8 @@ class Campaign(MethodView):
 
 @blueprint.route('/business-pages')
 class BusinessPages(MethodView):
-    @blueprint.arguments(NameFilterRequestSchema, location='query')
-    @blueprint.response(200, BusinessPageListResponseSchema)
+    @blueprint.arguments(FacebookPacsNameFilterRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsBusinessPageListResponseSchema)
     @auth.login_required
     def get(self, parameters_payload):
         business_page_service = container.get(BusinessPageService)
@@ -368,8 +368,8 @@ class BusinessPages(MethodView):
             'filters': {'partialName': partial_name},
         }
 
-    @blueprint.arguments(BusinessPageRequestSchema)
-    @blueprint.response(201, BusinessPageResponseSchema)
+    @blueprint.arguments(FacebookPacsBusinessPageRequestSchema)
+    @blueprint.response(201, FacebookPacsBusinessPageResponseSchema)
     @auth.login_required
     def post(self, business_page_payload):
         business_page_service = container.get(BusinessPageService)
@@ -379,15 +379,15 @@ class BusinessPages(MethodView):
 
 @blueprint.route('/business-pages/<int:businessPageId>')
 class BusinessPage(MethodView):
-    @blueprint.response(200, BusinessPageResponseSchema)
+    @blueprint.response(200, FacebookPacsBusinessPageResponseSchema)
     @auth.login_required
     def get(self, businessPageId):
         business_page_service = container.get(BusinessPageService)
         business_page = business_page_service.get(businessPageId)
         return humps.camelize(business_page.to_dict())
 
-    @blueprint.arguments(BusinessPageRequestSchema)
-    @blueprint.response(200, BusinessPageResponseSchema)
+    @blueprint.arguments(FacebookPacsBusinessPageRequestSchema)
+    @blueprint.response(200, FacebookPacsBusinessPageResponseSchema)
     @auth.login_required
     def patch(self, business_page_payload, businessPageId):
         business_page_service = container.get(BusinessPageService)

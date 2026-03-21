@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from wireup import service
+from wireup import injectable
 
 from peewee import fn
 from src.core.entities import Campaign
@@ -11,7 +11,7 @@ from src.tracker.entities import TrackClick, TrackLead, TrackPostback
 logger = logging.getLogger(__name__)
 
 
-@service
+@injectable
 class TrackService:
 
     def _get_campaign_by_click_id(self, click_id: str) -> Optional[Campaign]:

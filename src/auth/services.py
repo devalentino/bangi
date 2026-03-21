@@ -1,14 +1,14 @@
 from typing import Annotated
 
-from wireup import Inject, service
+from wireup import Inject, injectable
 
 
-@service(lifetime='singleton')
+@injectable(lifetime='singleton')
 class AuthenticationService:
     def __init__(
         self,
-        basic_authentication_username: Annotated[str, Inject(param='BASIC_AUTHENTICATION_USERNAME')],
-        basic_authentication_password: Annotated[str, Inject(param='BASIC_AUTHENTICATION_PASSWORD')],
+        basic_authentication_username: Annotated[str, Inject(config='BASIC_AUTHENTICATION_USERNAME')],
+        basic_authentication_password: Annotated[str, Inject(config='BASIC_AUTHENTICATION_PASSWORD')],
     ):
         self.basic_authentication_username = basic_authentication_username
         self.basic_authentication_password = basic_authentication_password
