@@ -8,6 +8,9 @@ class TrackClick(Entity):
     campaign_id = IntegerField()
     parameters = JSONField()
 
+    class Meta:
+        table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')
+
 
 class TrackPostback(Entity):
     click_id = UUIDField()
@@ -16,7 +19,13 @@ class TrackPostback(Entity):
     cost_value = DecimalField(null=True)
     currency = CharField(null=True)
 
+    class Meta:
+        table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')
+
 
 class TrackLead(Entity):
     click_id = UUIDField()
     parameters = JSONField()
+
+    class Meta:
+        table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')

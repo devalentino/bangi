@@ -17,9 +17,11 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     """Write your migrations here."""
     for table_name in TRACK_TABLES:
         database.execute_sql(f'ALTER TABLE `{table_name}` MODIFY COLUMN `click_id` UUID NOT NULL')
+        database.execute_sql(f'ALTER TABLE `{table_name}` ENGINE=Aria TRANSACTIONAL=0')
 
 
 def rollback(migrator: Migrator, database: pw.Database, *, fake=False):
     """Write your rollback migrations here."""
     for table_name in TRACK_TABLES:
+        database.execute_sql(f'ALTER TABLE `{table_name}` ENGINE=InnoDB')
         database.execute_sql(f'ALTER TABLE `{table_name}` MODIFY COLUMN `click_id` VARCHAR(255) NOT NULL')
