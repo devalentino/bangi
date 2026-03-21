@@ -12,7 +12,7 @@ LOGGING_CONFIG = {
     },
     'handlers': {
         'json_to_console': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'json',
             'stream': sys.stdout,
@@ -22,7 +22,7 @@ LOGGING_CONFIG = {
         'root': {
             'handlers': ['json_to_console'],
             'propagate': True,
-            'level': 'DEBUG',
+            'level': 'INFO',
         }
     },
 }
