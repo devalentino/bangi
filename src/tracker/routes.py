@@ -76,7 +76,7 @@ class Process(MethodView):
 
         click_id = process_payload.pop('clickId', None)
         if click_id is None:
-            click_id = str(uuid4())
+            click_id = uuid4()
 
         track_click_service.track_click(click_id, campaign_id=campaignId, parameters=process_payload)
 

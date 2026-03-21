@@ -5,6 +5,10 @@ from unittest import mock
 import pytest
 
 
+def click_uuid(value):
+    return f'00000000-0000-0000-0000-{value:012d}'
+
+
 class TestExpensesReport:
     @pytest.fixture
     def expenses_distribution_parameter(self):
@@ -135,7 +139,7 @@ class TestExpensesReport:
         write_to_db(
             'track_click',
             {
-                'click_id': 'click-1',
+                'click_id': click_uuid(1),
                 'campaign_id': campaign['id'],
                 'parameters': {'utm_source': 'fb', 'ad_name': 'ad1'},
                 'created_at': timestamp - 24 * 60 * 60,
@@ -145,7 +149,7 @@ class TestExpensesReport:
         write_to_db(
             'track_click',
             {
-                'click_id': 'click-2',
+                'click_id': click_uuid(2),
                 'campaign_id': campaign['id'],
                 'parameters': {'utm_source': 'fb', 'ad_name': 'ad2'},
                 'created_at': timestamp,
@@ -155,7 +159,7 @@ class TestExpensesReport:
         write_to_db(  # out of filter
             'track_click',
             {
-                'click_id': 'click-2',
+                'click_id': click_uuid(3),
                 'campaign_id': campaign['id'],
                 'parameters': {'utm_source': 'fb', 'ad_name': 'ad2'},
                 'created_at': timestamp - 2 * 24 * 60 * 60,

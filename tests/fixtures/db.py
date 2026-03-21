@@ -1,4 +1,5 @@
 import json
+from uuid import UUID
 
 import pytest
 from pymysql import cursors
@@ -11,7 +12,10 @@ def write_to_db(mysql):
         value_placeholders = [f"%({key})s" for key in payload.keys()]
 
         query = f'INSERT INTO {table} ({", ".join(column_names)}) VALUES ({", ".join(value_placeholders)})'
-        values = {k: json.dumps(v) if isinstance(v, (list, dict)) else v for k, v in payload.items()}
+        values = {
+            k: str(v) if isinstance(v, UUID) else json.dumps(v) if isinstance(v, (list, dict)) else v
+            for k, v in payload.items()
+        }
 
         with mysql.cursor(cursors.DictCursor) as cur:
             cur.execute(query, values)
@@ -39,6 +43,7 @@ def read_from_db(mysql):
         if filters is not None:
             column_names = " AND ".join(f"{column_name}=%({column_name})s" for column_name, value in filters.items())
             query += f"WHERE {column_names}"
+            filters = {k: str(v) if isinstance(v, UUID) else v for k, v in filters.items()}
 
         with mysql.cursor(cursors.DictCursor) as cur:
             cur.execute(query, filters)

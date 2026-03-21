@@ -84,7 +84,7 @@ class PostbacksReportRequestSchema(PaginationRequestSchema, PostbacksReportFilte
 
 
 class LeadReportResponseListItem(Schema):
-    clickId = fields.String(required=True)
+    clickId = fields.UUID(required=True)
     status = fields.String(allow_none=True)
     costValue = fields.Decimal(places=2, allow_none=True)
     currency = fields.String(allow_none=True)
@@ -111,7 +111,7 @@ class LeadResponseLeadItem(Schema):
 
 
 class LeadResponseSchema(Schema):
-    clickId = fields.String(required=True)
+    clickId = fields.UUID(required=True)
     campaignId = fields.Integer(required=True)
     campaignName = fields.String(required=True)
     parameters = fields.Dict(required=True)

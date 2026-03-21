@@ -2,6 +2,10 @@ import json
 from unittest import mock
 
 
+def click_uuid(value):
+    return f'00000000-0000-0000-0000-{value:012d}'
+
+
 class TestGetLeads:
     def test_get_leads(self, client, authorization, campaign, campaign_payload, timestamp, write_to_db):
         other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Other Campaign'})
@@ -9,7 +13,7 @@ class TestGetLeads:
         first_click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-1',
+                'click_id': click_uuid(1),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'fb'},
                 'created_at': timestamp - 20,
@@ -18,7 +22,7 @@ class TestGetLeads:
         second_click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-2',
+                'click_id': click_uuid(2),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'tt'},
                 'created_at': timestamp - 10,
@@ -27,7 +31,7 @@ class TestGetLeads:
         third_click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-4',
+                'click_id': click_uuid(4),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'gg'},
                 'created_at': timestamp - 5,
@@ -36,7 +40,7 @@ class TestGetLeads:
         other_click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-3',
+                'click_id': click_uuid(3),
                 'campaign_id': other_campaign['id'],
                 'parameters': {'source': 'native'},
                 'created_at': timestamp,
@@ -140,7 +144,7 @@ class TestGetLeads:
         write_to_db(
             'track_click',
             {
-                'click_id': 'click-without-postback',
+                'click_id': click_uuid(11),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'fb'},
                 'created_at': timestamp - 20,
@@ -149,7 +153,7 @@ class TestGetLeads:
         click_with_lead = write_to_db(
             'track_click',
             {
-                'click_id': 'click-with-lead',
+                'click_id': click_uuid(12),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'gg'},
                 'created_at': timestamp - 15,
@@ -158,7 +162,7 @@ class TestGetLeads:
         click_with_postback = write_to_db(
             'track_click',
             {
-                'click_id': 'click-with-postback',
+                'click_id': click_uuid(13),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'tt'},
                 'created_at': timestamp - 10,
@@ -222,7 +226,7 @@ class TestGetLeads:
         click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-1',
+                'click_id': click_uuid(21),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'fb', 'ad_name': 'ad-1'},
                 'created_at': timestamp - 20,

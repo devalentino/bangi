@@ -4,6 +4,10 @@ from unittest import mock
 import pytest
 
 
+def click_uuid(value):
+    return f'00000000-0000-0000-0000-{value:012d}'
+
+
 def test_get_report(client, authorization, campaign, statistics_expenses, today):
     start_date = today - timedelta(days=5)
     end_date = today
@@ -835,7 +839,7 @@ def test_get_report__skip_clicks_without_parameters_filter(
     write_to_db(
         'track_click',
         {
-            'click_id': 'click-empty-params',
+            'click_id': click_uuid(101),
             'campaign_id': campaign['id'],
             'parameters': {},
             'created_at': timestamp,
@@ -844,7 +848,7 @@ def test_get_report__skip_clicks_without_parameters_filter(
     write_to_db(
         'track_click',
         {
-            'click_id': 'click-with-params',
+            'click_id': click_uuid(102),
             'campaign_id': campaign['id'],
             'parameters': {'utm_source': 'fb'},
             'created_at': timestamp,
@@ -881,7 +885,7 @@ def test_get_report__skip_clicks_without_parameters_filter(
 def test_get_report__zero_expenses_does_not_cause_division_by_zero(
     client, authorization, campaign, write_to_db, timestamp, today, click_parameters, postback_parameters
 ):
-    click_id = 'click-zero-expenses'
+    click_id = click_uuid(103)
     write_to_db(
         'track_click',
         {
@@ -956,9 +960,9 @@ def test_get_report__does_not_count_statistics_outside_filter_boundaries(
     period_start_timestamp = int(datetime.combine(today, datetime.min.time()).timestamp())
     period_end_timestamp = int(datetime.combine(today, datetime.max.time()).timestamp())
 
-    in_filter_click_id = 'click-in-filter'
-    before_filter_click_id = 'click-before-filter'
-    after_filter_click_id = 'click-after-filter'
+    in_filter_click_id = click_uuid(104)
+    before_filter_click_id = click_uuid(105)
+    after_filter_click_id = click_uuid(106)
 
     write_to_db(
         'track_click',
