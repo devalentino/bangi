@@ -6,6 +6,7 @@ from wireup import Inject, service
 
 from peewee import JOIN, Case, MySQLDatabase, fn
 from src.core.enums import LeadStatus
+from src.core.utils import log_execution_time
 from src.reports.entities import Expense
 from src.tracker.entities import TrackClick, TrackLead, TrackPostback
 
@@ -27,6 +28,7 @@ class StatisticsReportRepository:
 
         return period_start_timestamp, period_end_timestamp
 
+    @log_execution_time
     def _leads_statistics(self, parameters):
         period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
         cost_value = Case(
@@ -106,6 +108,7 @@ class StatisticsReportRepository:
         cursor = self.database.execute(query)
         return cursor.fetchall()
 
+    @log_execution_time
     def _available_parameters(self, parameters):
         period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
         query = TrackClick.select(TrackClick.parameters).where(
@@ -136,6 +139,7 @@ class StatisticsReportRepository:
         cursor = self.database.execute(query)
         return cursor.fetchall()
 
+    @log_execution_time
     def get_leads(self, page, page_size, sort_by, desc, campaign_id):
         order_by = getattr(TrackClick, sort_by)
         if desc:
@@ -191,7 +195,6 @@ class StatisticsReportRepository:
         total = query.count()
 
         query = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
-
         return list(query.dicts()), total
 
     def get_lead(self, click_id):
