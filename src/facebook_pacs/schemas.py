@@ -6,84 +6,84 @@ from src.core.enums import CostModel, Currency
 from src.core.schemas import PaginationRequestSchema, PaginationResponseSchema, Schema, validate_status_mapper
 
 
-class NameFilterResponseSchema(Schema):
+class FacebookPacsNameFilterResponseSchema(Schema):
     partialName = fields.String(allow_none=True, required=True)
 
 
-class BusinessPortfolioNestedResponseSchema(Schema):
+class FacebookPacsBusinessPortfolioNestedResponseSchema(Schema):
     id = fields.Integer(required=True)
     name = fields.String(required=True)
     isBanned = fields.Boolean(required=True)
 
 
-class ExecutorRequestSchema(Schema):
+class FacebookPacsExecutorRequestSchema(Schema):
     name = fields.String(required=True)
     isBanned = fields.Boolean(required=True)
 
 
-class ExecutorResponseSchema(ExecutorRequestSchema):
+class FacebookPacsExecutorResponseSchema(FacebookPacsExecutorRequestSchema):
     id = fields.Integer(required=True)
 
 
-class NameFilterRequestSchema(PaginationRequestSchema):
+class FacebookPacsNameFilterRequestSchema(PaginationRequestSchema):
     partialName = fields.String(load_default=None)
 
 
-class AdCabinetRequestSchema(Schema):
+class FacebookPacsAdCabinetRequestSchema(Schema):
     name = fields.String(required=True)
     isBanned = fields.Boolean(required=True)
 
 
-class AdCabinetResponseSchema(ExecutorRequestSchema):
+class FacebookPacsAdCabinetResponseSchema(FacebookPacsAdCabinetRequestSchema):
     id = fields.Integer(required=True)
-    businessPortfolio = fields.Nested(BusinessPortfolioNestedResponseSchema())
+    businessPortfolio = fields.Nested(FacebookPacsBusinessPortfolioNestedResponseSchema())
 
 
-class AdCabinetListResponseSchema(Schema):
-    content = fields.Nested(AdCabinetResponseSchema(many=True), required=True)
+class FacebookPacsAdCabinetListResponseSchema(Schema):
+    content = fields.Nested(FacebookPacsAdCabinetResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
-    filters = fields.Nested(NameFilterResponseSchema, required=True)
+    filters = fields.Nested(FacebookPacsNameFilterResponseSchema, required=True)
 
 
-class BusinessPortfolioRequestSchema(Schema):
+class FacebookPacsBusinessPortfolioRequestSchema(Schema):
     name = fields.String(required=True)
     isBanned = fields.Boolean(required=True)
 
 
-class BusinessPortfolioResponseSchema(ExecutorRequestSchema):
+class FacebookPacsBusinessPortfolioResponseSchema(FacebookPacsBusinessPortfolioRequestSchema):
     id = fields.Integer(required=True)
-    executors = fields.Nested(ExecutorResponseSchema(many=True), required=True)
-    adCabinets = fields.Nested(AdCabinetResponseSchema(many=True), required=True)
+    executors = fields.Nested(FacebookPacsExecutorResponseSchema(many=True), required=True)
+    adCabinets = fields.Nested(FacebookPacsAdCabinetResponseSchema(many=True), required=True)
 
 
-class ExecutorListResponseSchema(Schema):
-    content = fields.Nested(ExecutorResponseSchema(many=True), required=True)
+class FacebookPacsExecutorListResponseSchema(Schema):
+    content = fields.Nested(FacebookPacsExecutorResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
-    filters = fields.Nested(NameFilterResponseSchema, required=True)
+    filters = fields.Nested(FacebookPacsNameFilterResponseSchema, required=True)
 
 
-class BusinessPortfolioListResponseSchema(Schema):
-    content = fields.Nested(BusinessPortfolioResponseSchema(many=True), required=True)
+class FacebookPacsBusinessPortfolioListResponseSchema(Schema):
+    content = fields.Nested(FacebookPacsBusinessPortfolioResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
-    filters = fields.Nested(NameFilterResponseSchema, required=True)
+    filters = fields.Nested(FacebookPacsNameFilterResponseSchema, required=True)
 
 
-class BusinessPageRequestSchema(Schema):
+class FacebookPacsBusinessPageRequestSchema(Schema):
     name = fields.String(required=True)
     isBanned = fields.Boolean(required=True)
 
 
-class BusinessPageResponseSchema(BusinessPageRequestSchema):
+class FacebookPacsBusinessPageResponseSchema(FacebookPacsBusinessPageRequestSchema):
     id = fields.Integer(required=True)
 
 
-class BusinessPageListResponseSchema(Schema):
-    content = fields.Nested(BusinessPageResponseSchema(many=True), required=True)
+class FacebookPacsBusinessPageListResponseSchema(Schema):
+    content = fields.Nested(FacebookPacsBusinessPageResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
-    filters = fields.Nested(NameFilterResponseSchema, required=True)
+    filters = fields.Nested(FacebookPacsNameFilterResponseSchema, required=True)
 
 
-class CampaignRequestSchema(Schema):
+class FacebookPacsCampaignRequestSchema(Schema):
     name = fields.String(required=True)
     costModel = fields.Enum(CostModel, required=True)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
@@ -98,29 +98,29 @@ class CampaignRequestSchema(Schema):
         validate_status_mapper(data.get('statusMapper'))
 
 
-class CampaignResponseSchema(Schema):
+class FacebookPacsCampaignResponseSchema(Schema):
     id = fields.Integer(required=True)
     name = fields.String(required=True)
-    executor = fields.Nested(ExecutorResponseSchema, required=True)
-    adCabinet = fields.Nested(AdCabinetResponseSchema, required=True)
-    businessPage = fields.Nested(BusinessPageResponseSchema, required=True)
+    executor = fields.Nested(FacebookPacsExecutorResponseSchema, required=True)
+    adCabinet = fields.Nested(FacebookPacsAdCabinetResponseSchema, required=True)
+    businessPage = fields.Nested(FacebookPacsBusinessPageResponseSchema, required=True)
 
 
-class CampaignListResponseSchema(Schema):
-    content = fields.Nested(CampaignResponseSchema(many=True), required=True)
+class FacebookPacsCampaignListResponseSchema(Schema):
+    content = fields.Nested(FacebookPacsCampaignResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
 
 
-class BusinessPortfolioAccessUrlRequestSchema(Schema):
+class FacebookPacsBusinessPortfolioAccessUrlRequestSchema(Schema):
     url = fields.String(required=True)
     email = fields.Email(allow_none=True, load_default=None)
     expiresAt = fields.Date(required=True)
 
 
-class BusinessPortfolioAccessUrlResponseSchema(BusinessPortfolioAccessUrlRequestSchema):
+class FacebookPacsBusinessPortfolioAccessUrlResponseSchema(FacebookPacsBusinessPortfolioAccessUrlRequestSchema):
     id = fields.Integer(required=True)
 
 
-class BusinessPortfolioAccessUrlListResponseSchema(Schema):
-    content = fields.Nested(BusinessPortfolioAccessUrlResponseSchema(many=True), required=True)
+class FacebookPacsBusinessPortfolioAccessUrlListResponseSchema(Schema):
+    content = fields.Nested(FacebookPacsBusinessPortfolioAccessUrlResponseSchema(many=True), required=True)
     pagination = fields.Nested(PaginationResponseSchema, required=True)
