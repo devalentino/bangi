@@ -3,7 +3,7 @@ import logging
 from collections.abc import Callable, Iterable
 from typing import TypeAlias
 
-from wireup import service
+from wireup import injectable
 
 from src.alerts.models import Alert
 
@@ -20,7 +20,7 @@ def register_alert_callback(callback: AlertCallback) -> AlertCallback:
     return callback
 
 
-@service(lifetime='singleton')
+@injectable(lifetime='singleton')
 class AlertService:
     def __init__(self):
         self._callbacks = _REGISTERED_ALERT_CALLBACKS
