@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, time
 from typing import Annotated
 

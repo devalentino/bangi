@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from functools import wraps
 from time import perf_counter
 
-
 logger = logging.getLogger(__name__)
 
 
