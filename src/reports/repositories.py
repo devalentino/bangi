@@ -2,7 +2,7 @@ from datetime import datetime, time
 from typing import Annotated
 
 from pymysql.converters import escape_string
-from wireup import Inject, service
+from wireup import Inject, injectable
 
 from peewee import JOIN, Case, MySQLDatabase, fn
 from src.core.enums import LeadStatus
@@ -11,9 +11,9 @@ from src.reports.entities import Expense
 from src.tracker.entities import TrackClick, TrackLead, TrackPostback
 
 
-@service
+@injectable
 class StatisticsReportRepository:
-    def __init__(self, database: MySQLDatabase, gap_seconds: Annotated[int, Inject(param='REPORT_GAP_SECONDS')]):
+    def __init__(self, database: MySQLDatabase, gap_seconds: Annotated[int, Inject(config='REPORT_GAP_SECONDS')]):
         self.database = database
         self.gap_seconds = gap_seconds
 

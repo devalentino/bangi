@@ -10,7 +10,7 @@ import httpx
 import IP2Location
 import rule_engine
 import user_agents
-from wireup import Inject, injectable, service
+from wireup import Inject, injectable
 
 from peewee import fn
 from src.core.entities import Campaign, Flow
@@ -29,7 +29,7 @@ class IpLocator(Protocol):
 
 @injectable(as_type=IpLocator)
 class Ip2LocationLocator:
-    def __init__(self, ip2location_db_path: Annotated[str, Inject(param='IP2LOCATION_DB_PATH')]):
+    def __init__(self, ip2location_db_path: Annotated[str, Inject(config='IP2LOCATION_DB_PATH')]):
         self.ip2location = None
         try:
             self.ip2location = IP2Location.IP2Location(ip2location_db_path)
@@ -50,7 +50,7 @@ class Ip2LocationLocator:
         return country
 
 
-@service
+@injectable
 class ClientService:
     def __init__(self, ip_locator: IpLocator):
         self.ip_locator = ip_locator
@@ -67,7 +67,7 @@ class ClientService:
         )
 
 
-@service
+@injectable
 class CampaignService:
     def get(self, id):
         try:
@@ -122,12 +122,12 @@ class CampaignService:
         return Campaign.select(fn.count(Campaign.id)).scalar()
 
 
-@service
+@injectable
 class FlowService:
     def __init__(
         self,
-        landing_pages_base_path: Annotated[str, Inject(param='LANDING_PAGES_BASE_PATH')],
-        landing_renderer_base_url: Annotated[str, Inject(param='LANDING_PAGE_RENDERER_BASE_URL')],
+        landing_pages_base_path: Annotated[str, Inject(config='LANDING_PAGES_BASE_PATH')],
+        landing_renderer_base_url: Annotated[str, Inject(config='LANDING_PAGE_RENDERER_BASE_URL')],
     ):
         self.landing_pages_base_path = landing_pages_base_path
         self.landing_renderer_base_url = landing_renderer_base_url
