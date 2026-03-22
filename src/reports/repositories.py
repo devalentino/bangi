@@ -139,6 +139,18 @@ class StatisticsReportRepository:
         cursor = self.database.execute(query)
         return cursor.fetchall()
 
+    def _get_leads_total(self, campaign_id):
+        query = (
+            TrackClick.select(fn.COUNT(fn.DISTINCT(TrackClick.id)))
+            .join(TrackLead, JOIN.LEFT_OUTER, on=(TrackClick.click_id == TrackLead.click_id))
+            .join(TrackPostback, JOIN.LEFT_OUTER, on=(TrackClick.click_id == TrackPostback.click_id))
+            .where(
+                (TrackClick.campaign_id == campaign_id)
+                & (TrackLead.id.is_null(False) | TrackPostback.id.is_null(False))
+            )
+        )
+        return query.scalar() or 0
+
     @log_execution_time
     def get_leads(self, page, page_size, sort_by, desc, campaign_id):
         order_by = getattr(TrackClick, sort_by)
@@ -192,7 +204,7 @@ class StatisticsReportRepository:
             )
         )
 
-        total = query.count()
+        total = self._get_leads_total(campaign_id)
 
         query = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
         return list(query.dicts()), total

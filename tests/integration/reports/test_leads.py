@@ -1,5 +1,8 @@
 import json
 from unittest import mock
+from uuid import uuid4
+
+from tests.fixtures.utils import click_uuid
 
 
 class TestGetLeads:
@@ -9,7 +12,7 @@ class TestGetLeads:
         first_click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-1',
+                'click_id': click_uuid(1),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'fb'},
                 'created_at': timestamp - 20,
@@ -18,7 +21,7 @@ class TestGetLeads:
         second_click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-2',
+                'click_id': click_uuid(2),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'tt'},
                 'created_at': timestamp - 10,
@@ -27,7 +30,7 @@ class TestGetLeads:
         third_click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-4',
+                'click_id': click_uuid(4),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'gg'},
                 'created_at': timestamp - 5,
@@ -36,7 +39,7 @@ class TestGetLeads:
         other_click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-3',
+                'click_id': click_uuid(3),
                 'campaign_id': other_campaign['id'],
                 'parameters': {'source': 'native'},
                 'created_at': timestamp,
@@ -140,7 +143,7 @@ class TestGetLeads:
         write_to_db(
             'track_click',
             {
-                'click_id': 'click-without-postback',
+                'click_id': click_uuid(11),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'fb'},
                 'created_at': timestamp - 20,
@@ -149,7 +152,7 @@ class TestGetLeads:
         click_with_lead = write_to_db(
             'track_click',
             {
-                'click_id': 'click-with-lead',
+                'click_id': click_uuid(12),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'gg'},
                 'created_at': timestamp - 15,
@@ -158,7 +161,7 @@ class TestGetLeads:
         click_with_postback = write_to_db(
             'track_click',
             {
-                'click_id': 'click-with-postback',
+                'click_id': click_uuid(13),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'tt'},
                 'created_at': timestamp - 10,
@@ -222,7 +225,7 @@ class TestGetLeads:
         click = write_to_db(
             'track_click',
             {
-                'click_id': 'click-1',
+                'click_id': click_uuid(21),
                 'campaign_id': campaign['id'],
                 'parameters': {'source': 'fb', 'ad_name': 'ad-1'},
                 'created_at': timestamp - 20,
@@ -305,7 +308,7 @@ class TestGetLeads:
         }
 
     def test_get_lead__non_existent(self, client, authorization):
-        response = client.get('/api/v2/reports/leads/missing-click', headers={'Authorization': authorization})
+        response = client.get(f'/api/v2/reports/leads/{uuid4()}', headers={'Authorization': authorization})
 
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Click does not exist'}

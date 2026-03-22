@@ -7,6 +7,7 @@ INTERVAL_SECONDS="${INTERVAL_SECONDS:-5}"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-}"
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
 stats_file="$OUT_DIR/docker-stats.csv"

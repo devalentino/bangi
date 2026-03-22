@@ -116,7 +116,7 @@ class PostbacksReport(MethodView):
         }
 
 
-@blueprint.route('/leads/<string:clickId>')
+@blueprint.route('/leads/<uuid:clickId>')
 class Lead(MethodView):
     @blueprint.response(200, LeadResponseSchema)
     @auth.login_required
