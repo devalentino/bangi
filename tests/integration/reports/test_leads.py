@@ -1,5 +1,6 @@
 import json
 from unittest import mock
+from uuid import uuid4
 
 
 def click_uuid(value):
@@ -309,7 +310,7 @@ class TestGetLeads:
         }
 
     def test_get_lead__non_existent(self, client, authorization):
-        response = client.get('/api/v2/reports/leads/missing-click', headers={'Authorization': authorization})
+        response = client.get(f'/api/v2/reports/leads/{uuid4()}', headers={'Authorization': authorization})
 
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Click does not exist'}
