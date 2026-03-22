@@ -109,7 +109,7 @@ def get_connection():
 
 
 def is_local_db_host(host):
-    return host in {'localhost', '127.0.0.1', '::1', 'mariadb'}
+    return host in {'localhost', '127.0.0.1', '::1', 'mariadb', 'docker.local'}
 
 
 def confirm_remote_target(host):

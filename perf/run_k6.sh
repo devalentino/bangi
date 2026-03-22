@@ -17,7 +17,7 @@ BASE_URL="${BASE_URL:-$(default_base_url)}"
 
 is_local_host() {
   case "$1" in
-    127.0.0.1|localhost|0.0.0.0|::1)
+    127.0.0.1|localhost|0.0.0.0|::1|docker.local)
       return 0
       ;;
     *)
