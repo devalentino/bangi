@@ -141,9 +141,13 @@ class StatisticsReportRepository:
 
     def _get_leads_total(self, campaign_id):
         query = (
-            TrackLead.select(fn.COUNT(fn.DISTINCT(TrackLead.click_id)))
-            .join(TrackClick, on=(TrackLead.click_id == TrackClick.click_id))
-            .where(TrackClick.campaign_id == campaign_id)
+            TrackClick.select(fn.COUNT(fn.DISTINCT(TrackClick.id)))
+            .join(TrackLead, JOIN.LEFT_OUTER, on=(TrackClick.click_id == TrackLead.click_id))
+            .join(TrackPostback, JOIN.LEFT_OUTER, on=(TrackClick.click_id == TrackPostback.click_id))
+            .where(
+                (TrackClick.campaign_id == campaign_id)
+                & (TrackLead.id.is_null(False) | TrackPostback.id.is_null(False))
+            )
         )
         return query.scalar() or 0
 
