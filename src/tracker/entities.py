@@ -10,6 +10,7 @@ class TrackClick(Entity):
 
     class Meta:
         table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')
+        indexes = ((('click_id',), False),)
 
 
 class TrackPostback(Entity):
