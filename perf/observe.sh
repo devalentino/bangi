@@ -5,6 +5,7 @@ set -euo pipefail
 OUT_DIR="${1:-perf/out}"
 INTERVAL_SECONDS="${INTERVAL_SECONDS:-5}"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-}"
+STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 mkdir -p "$OUT_DIR"
 
@@ -13,6 +14,8 @@ health_file="$OUT_DIR/container-health.log"
 logs_file="$OUT_DIR/compose-logs.log"
 
 echo "timestamp,name,cpu_perc,mem_usage,mem_perc,net_io,block_io,pids" > "$stats_file"
+: > "$health_file"
+: > "$logs_file"
 
 collect_stats() {
   while true; do
@@ -33,7 +36,7 @@ collect_health() {
 }
 
 stream_logs() {
-  docker compose logs -f --timestamps backend mariadb >> "$logs_file" 2>&1
+  docker compose logs -f --since "$STARTED_AT" --timestamps backend mariadb >> "$logs_file" 2>&1
 }
 
 cleanup() {
