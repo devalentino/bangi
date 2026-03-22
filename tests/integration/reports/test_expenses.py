@@ -4,6 +4,8 @@ from unittest import mock
 
 import pytest
 
+from tests.fixtures.utils import click_uuid
+
 
 class TestExpensesReport:
     @pytest.fixture
@@ -135,7 +137,7 @@ class TestExpensesReport:
         write_to_db(
             'track_click',
             {
-                'click_id': 'click-1',
+                'click_id': click_uuid(1),
                 'campaign_id': campaign['id'],
                 'parameters': {'utm_source': 'fb', 'ad_name': 'ad1'},
                 'created_at': timestamp - 24 * 60 * 60,
@@ -145,7 +147,7 @@ class TestExpensesReport:
         write_to_db(
             'track_click',
             {
-                'click_id': 'click-2',
+                'click_id': click_uuid(2),
                 'campaign_id': campaign['id'],
                 'parameters': {'utm_source': 'fb', 'ad_name': 'ad2'},
                 'created_at': timestamp,
@@ -155,7 +157,7 @@ class TestExpensesReport:
         write_to_db(  # out of filter
             'track_click',
             {
-                'click_id': 'click-2',
+                'click_id': click_uuid(3),
                 'campaign_id': campaign['id'],
                 'parameters': {'utm_source': 'fb', 'ad_name': 'ad2'},
                 'created_at': timestamp - 2 * 24 * 60 * 60,

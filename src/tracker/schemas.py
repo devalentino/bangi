@@ -26,7 +26,7 @@ class TrackLeadRequestSchema(Schema):
 
 
 class TrackProcessRequestSchema(Schema):
-    clickId = fields.String(required=False)
+    clickId = fields.UUID(required=False)
 
     class Meta:
         unknown = INCLUDE

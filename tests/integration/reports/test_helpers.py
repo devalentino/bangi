@@ -1,15 +1,18 @@
+from tests.fixtures.utils import click_uuid
+
+
 def test_get_expenses_distribution_parameters(client, authorization, campaign, write_to_db):
     write_to_db(
         'track_click',
-        {'click_id': 'click-1', 'campaign_id': campaign['id'], 'parameters': {'utm_source': 'fb', 'ad_name': 'a1'}},
+        {'click_id': click_uuid(1), 'campaign_id': campaign['id'], 'parameters': {'utm_source': 'fb', 'ad_name': 'a1'}},
     )
     write_to_db(
         'track_click',
-        {'click_id': 'click-2', 'campaign_id': campaign['id'], 'parameters': {'utm_source': 'ig', 'adset': 'set1'}},
+        {'click_id': click_uuid(2), 'campaign_id': campaign['id'], 'parameters': {'utm_source': 'ig', 'adset': 'set1'}},
     )
     write_to_db(
         'track_click',
-        {'click_id': 'click-3', 'campaign_id': campaign['id'] + 1, 'parameters': {'ignored': 'value'}},
+        {'click_id': click_uuid(3), 'campaign_id': campaign['id'] + 1, 'parameters': {'ignored': 'value'}},
     )
 
     response = client.get(
@@ -25,15 +28,15 @@ def test_get_expenses_distribution_parameters(client, authorization, campaign, w
 def test_get_expenses_distribution_parameter_values(client, authorization, campaign, write_to_db):
     write_to_db(
         'track_click',
-        {'click_id': 'click-1', 'campaign_id': campaign['id'], 'parameters': {'utm_source': 'fb', 'ad_name': 'a1'}},
+        {'click_id': click_uuid(1), 'campaign_id': campaign['id'], 'parameters': {'utm_source': 'fb', 'ad_name': 'a1'}},
     )
     write_to_db(
         'track_click',
-        {'click_id': 'click-2', 'campaign_id': campaign['id'], 'parameters': {'utm_source': 'ig', 'adset': 'set1'}},
+        {'click_id': click_uuid(2), 'campaign_id': campaign['id'], 'parameters': {'utm_source': 'ig', 'adset': 'set1'}},
     )
     write_to_db(
         'track_click',
-        {'click_id': 'click-3', 'campaign_id': campaign['id'] + 1, 'parameters': {'utm_source': 'ignored'}},
+        {'click_id': click_uuid(3), 'campaign_id': campaign['id'] + 1, 'parameters': {'utm_source': 'ignored'}},
     )
 
     response = client.get(
