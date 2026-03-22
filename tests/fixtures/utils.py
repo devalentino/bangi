@@ -4,6 +4,10 @@ from datetime import datetime, timezone
 import pytest
 
 
+def click_uuid(value):
+    return f'00000000-0000-0000-0000-{value:012d}'
+
+
 @pytest.fixture
 def utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)

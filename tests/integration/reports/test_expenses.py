@@ -4,9 +4,7 @@ from unittest import mock
 
 import pytest
 
-
-def click_uuid(value):
-    return f'00000000-0000-0000-0000-{value:012d}'
+from tests.fixtures.utils import click_uuid
 
 
 class TestExpensesReport:

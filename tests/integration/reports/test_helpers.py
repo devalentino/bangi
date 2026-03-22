@@ -1,5 +1,4 @@
-def click_uuid(value):
-    return f'00000000-0000-0000-0000-{value:012d}'
+from tests.fixtures.utils import click_uuid
 
 
 def test_get_expenses_distribution_parameters(client, authorization, campaign, write_to_db):
