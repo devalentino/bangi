@@ -21,7 +21,13 @@ def log_execution_time(func):
         started_at = perf_counter()
         result = func(*args, **kwargs)
         elapsed_ms = round((perf_counter() - started_at) * 1000, 2)
-        logger.info(f'{func.__qualname__} executed', extra={'duration_ms': elapsed_ms})
+        logger.info(
+            'Function execution time',
+            extra={
+                'function_name': func.__qualname__,
+                'duration_ms': elapsed_ms,
+            },
+        )
         return result
 
     return wrapper

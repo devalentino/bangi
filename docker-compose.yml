@@ -2,10 +2,14 @@ services:
   mariadb:
     image: mariadb:latest
     restart: always
+    mem_limit: 160m
+    mem_reservation: 128m
     env_file:
       - .env
     ports:
       - '3306:3306'
+    volumes:
+      - ./infra/mariadb-low-memory.cnf:/etc/mysql/conf.d/zzz-low-memory.cnf:ro
     healthcheck:
       test: [ 'CMD', 'mariadb', '-u', 'root', '-p$MARIADB_ROOT_PASSWORD', '-e', 'SHOW DATABASES' ]
       interval: 5s
@@ -13,6 +17,8 @@ services:
       retries: 3
   landing-renderer:
     image: php:8-apache
+    mem_limit: 64m
+    mem_reservation: 32m
     volumes:
       - ./landings:/var/www/html/landings
   backend:
@@ -20,6 +26,8 @@ services:
       context: .
       dockerfile: infra/core.Dockerfile
     restart: always
+    mem_limit: 160m
+    mem_reservation: 128m
     env_file:
       - .env
     environment:
