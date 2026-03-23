@@ -6,6 +6,7 @@ const endpoint = __ENV.ENDPOINT || '/api/v2/health';
 const method = (__ENV.METHOD || 'GET').toUpperCase();
 const authHeader = __ENV.AUTHORIZATION || '';
 const payload = __ENV.PAYLOAD || '';
+const timeUnit = __ENV.TIME_UNIT || '1s';
 
 const rateStages = (__ENV.RATE_STAGES || '5:2m,10:5m,15:5m,20:5m,25:5m')
     .split(',')
@@ -28,7 +29,7 @@ export const options = {
         sustained_rps: {
             executor: 'ramping-arrival-rate',
             startRate: 1,
-            timeUnit: '1s',
+            timeUnit,
             preAllocatedVUs: Number(__ENV.PRE_ALLOCATED_VUS || 20),
             maxVUs: Number(__ENV.MAX_VUS || 200),
             stages: rateStages,
