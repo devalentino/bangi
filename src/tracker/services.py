@@ -9,6 +9,7 @@ from src.core.enums import LeadStatus
 from src.core.supervisor import WorkerSupervisor
 from src.reports.workers import refresh_report_leads_worker
 from src.tracker.entities import TrackClick, TrackLead, TrackPostback
+from src.tracker.enums import TrackSource
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +88,18 @@ class TrackService:
             currency=currency,
         )
         postback.save()
-        self.worker_supervisor.enqueue(refresh_report_leads_worker, {'click_id': click_id, 'source': 'postback'})
+        self.worker_supervisor.enqueue(
+            refresh_report_leads_worker,
+            {'click_id': click_id, 'source': TrackSource.postback.value},
+        )
 
     def track_lead(self, click_id: str, parameters: dict) -> None:
         lead = TrackLead(click_id=click_id, parameters=parameters)
         lead.save()
-        self.worker_supervisor.enqueue(refresh_report_leads_worker, {'click_id': click_id, 'source': 'lead'})
+        self.worker_supervisor.enqueue(
+            refresh_report_leads_worker,
+            {'click_id': click_id, 'source': TrackSource.lead.value},
+        )
 
     def get_click_dates(self, campaign_id, start_period, end_period):
         date = fn.date(fn.from_unixtime(TrackClick.created_at)).distinct().alias('date')

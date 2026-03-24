@@ -1,8 +1,19 @@
 import json
+import os
+from time import sleep
 from unittest import mock
+from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
+
 from tests.fixtures.utils import click_uuid
+
+
+@pytest.fixture
+def mock_background_supervisor_poll_seconds():
+    with patch.dict(os.environ, {'BACKGROUND_SUPERVISOR_POLL_SECONDS': '0.1'}) as env:
+        yield env
 
 
 class TestGetLeads:
@@ -10,7 +21,7 @@ class TestGetLeads:
         other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Other Campaign'})
 
         first_report_lead = write_to_db(
-            'report_leads',
+            'report_lead',
             {
                 'click_id': click_uuid(1),
                 'campaign_id': campaign['id'],
@@ -21,7 +32,7 @@ class TestGetLeads:
             },
         )
         second_report_lead = write_to_db(
-            'report_leads',
+            'report_lead',
             {
                 'click_id': click_uuid(2),
                 'campaign_id': campaign['id'],
@@ -32,7 +43,7 @@ class TestGetLeads:
             },
         )
         third_report_lead = write_to_db(
-            'report_leads',
+            'report_lead',
             {
                 'click_id': click_uuid(4),
                 'campaign_id': campaign['id'],
@@ -43,7 +54,7 @@ class TestGetLeads:
             },
         )
         write_to_db(
-            'report_leads',
+            'report_lead',
             {
                 'click_id': click_uuid(3),
                 'campaign_id': other_campaign['id'],
@@ -95,6 +106,8 @@ class TestGetLeads:
             'filters': {'campaignId': 1},
         }
 
+
+class TestGetLead:
     def test_get_lead(self, client, authorization, campaign, timestamp, write_to_db):
         click = write_to_db(
             'track_click',
@@ -186,3 +199,41 @@ class TestGetLeads:
 
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Click does not exist'}
+
+
+@pytest.mark.usefixtures('mock_background_supervisor_poll_seconds')
+class TestReportLeadWorker:
+    def test_track_click_and_lead__creates_report_lead(self, client, campaign, read_from_db):
+        click_id = str(uuid4())
+
+        client.post(
+            '/api/v2/track/click',
+            json={
+                'clickId': click_id,
+                'campaignId': campaign['id'],
+                'source': 'fb',
+            },
+        )
+
+        client.post(
+            '/api/v2/track/lead',
+            json={
+                'clickId': click_id,
+                'status': 'accept',
+            },
+        )
+
+        sleep(0.5)
+
+        report_lead = read_from_db('report_lead')
+
+        assert report_lead == {
+            'id': mock.ANY,
+            'created_at': mock.ANY,
+            'click_id': click_id,
+            'campaign_id': campaign['id'],
+            'click_created_at': mock.ANY,
+            'status': None,
+            'cost_value': None,
+            'currency': None,
+        }

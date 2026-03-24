@@ -15,7 +15,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     """Write your migrations here."""
 
     @migrator.create_model
-    class ReportLeads(pw.Model):
+    class ReportLead(pw.Model):
         id = pw.AutoField()
         created_at = pw.TimestampField(null=True)
         click_id = pw.UUIDField()

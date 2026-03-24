@@ -6,14 +6,13 @@ from peewee import JOIN
 from src.core.supervisor import WorkerContext, register_worker
 from src.reports.entities import ReportLead
 from src.tracker.entities import TrackClick, TrackPostback
+from src.tracker.enums import TrackSource
 
 logger = logging.getLogger(__name__)
 
 LAST_EXECUTED_AT_STATE_KEY = 'last_executed_at'
 MIN_QUEUE_SIZE = 10
 AGGREGATION_PERIOD_SECONDS = 10
-LEAD_SOURCE = 'lead'
-POSTBACK_SOURCE = 'postback'
 
 
 @register_worker
@@ -38,27 +37,37 @@ def refresh_report_leads_worker(context: WorkerContext) -> None:
 
         click_id = payload.get('click_id')
         source = payload.get('source')
-        if click_id is None or source not in {LEAD_SOURCE, POSTBACK_SOURCE}:
+        if click_id is None or source not in {TrackSource.lead.value, TrackSource.postback.value}:
             logger.warning('Tracked bad report lead payload', extra={'payload': payload})
             continue
 
-        if source == LEAD_SOURCE:
+        if source == TrackSource.lead.value:
             lead_click_ids.add(click_id)
-        elif source == POSTBACK_SOURCE:
+        elif source == TrackSource.postback.value:
             postback_click_ids.add(click_id)
+
+    logger.info(
+        'Refreshing report_lead table',
+        extra={'lead_click_ids': list(lead_click_ids), 'postback_click_ids': list(postback_click_ids)},
+    )
 
     try:
         _upsert_report_leads_for_leads(lead_click_ids)
     except Exception:
-        logger.exception('Failed to upsert report leads from lead events', extra={'click_ids': list(lead_click_ids)})
+        logger.exception('Failed to report_lead table from lead events', extra={'click_ids': list(lead_click_ids)})
 
     try:
         _upsert_report_leads_for_postbacks(postback_click_ids)
     except Exception:
         logger.exception(
-            'Failed to upsert report leads from postback events',
+            'Failed to report_lead table from postback events',
             extra={'click_ids': list(postback_click_ids)},
         )
+
+    logger.info(
+        'Refreshing report_lead table is completed',
+        extra={'lead_click_ids': list(lead_click_ids), 'postback_click_ids': list(postback_click_ids)},
+    )
 
     state[LAST_EXECUTED_AT_STATE_KEY] = now
 
