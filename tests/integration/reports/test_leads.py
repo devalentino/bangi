@@ -9,90 +9,48 @@ class TestGetLeads:
     def test_get_leads(self, client, authorization, campaign, campaign_payload, timestamp, write_to_db):
         other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Other Campaign'})
 
-        first_click = write_to_db(
-            'track_click',
+        first_report_lead = write_to_db(
+            'report_leads',
             {
                 'click_id': click_uuid(1),
                 'campaign_id': campaign['id'],
-                'parameters': {'source': 'fb'},
-                'created_at': timestamp - 20,
-            },
-        )
-        second_click = write_to_db(
-            'track_click',
-            {
-                'click_id': click_uuid(2),
-                'campaign_id': campaign['id'],
-                'parameters': {'source': 'tt'},
-                'created_at': timestamp - 10,
-            },
-        )
-        third_click = write_to_db(
-            'track_click',
-            {
-                'click_id': click_uuid(4),
-                'campaign_id': campaign['id'],
-                'parameters': {'source': 'gg'},
-                'created_at': timestamp - 5,
-            },
-        )
-        other_click = write_to_db(
-            'track_click',
-            {
-                'click_id': click_uuid(3),
-                'campaign_id': other_campaign['id'],
-                'parameters': {'source': 'native'},
-                'created_at': timestamp,
-            },
-        )
-
-        first_postback = write_to_db(
-            'track_postback',
-            {
-                'click_id': first_click['click_id'],
-                'parameters': {'state': 'executed'},
+                'click_created_at': timestamp - 20,
                 'status': 'accept',
                 'cost_value': 10,
                 'currency': 'usd',
-                'created_at': timestamp - 5,
             },
         )
-        second_postback = write_to_db(
-            'track_postback',
+        second_report_lead = write_to_db(
+            'report_leads',
             {
-                'click_id': second_click['click_id'],
-                'parameters': {'state': 'failed'},
+                'click_id': click_uuid(2),
+                'campaign_id': campaign['id'],
+                'click_created_at': timestamp - 10,
                 'status': 'reject',
                 'cost_value': None,
                 'currency': None,
-                'created_at': timestamp,
+            },
+        )
+        third_report_lead = write_to_db(
+            'report_leads',
+            {
+                'click_id': click_uuid(4),
+                'campaign_id': campaign['id'],
+                'click_created_at': timestamp - 5,
+                'status': None,
+                'cost_value': None,
+                'currency': None,
             },
         )
         write_to_db(
-            'track_postback',
+            'report_leads',
             {
-                'click_id': other_click['click_id'],
-                'parameters': {'state': 'executed'},
+                'click_id': click_uuid(3),
+                'campaign_id': other_campaign['id'],
+                'click_created_at': timestamp,
                 'status': 'accept',
                 'cost_value': 15,
                 'currency': 'usd',
-                'created_at': timestamp + 5,
-            },
-        )
-        write_to_db(
-            'track_lead',
-            {
-                'click_id': third_click['click_id'],
-                'parameters': {'state': 'queued'},
-                'created_at': timestamp + 10,
-            },
-        )
-        write_to_db(
-            'track_lead',
-            {
-                'click_id': other_click['click_id'],
-                'parameters': {'state': 'queued'},
-                'created_at': timestamp + 15,
             },
         )
 
@@ -112,112 +70,28 @@ class TestGetLeads:
         assert response.json == {
             'content': [
                 {
-                    'clickId': third_click['click_id'],
+                    'clickId': third_report_lead['click_id'],
                     'status': None,
                     'costValue': None,
                     'currency': None,
                     'createdAt': mock.ANY,
                 },
                 {
-                    'clickId': second_postback['click_id'],
-                    'status': second_postback['status'],
-                    'costValue': second_postback['cost_value'],
-                    'currency': second_postback['currency'],
+                    'clickId': second_report_lead['click_id'],
+                    'status': second_report_lead['status'],
+                    'costValue': second_report_lead['cost_value'],
+                    'currency': second_report_lead['currency'],
                     'createdAt': mock.ANY,  # TODO: handle correct timestamps
                 },
                 {
-                    'clickId': first_postback['click_id'],
-                    'status': first_postback['status'],
-                    'costValue': float(first_postback['cost_value']),
-                    'currency': first_postback['currency'],
+                    'clickId': first_report_lead['click_id'],
+                    'status': first_report_lead['status'],
+                    'costValue': float(first_report_lead['cost_value']),
+                    'currency': first_report_lead['currency'],
                     'createdAt': mock.ANY,
                 },
             ],
             'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'createdAt', 'sortOrder': 'desc', 'total': 3},
-            'filters': {'campaignId': 1},
-        }
-
-    def test_get_leads__skips_clicks_without_postbacks_or_leads(
-        self, client, authorization, campaign, timestamp, write_to_db
-    ):
-        write_to_db(
-            'track_click',
-            {
-                'click_id': click_uuid(11),
-                'campaign_id': campaign['id'],
-                'parameters': {'source': 'fb'},
-                'created_at': timestamp - 20,
-            },
-        )
-        click_with_lead = write_to_db(
-            'track_click',
-            {
-                'click_id': click_uuid(12),
-                'campaign_id': campaign['id'],
-                'parameters': {'source': 'gg'},
-                'created_at': timestamp - 15,
-            },
-        )
-        click_with_postback = write_to_db(
-            'track_click',
-            {
-                'click_id': click_uuid(13),
-                'campaign_id': campaign['id'],
-                'parameters': {'source': 'tt'},
-                'created_at': timestamp - 10,
-            },
-        )
-        postback = write_to_db(
-            'track_postback',
-            {
-                'click_id': click_with_postback['click_id'],
-                'parameters': {'state': 'executed'},
-                'status': 'accept',
-                'cost_value': 10,
-                'currency': 'usd',
-                'created_at': timestamp,
-            },
-        )
-        lead = write_to_db(
-            'track_lead',
-            {
-                'click_id': click_with_lead['click_id'],
-                'parameters': {'state': 'queued'},
-                'created_at': timestamp - 5,
-            },
-        )
-
-        response = client.get(
-            '/api/v2/reports/leads',
-            headers={'Authorization': authorization},
-            query_string={
-                'campaignId': campaign['id'],
-                'page': 1,
-                'pageSize': 10,
-                'sortBy': 'createdAt',
-                'sortOrder': 'desc',
-            },
-        )
-
-        assert response.status_code == 200, response.text
-        assert response.json == {
-            'content': [
-                {
-                    'clickId': postback['click_id'],
-                    'status': postback['status'],
-                    'costValue': float(postback['cost_value']),
-                    'currency': postback['currency'],
-                    'createdAt': mock.ANY,
-                },
-                {
-                    'clickId': lead['click_id'],
-                    'status': None,
-                    'costValue': None,
-                    'currency': None,
-                    'createdAt': mock.ANY,
-                },
-            ],
-            'pagination': {'page': 1, 'pageSize': 10, 'sortBy': 'createdAt', 'sortOrder': 'desc', 'total': 2},
             'filters': {'campaignId': 1},
         }
 

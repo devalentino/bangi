@@ -103,11 +103,11 @@ class PostbacksReport(MethodView):
         return {
             'content': [
                 {
-                    'clickId': p['click_id'],
-                    'status': p['status'],
-                    'costValue': p['cost_value'],
-                    'currency': p['currency'],
-                    'createdAt': int(p['created_at'].timestamp()),
+                    'clickId': p.click_id,
+                    'status': p.status,
+                    'costValue': p.cost_value,
+                    'currency': p.currency,
+                    'createdAt': int(p.click_created_at.timestamp()),
                 }
                 for p in postbacks
             ],
