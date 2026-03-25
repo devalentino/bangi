@@ -210,6 +210,40 @@ class TestReportLeadWorker:
 
         assert report_lead is None
 
+    def test_track_lead_without_click__does_not_create_report_lead(self, client, read_from_db):
+        click_id = str(uuid4())
+
+        client.post(
+            '/api/v2/track/lead',
+            json={
+                'clickId': click_id,
+                'status': 'accept',
+            },
+        )
+
+        sleep(0.3)
+
+        report_lead = read_from_db('report_lead')
+
+        assert report_lead is None
+
+    def test_track_postback_without_click__does_not_create_report_lead(self, client, read_from_db):
+        click_id = str(uuid4())
+
+        client.post(
+            '/api/v2/track/postback',
+            json={
+                'clickId': click_id,
+                'state': 'executed',
+            },
+        )
+
+        sleep(0.3)
+
+        report_lead = read_from_db('report_lead')
+
+        assert report_lead is None
+
     def test_track_click_and_lead__creates_report_lead(self, client, campaign, read_from_db):
         click_id = str(uuid4())
 

@@ -11,7 +11,7 @@ from src.tracker.enums import TrackSource
 logger = logging.getLogger(__name__)
 
 LAST_EXECUTED_AT_STATE_KEY = 'last_executed_at'
-MIN_QUEUE_SIZE = 10
+MIN_QUEUE_SIZE = 100
 AGGREGATION_PERIOD_SECONDS = 10
 
 
