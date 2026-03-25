@@ -5,11 +5,29 @@ import pytest
 from pymysql import cursors
 
 
-def cast_db_value(value):
+def parse_uuid(value):
     if isinstance(value, UUID):
-        return str(value)
+        return value
+    if isinstance(value, str):
+        try:
+            return UUID(value)
+        except ValueError:
+            return None
+    return None
+
+
+def cast_db_value(value):
+    parsed_uuid = parse_uuid(value)
+    if parsed_uuid is not None:
+        return parsed_uuid.bytes
     if isinstance(value, (list, dict)):
         return json.dumps(value, default=str)
+    return value
+
+
+def cast_read_value(value):
+    if isinstance(value, (bytes, bytearray)) and len(value) == 16:
+        return str(UUID(bytes=bytes(value)))
     return value
 
 
@@ -34,7 +52,7 @@ def write_to_db(mysql):
             row = cur.fetchone()
             mysql.commit()
 
-            return row
+            return {key: cast_read_value(value) for key, value in row.items()}
 
     return _write_to_db
 
@@ -53,9 +71,10 @@ def read_from_db(mysql):
         with mysql.cursor(cursors.DictCursor) as cur:
             cur.execute(query, filters)
             if fetchall:
-                result = cur.fetchall()
+                result = [{key: cast_read_value(value) for key, value in row.items()} for row in cur.fetchall()]
             else:
-                result = cur.fetchone()
+                row = cur.fetchone()
+                result = {key: cast_read_value(value) for key, value in row.items()} if row else None
 
             mysql.commit()
             return result

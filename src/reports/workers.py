@@ -133,14 +133,12 @@ def _upsert_report_leads_for_postbacks(click_ids: set) -> None:
     if not rows:
         return
 
-    insert_query = ReportLead.insert_many(rows)
-    insert_query.on_conflict(
-        conflict_target=[ReportLead.click_id],
-        update={
-            ReportLead.campaign_id: insert_query.inserted.campaign_id,
-            ReportLead.click_created_at: insert_query.inserted.click_created_at,
-            ReportLead.status: insert_query.inserted.status,
-            ReportLead.cost_value: insert_query.inserted.cost_value,
-            ReportLead.currency: insert_query.inserted.currency,
-        },
+    ReportLead.insert_many(rows).on_conflict(
+        preserve=(
+            ReportLead.campaign_id,
+            ReportLead.click_created_at,
+            ReportLead.status,
+            ReportLead.cost_value,
+            ReportLead.currency,
+        ),
     ).execute()

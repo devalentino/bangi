@@ -3,6 +3,8 @@ from time import sleep
 from unittest import mock
 from uuid import uuid4
 
+import pytest
+
 from tests.fixtures.utils import click_uuid
 
 
@@ -192,6 +194,11 @@ class TestGetLead:
 
 
 class TestReportLeadWorker:
+    @pytest.fixture(autouse=True)
+    def mock_report_lead_worker_settings(self, monkeypatch):
+        monkeypatch.setattr('src.reports.workers.AGGREGATION_PERIOD_SECONDS', 0.1)
+        monkeypatch.setattr('src.reports.workers.MIN_QUEUE_SIZE', 1)
+
     def test_track_click__does_not_create_report_lead(self, client, campaign, read_from_db):
         click_id = str(uuid4())
 
@@ -312,4 +319,95 @@ class TestReportLeadWorker:
             'status': 'accept',
             'cost_value': campaign['cost_value'],
             'currency': campaign['currency'],
+        }
+
+    def test_track_lead_with_existing_report_lead__does_not_update_report_lead(
+        self, client, campaign, timestamp, write_to_db, read_from_db
+    ):
+        click_id = str(uuid4())
+        click_created_at = timestamp - 20
+
+        write_to_db(
+            'track_click',
+            {
+                'click_id': click_id,
+                'campaign_id': campaign['id'],
+                'parameters': {'source': 'fb'},
+                'created_at': click_created_at,
+            },
+        )
+        existing_report_lead = write_to_db(
+            'report_lead',
+            {
+                'click_id': click_id,
+                'campaign_id': campaign['id'],
+                'click_created_at': click_created_at,
+                'status': 'reject',
+                'cost_value': 5,
+                'currency': 'eur',
+            },
+        )
+
+        client.post(
+            '/api/v2/track/lead',
+            json={
+                'clickId': click_id,
+                'status': 'accept',
+            },
+        )
+
+        sleep(0.3)
+
+        report_lead = read_from_db('report_lead', filters={'click_id': click_id})
+
+        assert report_lead == existing_report_lead
+
+    def test_track_postback_with_existing_report_lead__updates_report_lead(
+        self, client, campaign, timestamp, write_to_db, read_from_db
+    ):
+        click_id = str(uuid4())
+        click_created_at = timestamp - 20
+
+        write_to_db(
+            'track_click',
+            {
+                'click_id': click_id,
+                'campaign_id': campaign['id'],
+                'parameters': {'source': 'fb'},
+                'created_at': click_created_at,
+            },
+        )
+        existing_report_lead = write_to_db(
+            'report_lead',
+            {
+                'click_id': click_id,
+                'campaign_id': campaign['id'],
+                'click_created_at': click_created_at,
+                'status': None,
+                'cost_value': None,
+                'currency': None,
+            },
+        )
+
+        client.post(
+            '/api/v2/track/postback',
+            json={
+                'clickId': click_id,
+                'state': 'executed',
+            },
+        )
+
+        sleep(0.3)
+
+        report_lead = read_from_db('report_lead', filters={'click_id': click_id})
+
+        assert report_lead == {
+            'id': existing_report_lead['id'],
+            'created_at': existing_report_lead['created_at'],
+            'click_id': click_id,
+            'campaign_id': campaign['id'],
+            'click_created_at': click_created_at,
+            'status': 'accept',  # status is updated
+            'cost_value': campaign['cost_value'],  # cost value is updated
+            'currency': campaign['currency'],  # currency is updated
         }

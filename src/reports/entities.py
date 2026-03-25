@@ -1,6 +1,6 @@
-from peewee import CharField, DateField, DecimalField, ForeignKeyField, IntegerField, UUIDField
+from peewee import CharField, DateField, DecimalField, ForeignKeyField, IntegerField
 from src.core.entities import Campaign, Entity
-from src.peewee import JSONField, UTCTimestampField
+from src.peewee import BinaryUUIDField, JSONField, UTCTimestampField
 
 
 class Expense(Entity):
@@ -13,7 +13,7 @@ class Expense(Entity):
 
 
 class ReportLead(Entity):
-    click_id = UUIDField()
+    click_id = BinaryUUIDField()
     campaign_id = IntegerField()
     click_created_at = UTCTimestampField(null=True, utc=True)
     status = CharField(null=True)
