@@ -192,6 +192,24 @@ class TestGetLead:
 
 
 class TestReportLeadWorker:
+    def test_track_click__does_not_create_report_lead(self, client, campaign, read_from_db):
+        click_id = str(uuid4())
+
+        client.post(
+            '/api/v2/track/click',
+            json={
+                'clickId': click_id,
+                'campaignId': campaign['id'],
+                'source': 'fb',
+            },
+        )
+
+        sleep(0.3)
+
+        report_lead = read_from_db('report_lead')
+
+        assert report_lead is None
+
     def test_track_click_and_lead__creates_report_lead(self, client, campaign, read_from_db):
         click_id = str(uuid4())
 
@@ -225,4 +243,39 @@ class TestReportLeadWorker:
             'status': None,
             'cost_value': None,
             'currency': None,
+        }
+
+    def test_track_click_and_postback__creates_report_lead(self, client, campaign, read_from_db):
+        click_id = str(uuid4())
+
+        client.post(
+            '/api/v2/track/click',
+            json={
+                'clickId': click_id,
+                'campaignId': campaign['id'],
+                'source': 'fb',
+            },
+        )
+
+        client.post(
+            '/api/v2/track/postback',
+            json={
+                'clickId': click_id,
+                'state': 'executed',
+            },
+        )
+
+        sleep(0.3)
+
+        report_lead = read_from_db('report_lead')
+
+        assert report_lead == {
+            'id': mock.ANY,
+            'created_at': mock.ANY,
+            'click_id': click_id,
+            'campaign_id': campaign['id'],
+            'click_created_at': mock.ANY,
+            'status': 'accept',
+            'cost_value': campaign['cost_value'],
+            'currency': campaign['currency'],
         }
