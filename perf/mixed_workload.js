@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 const baseUrl = __ENV.BASE_URL || 'http://127.0.0.1:8000';
+const logFailedRequests = (__ENV.LOG_FAILED_REQUESTS || 'true').toLowerCase() === 'true';
 const campaignId = Number(__ENV.CAMPAIGN_ID || 1);
 const authHeader = __ENV.AUTHORIZATION || '';
 const leadDelaySeconds = Number(__ENV.LEAD_DELAY_SECONDS || 10);
@@ -29,7 +30,7 @@ const leadProbability = Number(__ENV.LEAD_PROBABILITY || 0.3);
 const postbackProbability = Number(__ENV.POSTBACK_PROBABILITY || 0.15);
 
 export const options = {
-    discardResponseBodies: true,
+    discardResponseBodies: !logFailedRequests,
     thresholds: {
         http_req_failed: ['rate<0.02'],
         http_req_duration: ['p(95)<1500', 'p(99)<3000'],
@@ -59,6 +60,26 @@ export const options = {
     summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
 
+function logFailure(name, response, payload = null) {
+    if (!logFailedRequests || response.status < 400) {
+        return;
+    }
+
+    const details = {
+        name,
+        method: response.request.method,
+        url: response.url,
+        status: response.status,
+        body: response.body,
+    };
+
+    if (payload !== null) {
+        details.payload = payload;
+    }
+
+    console.error(JSON.stringify(details));
+}
+
 function uuid4() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = Math.random() * 16 | 0;
@@ -69,17 +90,18 @@ function uuid4() {
 
 export function trackFlow() {
     const clickId = uuid4();
+    const clickPayload = {
+        clickId,
+        campaignId,
+        source: 'k6',
+        adset_name: `set-${__VU % 10}`,
+        ad_name: `ad-${__ITER % 50}`,
+        pixel: 'perf',
+    };
 
     const clickResponse = http.post(
         `${baseUrl}/api/v2/track/click`,
-        JSON.stringify({
-            clickId,
-            campaignId,
-            source: 'k6',
-            adset_name: `set-${__VU % 10}`,
-            ad_name: `ad-${__ITER % 50}`,
-            pixel: 'perf',
-        }),
+        JSON.stringify(clickPayload),
         {
             headers: { 'Content-Type': 'application/json' },
             tags: { endpoint: 'track_click' },
@@ -89,18 +111,20 @@ export function trackFlow() {
     check(clickResponse, {
         'track click status is 201': (r) => r.status === 201,
     });
+    logFailure('track_click', clickResponse, clickPayload);
 
     const hasLead = Math.random() < leadProbability;
     if (hasLead) {
         sleep(leadDelaySeconds);
+        const leadPayload = {
+            clickId,
+            state: 'queued',
+            source: 'k6',
+        };
 
         const leadResponse = http.post(
             `${baseUrl}/api/v2/track/lead`,
-            JSON.stringify({
-                clickId,
-                state: 'queued',
-                source: 'k6',
-            }),
+            JSON.stringify(leadPayload),
             {
                 headers: { 'Content-Type': 'application/json' },
                 tags: { endpoint: 'track_lead' },
@@ -110,18 +134,20 @@ export function trackFlow() {
         check(leadResponse, {
             'track lead status is 201': (r) => r.status === 201,
         });
+        logFailure('track_lead', leadResponse, leadPayload);
     }
 
     if (hasLead && Math.random() < postbackProbability) {
         sleep(postbackDelaySeconds);
+        const postbackPayload = {
+            clickId,
+            state: 'executed',
+            source: 'k6',
+        };
 
         const postbackResponse = http.post(
             `${baseUrl}/api/v2/track/postback`,
-            JSON.stringify({
-                clickId,
-                state: 'executed',
-                source: 'k6',
-            }),
+            JSON.stringify(postbackPayload),
             {
                 headers: { 'Content-Type': 'application/json' },
                 tags: { endpoint: 'track_postback' },
@@ -131,6 +157,7 @@ export function trackFlow() {
         check(postbackResponse, {
             'track postback status is 201': (r) => r.status === 201,
         });
+        logFailure('track_postback', postbackResponse, postbackPayload);
     }
 }
 
@@ -150,6 +177,7 @@ export function reportsRead() {
     check(leadsResponse, {
         'reports leads status is 200': (r) => r.status === 200,
     });
+    logFailure('reports_leads', leadsResponse);
 
     const today = new Date().toISOString().slice(0, 10);
     const statisticsResponse = http.get(
@@ -162,4 +190,5 @@ export function reportsRead() {
     check(statisticsResponse, {
         'reports statistics status is 200': (r) => r.status === 200,
     });
+    logFailure('reports_statistics', statisticsResponse);
 }

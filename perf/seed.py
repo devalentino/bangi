@@ -7,7 +7,7 @@ import random
 import sys
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pymysql
 from pymysql.cursors import DictCursor
@@ -93,6 +93,8 @@ def json_or_value(value):
         return json.dumps(value)
     if isinstance(value, Decimal):
         return str(value)
+    if isinstance(value, UUID):
+        return value.bytes
     return value
 
 
@@ -219,7 +221,7 @@ def main():
         inserted_postbacks = 0
 
         for iteration in range(args.clicks):
-            click_id = str(uuid4())
+            click_id = uuid4()
             created_at = timestamp_in_last_days(args.days)
 
             click_rows.append(

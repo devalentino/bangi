@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 const baseUrl = __ENV.BASE_URL || 'http://127.0.0.1:8000';
+const logFailedRequests = (__ENV.LOG_FAILED_REQUESTS || 'true').toLowerCase() === 'true';
 const endpoint = __ENV.ENDPOINT || '/api/v2/health';
 const method = (__ENV.METHOD || 'GET').toUpperCase();
 const authHeader = __ENV.AUTHORIZATION || '';
@@ -23,7 +24,7 @@ const thresholds = {
 };
 
 export const options = {
-    discardResponseBodies: true,
+    discardResponseBodies: !logFailedRequests,
     thresholds,
     scenarios: {
         sustained_rps: {
@@ -37,6 +38,20 @@ export const options = {
     },
     summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
+
+function logFailure(response) {
+    if (!logFailedRequests || response.status < 400) {
+        return;
+    }
+
+    console.error(JSON.stringify({
+        method: response.request.method,
+        url: response.url,
+        status: response.status,
+        body: response.body,
+        payload: payload || null,
+    }));
+}
 
 function requestParams() {
     const headers = {};
@@ -65,6 +80,7 @@ export default function () {
     check(response, {
         'status is < 500': (r) => r.status < 500,
     });
+    logFailure(response);
 
     sleep(Number(__ENV.SLEEP_SECONDS || 0));
 }

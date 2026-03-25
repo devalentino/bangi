@@ -9,6 +9,6 @@ auth = HTTPBasicAuth()
 @auth.verify_password
 def verify_password(username, password) -> None:
     authentication_service = container.get(AuthenticationService)
-    if authentication_service.authenticate(username, password):
+    if authentication_service.authenticate(username.strip(), password.strip()):
         return username
     return None
