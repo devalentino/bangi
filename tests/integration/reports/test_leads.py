@@ -1,19 +1,9 @@
 import json
-import os
 from time import sleep
 from unittest import mock
-from unittest.mock import patch
 from uuid import uuid4
 
-import pytest
-
 from tests.fixtures.utils import click_uuid
-
-
-@pytest.fixture
-def mock_background_supervisor_poll_seconds():
-    with patch.dict(os.environ, {'BACKGROUND_SUPERVISOR_POLL_SECONDS': '0.1'}) as env:
-        yield env
 
 
 class TestGetLeads:
@@ -201,7 +191,6 @@ class TestGetLead:
         assert response.json == {'message': 'Click does not exist'}
 
 
-@pytest.mark.usefixtures('mock_background_supervisor_poll_seconds')
 class TestReportLeadWorker:
     def test_track_click_and_lead__creates_report_lead(self, client, campaign, read_from_db):
         click_id = str(uuid4())
@@ -223,7 +212,7 @@ class TestReportLeadWorker:
             },
         )
 
-        sleep(0.5)
+        sleep(0.3)
 
         report_lead = read_from_db('report_lead')
 
