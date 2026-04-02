@@ -2,10 +2,12 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 const baseUrl = __ENV.BASE_URL || 'http://127.0.0.1:8000';
+const logFailedRequests = (__ENV.LOG_FAILED_REQUESTS || 'true').toLowerCase() === 'true';
 const endpoint = __ENV.ENDPOINT || '/api/v2/health';
 const method = (__ENV.METHOD || 'GET').toUpperCase();
 const authHeader = __ENV.AUTHORIZATION || '';
 const payload = __ENV.PAYLOAD || '';
+const timeUnit = __ENV.TIME_UNIT || '1s';
 
 const rateStages = (__ENV.RATE_STAGES || '5:2m,10:5m,15:5m,20:5m,25:5m')
     .split(',')
@@ -22,13 +24,13 @@ const thresholds = {
 };
 
 export const options = {
-    discardResponseBodies: true,
+    discardResponseBodies: !logFailedRequests,
     thresholds,
     scenarios: {
         sustained_rps: {
             executor: 'ramping-arrival-rate',
             startRate: 1,
-            timeUnit: '1s',
+            timeUnit,
             preAllocatedVUs: Number(__ENV.PRE_ALLOCATED_VUS || 20),
             maxVUs: Number(__ENV.MAX_VUS || 200),
             stages: rateStages,
@@ -36,6 +38,20 @@ export const options = {
     },
     summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
+
+function logFailure(response) {
+    if (!logFailedRequests || response.status < 400) {
+        return;
+    }
+
+    console.error(JSON.stringify({
+        method: response.request.method,
+        url: response.url,
+        status: response.status,
+        body: response.body,
+        payload: payload || null,
+    }));
+}
 
 function requestParams() {
     const headers = {};
@@ -64,6 +80,7 @@ export default function () {
     check(response, {
         'status is < 500': (r) => r.status < 500,
     });
+    logFailure(response);
 
     sleep(Number(__ENV.SLEEP_SECONDS || 0));
 }

@@ -7,7 +7,7 @@ import random
 import sys
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pymysql
 from pymysql.cursors import DictCursor
@@ -88,11 +88,13 @@ def postback_payload(cost_value, currency):
     }
 
 
-def json_or_value(value):
+def serialize(value):
     if isinstance(value, (dict, list)):
         return json.dumps(value)
     if isinstance(value, Decimal):
         return str(value)
+    if isinstance(value, UUID):
+        return value.bytes
     return value
 
 
@@ -167,7 +169,7 @@ def insert_many(cursor, table_name, rows):
     columns = list(rows[0].keys())
     placeholders = ', '.join(['%s'] * len(columns))
     query = f'INSERT INTO {table_name} ({", ".join(columns)}) VALUES ({placeholders})'
-    values = [tuple(json_or_value(row[column]) for column in columns) for row in rows]
+    values = [tuple(serialize(row[column]) for column in columns) for row in rows]
     cursor.executemany(query, values)
     return len(rows)
 
@@ -219,7 +221,7 @@ def main():
         inserted_postbacks = 0
 
         for iteration in range(args.clicks):
-            click_id = str(uuid4())
+            click_id = uuid4()
             created_at = timestamp_in_last_days(args.days)
 
             click_rows.append(
