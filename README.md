@@ -1,6 +1,16 @@
 # Bangi Backend
 
-Backend for Bangi CPA.
+Backend for Bangi CPA Tracker.
+
+## Architecture and runtime goals
+
+This application is intentionally tuned for low memory consumption. It is expected to run on a low-cost VDS with only 512 MB RAM, so the backend is designed to keep the number of moving parts and background components to a minimum.
+
+The application is also designed so that API Gateway endpoints respond as fast as possible. Because the service runs with a minimal number of Gunicorn workers, time-consuming work such as aggregations, database writes, and database updates should be delegated to background workers instead of being handled in the request-response path.
+
+Architecture diagram:
+
+- https://drive.google.com/file/d/13CfFY14BtT2e4UQYVebablKzKO9AsOd5/view?usp=sharing
 
 ## Tech stack
 
