@@ -88,7 +88,7 @@ def postback_payload(cost_value, currency):
     }
 
 
-def json_or_value(value):
+def serialize(value):
     if isinstance(value, (dict, list)):
         return json.dumps(value)
     if isinstance(value, Decimal):
@@ -169,7 +169,7 @@ def insert_many(cursor, table_name, rows):
     columns = list(rows[0].keys())
     placeholders = ', '.join(['%s'] * len(columns))
     query = f'INSERT INTO {table_name} ({", ".join(columns)}) VALUES ({placeholders})'
-    values = [tuple(json_or_value(row[column]) for column in columns) for row in rows]
+    values = [tuple(serialize(row[column]) for column in columns) for row in rows]
     cursor.executemany(query, values)
     return len(rows)
 

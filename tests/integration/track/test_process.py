@@ -23,8 +23,9 @@ def ip2location_mock(environment):
 
 class TestTrackRedirect:
     def test_track_redirect(self, client, campaign, flow, read_from_db, ip2location_mock):
+        click_id = uuid4()
         request_payload = {
-            'clickId': str(uuid4()),
+            'clickId': str(click_id),
             'status': 'accept',
             'tid': '123',
             'payout': 10,
@@ -45,7 +46,7 @@ class TestTrackRedirect:
         click = read_from_db('track_click')
         assert click == {
             'id': mock.ANY,
-            'click_id': request_payload['clickId'],
+            'click_id': click_id,
             'campaign_id': campaign['id'],
             'parameters': mock.ANY,
             'created_at': mock.ANY,
@@ -128,8 +129,9 @@ class TestTrackLanding:
         )
 
     def test_track_landing(self, client, campaign, flow, read_from_db, ip2location_mock, landing_render_mock):
+        click_id = uuid4()
         request_payload = {
-            'clickId': str(uuid4()),
+            'clickId': str(click_id),
             'status': 'accept',
             'tid': '123',
             'payout': 10,
@@ -151,7 +153,7 @@ class TestTrackLanding:
         click = read_from_db('track_click')
         assert click == {
             'id': mock.ANY,
-            'click_id': request_payload['clickId'],
+            'click_id': click_id,
             'campaign_id': campaign['id'],
             'parameters': mock.ANY,
             'created_at': mock.ANY,

@@ -5,21 +5,9 @@ import pytest
 from pymysql import cursors
 
 
-def parse_uuid(value):
-    if isinstance(value, UUID):
-        return value
-    if isinstance(value, str):
-        try:
-            return UUID(value)
-        except ValueError:
-            return None
-    return None
-
-
 def cast_db_value(value):
-    parsed_uuid = parse_uuid(value)
-    if parsed_uuid is not None:
-        return parsed_uuid.bytes
+    if isinstance(value, UUID):
+        return value.bytes
     if isinstance(value, (list, dict)):
         return json.dumps(value, default=str)
     return value
@@ -27,7 +15,7 @@ def cast_db_value(value):
 
 def cast_read_value(value):
     if isinstance(value, (bytes, bytearray)) and len(value) == 16:
-        return str(UUID(bytes=bytes(value)))
+        return UUID(bytes=bytes(value))
     return value
 
 

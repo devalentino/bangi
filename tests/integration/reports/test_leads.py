@@ -73,21 +73,21 @@ class TestGetLeads:
         assert response.json == {
             'content': [
                 {
-                    'clickId': third_report_lead['click_id'],
+                    'clickId': str(third_report_lead['click_id']),
                     'status': None,
                     'costValue': None,
                     'currency': None,
                     'createdAt': mock.ANY,
                 },
                 {
-                    'clickId': second_report_lead['click_id'],
+                    'clickId': str(second_report_lead['click_id']),
                     'status': second_report_lead['status'],
                     'costValue': second_report_lead['cost_value'],
                     'currency': second_report_lead['currency'],
                     'createdAt': mock.ANY,  # TODO: handle correct timestamps
                 },
                 {
-                    'clickId': first_report_lead['click_id'],
+                    'clickId': str(first_report_lead['click_id']),
                     'status': first_report_lead['status'],
                     'costValue': float(first_report_lead['cost_value']),
                     'currency': first_report_lead['currency'],
@@ -153,7 +153,7 @@ class TestGetLead:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'clickId': click['click_id'],
+            'clickId': str(click['click_id']),
             'campaignId': click['campaign_id'],
             'campaignName': campaign['name'],
             'parameters': json.loads(click['parameters']),
@@ -200,12 +200,12 @@ class TestReportLeadWorker:
         monkeypatch.setattr('src.reports.workers.MIN_QUEUE_SIZE', 1)
 
     def test_track_click__does_not_create_report_lead(self, client, campaign, read_from_db):
-        click_id = str(uuid4())
+        click_id = uuid4()
 
         client.post(
             '/api/v2/track/click',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'campaignId': campaign['id'],
                 'source': 'fb',
             },
@@ -218,12 +218,12 @@ class TestReportLeadWorker:
         assert report_lead is None
 
     def test_track_lead_without_click__does_not_create_report_lead(self, client, read_from_db):
-        click_id = str(uuid4())
+        click_id = uuid4()
 
         client.post(
             '/api/v2/track/lead',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'status': 'accept',
             },
         )
@@ -235,12 +235,12 @@ class TestReportLeadWorker:
         assert report_lead is None
 
     def test_track_postback_without_click__does_not_create_report_lead(self, client, read_from_db):
-        click_id = str(uuid4())
+        click_id = uuid4()
 
         client.post(
             '/api/v2/track/postback',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'state': 'executed',
             },
         )
@@ -252,12 +252,12 @@ class TestReportLeadWorker:
         assert report_lead is None
 
     def test_track_click_and_lead__creates_report_lead(self, client, campaign, read_from_db):
-        click_id = str(uuid4())
+        click_id = uuid4()
 
         client.post(
             '/api/v2/track/click',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'campaignId': campaign['id'],
                 'source': 'fb',
             },
@@ -266,7 +266,7 @@ class TestReportLeadWorker:
         client.post(
             '/api/v2/track/lead',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'status': 'accept',
             },
         )
@@ -287,12 +287,12 @@ class TestReportLeadWorker:
         }
 
     def test_track_click_and_postback__creates_report_lead(self, client, campaign, read_from_db):
-        click_id = str(uuid4())
+        click_id = uuid4()
 
         client.post(
             '/api/v2/track/click',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'campaignId': campaign['id'],
                 'source': 'fb',
             },
@@ -301,7 +301,7 @@ class TestReportLeadWorker:
         client.post(
             '/api/v2/track/postback',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'state': 'executed',
             },
         )
@@ -324,7 +324,7 @@ class TestReportLeadWorker:
     def test_track_lead_with_existing_report_lead__does_not_update_report_lead(
         self, client, campaign, timestamp, write_to_db, read_from_db
     ):
-        click_id = str(uuid4())
+        click_id = uuid4()
         click_created_at = timestamp - 20
 
         write_to_db(
@@ -351,7 +351,7 @@ class TestReportLeadWorker:
         client.post(
             '/api/v2/track/lead',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'status': 'accept',
             },
         )
@@ -365,7 +365,7 @@ class TestReportLeadWorker:
     def test_track_postback_with_existing_report_lead__updates_report_lead(
         self, client, campaign, timestamp, write_to_db, read_from_db
     ):
-        click_id = str(uuid4())
+        click_id = uuid4()
         click_created_at = timestamp - 20
 
         write_to_db(
@@ -392,7 +392,7 @@ class TestReportLeadWorker:
         client.post(
             '/api/v2/track/postback',
             json={
-                'clickId': click_id,
+                'clickId': str(click_id),
                 'state': 'executed',
             },
         )
