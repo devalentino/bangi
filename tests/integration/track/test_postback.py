@@ -5,8 +5,9 @@ from uuid import uuid4
 
 class TestPostback:
     def test_track_postback__post(self, client, campaign, read_from_db):
+        click_id = uuid4()
         request_payload = {
-            'clickId': str(uuid4()),
+            'clickId': str(click_id),
             'status': 'accept',
             'tid': '123',
             'payout': 10,
@@ -24,7 +25,7 @@ class TestPostback:
         postback = read_from_db('track_postback')
         assert postback == {
             'id': mock.ANY,
-            'click_id': request_payload['clickId'],
+            'click_id': click_id,
             'parameters': mock.ANY,
             'status': None,
             'cost_value': None,
@@ -45,8 +46,9 @@ class TestPostback:
         }
 
     def test_track_postback__get(self, client, campaign, read_from_db):
+        click_id = uuid4()
         request_payload = {
-            'clickId': str(uuid4()),
+            'clickId': str(click_id),
             'status': 'accept',
             'tid': '123',
             'payout': 10,
@@ -64,7 +66,7 @@ class TestPostback:
         postback = read_from_db('track_postback')
         assert postback == {
             'id': mock.ANY,
-            'click_id': request_payload['clickId'],
+            'click_id': click_id,
             'parameters': mock.ANY,
             'status': None,
             'cost_value': None,
@@ -85,7 +87,7 @@ class TestPostback:
         }
 
     def test_track_postback__maps_status(self, client, click, campaign, read_from_db):
-        response = client.post('/api/v2/track/postback', json={'clickId': click['click_id'], 'state': 'executed'})
+        response = client.post('/api/v2/track/postback', json={'clickId': str(click['click_id']), 'state': 'executed'})
         assert response.status_code == 201, response.text
 
         postback = read_from_db('track_postback')

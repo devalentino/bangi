@@ -1,10 +1,10 @@
-from peewee import CharField, DecimalField, IntegerField, UUIDField
+from peewee import CharField, DecimalField, IntegerField
 from src.core.entities import Entity
-from src.peewee import JSONField
+from src.peewee import BinaryUUIDField, JSONField
 
 
 class TrackClick(Entity):
-    click_id = UUIDField()
+    click_id = BinaryUUIDField()
     campaign_id = IntegerField()
     parameters = JSONField()
 
@@ -14,7 +14,7 @@ class TrackClick(Entity):
 
 
 class TrackPostback(Entity):
-    click_id = UUIDField()
+    click_id = BinaryUUIDField()
     parameters = JSONField()
     status = CharField(null=True)
     cost_value = DecimalField(null=True)
@@ -25,7 +25,7 @@ class TrackPostback(Entity):
 
 
 class TrackLead(Entity):
-    click_id = UUIDField()
+    click_id = BinaryUUIDField()
     parameters = JSONField()
 
     class Meta:

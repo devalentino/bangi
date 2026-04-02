@@ -17,7 +17,7 @@ BASE_URL="${BASE_URL:-$(default_base_url)}"
 
 is_local_host() {
   case "$1" in
-    127.0.0.1|localhost|0.0.0.0|::1|docker.local)
+    127.0.0.1|localhost|0.0.0.0|::1|host.docker.internal)
       return 0
       ;;
     *)
@@ -79,6 +79,9 @@ if [[ -n "${PAYLOAD:-}" ]]; then
 fi
 if [[ -n "${RATE_STAGES:-}" ]]; then
   docker_args+=(-e "RATE_STAGES=$RATE_STAGES")
+fi
+if [[ -n "${TIME_UNIT:-}" ]]; then
+  docker_args+=(-e "TIME_UNIT=$TIME_UNIT")
 fi
 if [[ -n "${PRE_ALLOCATED_VUS:-}" ]]; then
   docker_args+=(-e "PRE_ALLOCATED_VUS=$PRE_ALLOCATED_VUS")

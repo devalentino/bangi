@@ -44,32 +44,46 @@ bash perf/observe.sh perf/out
 Health endpoint example:
 
 ```bash
-BASE_URL=http://127.0.0.1:8000 \
+BASE_URL=http://host.docker.internal:8000 \
 ENDPOINT=/api/v2/health \
 RATE_STAGES=5:2m,10:5m,15:5m,20:5m,25:5m \
 bash perf/run_k6.sh perf/single_endpoint.js
 ```
 
-Authorized reports endpoint example:
+Authorized leads report example:
 
 ```bash
-BASE_URL=http://127.0.0.1:8000 \
+BASE_URL=http://host.docker.internal:8000 \
 ENDPOINT='/api/v2/reports/leads?campaignId=1&page=1&pageSize=20&sortBy=createdAt&sortOrder=desc' \
 AUTHORIZATION='Basic <base64-user-pass>' \
-RATE_STAGES=2:2m,5:5m,8:5m,10:5m \
+TIME_UNIT=1m \
+RATE_STAGES=1:5m \
+bash perf/run_k6.sh perf/single_endpoint.js
+```
+
+Authorized statistics report example:
+
+```bash
+BASE_URL=http://host.docker.internal:8000 \
+ENDPOINT='/api/v2/reports/statistics?campaignId=1&periodStart=2026-03-23&periodEnd=2026-03-23' \
+AUTHORIZATION='Basic <base64-user-pass>' \
+TIME_UNIT=1m \
+RATE_STAGES=1:5m \
 bash perf/run_k6.sh perf/single_endpoint.js
 ```
 
 POST example:
 
 ```bash
-BASE_URL=http://127.0.0.1:8000 \
+BASE_URL=http://host.docker.internal:8000 \
 ENDPOINT=/api/v2/track/click \
 METHOD=POST \
 PAYLOAD='{"clickId":"550e8400-e29b-41d4-a716-446655440000","campaignId":1}' \
 RATE_STAGES=5:2m,10:5m,15:5m \
 bash perf/run_k6.sh perf/single_endpoint.js
 ```
+
+For `perf/single_endpoint.js`, `RATE_STAGES` are interpreted relative to `TIME_UNIT`. For example, `TIME_UNIT=1m` with `RATE_STAGES=1:5m` means 1 request per minute for 5 minutes.
 
 What to look for:
 
@@ -91,7 +105,7 @@ Mixed workload example:
 This runs click registration continuously, sometimes creates leads/postbacks for the same click, and hits report endpoints in parallel.
 
 ```bash
-BASE_URL=http://127.0.0.1:8000 \
+BASE_URL=http://host.docker.internal:8000 \
 CAMPAIGN_ID=1 \
 AUTHORIZATION='Basic <base64-user-pass>' \
 CLICK_RATE_STAGES=5:2m,10:5m,15:5m,20:5m \

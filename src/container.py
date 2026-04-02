@@ -10,6 +10,7 @@ from src.auth.services import AuthenticationService
 from src.core.db import database
 from src.core.entities import database_proxy
 from src.core.services import CampaignService, ClientService, FlowService, Ip2LocationLocator
+from src.core.supervisor import WorkerContext, WorkerSupervisor
 from src.facebook_pacs.services import AdCabinetService as FacebookPacsAdCabinetService
 from src.facebook_pacs.services import BusinessPageService as FacebookPacsBusinessPageService
 from src.facebook_pacs.services import BusinessPortfolioService as FacebookPacsBusinessPortfolioService
@@ -39,6 +40,7 @@ container = create_sync_container(
         'BASIC_AUTHENTICATION_USERNAME': _get_env('BASIC_AUTHENTICATION_USERNAME'),
         'BASIC_AUTHENTICATION_PASSWORD': _get_env('BASIC_AUTHENTICATION_PASSWORD'),
         'REPORT_GAP_SECONDS': _get_env('REPORT_GAP_SECONDS', int, 30 * 60 * 60),
+        'BACKGROUND_SUPERVISOR_POLL_SECONDS': _get_env('BACKGROUND_SUPERVISOR_POLL_SECONDS', float, 5.0),
         'ACCESS_URL_EXPIRING_SOON_DAYS': _get_env('ACCESS_URL_EXPIRING_SOON_DAYS', int, 5),
         'LANDING_PAGES_BASE_PATH': _get_env('LANDING_PAGES_BASE_PATH'),
         'IP2LOCATION_DB_PATH': _get_env('IP2LOCATION_DB_PATH'),
@@ -47,6 +49,8 @@ container = create_sync_container(
     },
     services=[
         database,
+        WorkerContext,
+        WorkerSupervisor,
         BusinessPortfolioRepository,
         StatisticsReportRepository,
         AlertService,
