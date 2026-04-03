@@ -89,7 +89,7 @@ def create_landing(flow_id):
 
     landing_dir = Path(base_path) / str(flow_id)
     landing_dir.mkdir(parents=True, exist_ok=True)
-    index_path = landing_dir / 'index.html'
+    index_path = landing_dir / 'index.php'
     index_path.write_text(PERF_LANDING_HTML, encoding='utf-8')
     return str(index_path)
 

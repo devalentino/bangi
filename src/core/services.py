@@ -17,6 +17,7 @@ from src.core.entities import Campaign, Flow
 from src.core.enums import FlowActionType, SortOrder
 from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError, LandingPageUploadError
 from src.core.models import Client
+from src.core.utils import log_execution_time
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +207,7 @@ class FlowService:
 
         return landing_dir
 
+    @log_execution_time
     def _render_landing_page(self, flow_id):
         response = httpx.get(f'{self.landing_renderer_base_url}/{flow_id}/')
         return response.text

@@ -2,7 +2,7 @@ import humps
 from flask.views import MethodView
 
 from src.auth import auth
-from src.blueprint import Blueprint
+from src.core.blueprint import Blueprint
 from src.container import container
 from src.core.services import CampaignService
 from src.reports.schemas import (

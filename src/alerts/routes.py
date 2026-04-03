@@ -3,7 +3,7 @@ from flask.views import MethodView
 from src.alerts.schemas import AlertListResponseSchema
 from src.alerts.services import AlertService
 from src.auth import auth
-from src.blueprint import Blueprint
+from src.core.blueprint import Blueprint
 from src.container import container
 
 blueprint = Blueprint('alerts', __name__, description='Alerts')

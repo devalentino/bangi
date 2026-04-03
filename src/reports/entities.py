@@ -1,6 +1,6 @@
 from peewee import CharField, DateField, DecimalField, ForeignKeyField, IntegerField
 from src.core.entities import Campaign, Entity
-from src.peewee import BinaryUUIDField, JSONField, UTCTimestampField
+from src.core.peewee import BinaryUUIDField, JSONField, UTCTimestampField
 
 
 class Expense(Entity):

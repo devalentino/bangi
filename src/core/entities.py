@@ -16,7 +16,7 @@ from peewee import (
     TextField,
 )
 from src.core.enums import CostModel, Currency, FlowActionType
-from src.peewee import JSONField, UTCTimestampField
+from src.core.peewee import JSONField, UTCTimestampField
 
 database_proxy = DatabaseProxy()
 

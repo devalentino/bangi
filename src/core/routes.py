@@ -4,7 +4,7 @@ from flask.views import MethodView
 from marshmallow import ValidationError
 
 from src.auth import auth
-from src.blueprint import Blueprint
+from src.core.blueprint import Blueprint
 from src.container import container
 from src.core.enums import FlowActionType
 from src.core.schemas import (

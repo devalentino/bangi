@@ -66,8 +66,8 @@ Run:
 
 ```bash
 BASE_URL=http://host.docker.internal:8000 \
-CAMPAIGN_ID=<campaign-id-from-seed> \
-AUTHORIZATION='Basic <base64-user-pass>' \
+CAMPAIGN_ID=1 \
+AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
 CLICK_RATE_STAGES=5:2m,10:5m,15:5m,20:5m \
 CLICK_TIME_UNIT=1s \
 REPORT_RATE_STAGES=1:2m,2:5m,3:5m \
@@ -112,13 +112,13 @@ Preparation:
 - The script also seeds tracker history for the created campaign before printing the result.
 
 ```bash
-export $(grep -v '^#' .env | xargs) && python perf/process_and_reports_seed.py --action-type redirect --clicks 100000 --lead-ratio 0.30 --postback-ratio 0.15 --days 14
+export $(grep -v '^#' .env | xargs) && python perf/process_and_reports_seed.py --action-type redirect --clicks 100000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
 ```
 
 - For a render flow, create the campaign, flow, and landing files:
 
 ```bash
-export $(grep -v '^#' .env | xargs) && python perf/process_and_reports_seed.py --action-type render --clicks 100000 --lead-ratio 0.30 --postback-ratio 0.15 --days 14
+export $(grep -v '^#' .env | xargs) && python perf/process_and_reports_seed.py --action-type render --clicks 100000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
 ```
 
 - The script prints the created `campaign_id`, `flow_id`, and `landing_index_path` for render flows.
@@ -129,8 +129,8 @@ Run for redirect flows:
 
 ```bash
 BASE_URL=http://host.docker.internal:8000 \
-CAMPAIGN_ID=<campaign-id-from-seed> \
-AUTHORIZATION='Basic <base64-user-pass>' \
+CAMPAIGN_ID=1 \
+AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
 PROCESS_QUERY='{"status":"accept","tid":"123","payout":10,"offer_id":"456","lead_status":"accept,expect","sale_status":"confirm","rejected_status":"reject,fail,trash,error","return":"OK","from":"terraleads.com"}' \
 EXPECTED_STATUSES=302 \
 PROCESS_RATE_STAGES=5:2m,10:5m,15:5m,20:5m \
@@ -146,8 +146,8 @@ Run for render flows:
 
 ```bash
 BASE_URL=http://host.docker.internal:8000 \
-CAMPAIGN_ID=<campaign-id-from-seed> \
-AUTHORIZATION='Basic <base64-user-pass>' \
+CAMPAIGN_ID=1 \
+AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
 PROCESS_QUERY='{"status":"accept","tid":"123","payout":10,"offer_id":"456","lead_status":"accept,expect","sale_status":"confirm","rejected_status":"reject,fail,trash,error","return":"OK","from":"terraleads.com"}' \
 EXPECTED_STATUSES=200 \
 EXPECTED_CONTENT_TYPE='text/html; charset=utf-8' \
