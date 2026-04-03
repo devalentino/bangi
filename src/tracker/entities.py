@@ -1,6 +1,7 @@
 from peewee import CharField, DecimalField, IntegerField
+
 from src.core.entities import Entity
-from src.peewee import BinaryUUIDField, JSONField
+from src.core.peewee import BinaryUUIDField, JSONField
 
 
 class TrackClick(Entity):

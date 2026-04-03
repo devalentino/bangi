@@ -3,6 +3,7 @@ from queue import Empty
 from time import monotonic
 
 from peewee import JOIN
+
 from src.core.supervisor import WorkerContext, register_worker
 from src.reports.entities import ReportLead
 from src.tracker.entities import TrackClick, TrackPostback

@@ -1,9 +1,9 @@
 import logging
 from typing import Optional
 
+from peewee import fn
 from wireup import injectable
 
-from peewee import fn
 from src.core.entities import Campaign
 from src.core.enums import LeadStatus
 from src.core.supervisor import WorkerSupervisor

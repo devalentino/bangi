@@ -1,7 +1,7 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint
-
 from peewee import MySQLDatabase
+
 from src.container import container
 
 blueprint = Blueprint('health', __name__, description='Health')

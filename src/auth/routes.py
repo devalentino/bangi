@@ -1,7 +1,7 @@
 from flask.views import MethodView
 
 from src.auth import auth
-from src.blueprint import Blueprint
+from src.core.blueprint import Blueprint
 
 blueprint = Blueprint('auth', __name__, description='Auth')
 

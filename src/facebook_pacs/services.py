@@ -3,9 +3,9 @@ from datetime import datetime, time
 from time import time as timestamp
 from typing import Annotated
 
+from peewee import IntegrityError, fn
 from wireup import Inject, injectable
 
-from peewee import IntegrityError, fn
 from src.alerts import Alert, AlertCode, AlertSeverity, register_alert_callback
 from src.alerts.repositories import BusinessPortfolioRepository
 from src.core.enums import SortOrder
