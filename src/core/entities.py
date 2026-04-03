@@ -1,7 +1,5 @@
 from decimal import Decimal
 
-from playhouse.shortcuts import model_to_dict
-
 from peewee import (
     AutoField,
     BooleanField,
@@ -15,6 +13,8 @@ from peewee import Model as PeeweeModel
 from peewee import (
     TextField,
 )
+from playhouse.shortcuts import model_to_dict
+
 from src.core.enums import CostModel, Currency, FlowActionType
 from src.core.peewee import JSONField, UTCTimestampField
 

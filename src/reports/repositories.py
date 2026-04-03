@@ -1,10 +1,10 @@
 from datetime import datetime, time
 from typing import Annotated
 
+from peewee import JOIN, Case, MySQLDatabase, fn
 from pymysql.converters import escape_string
 from wireup import Inject, injectable
 
-from peewee import JOIN, Case, MySQLDatabase, fn
 from src.core.enums import LeadStatus
 from src.core.utils import log_execution_time
 from src.reports.entities import Expense, ReportLead

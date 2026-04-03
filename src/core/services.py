@@ -10,9 +10,9 @@ import httpx
 import IP2Location
 import rule_engine
 import user_agents
+from peewee import fn
 from wireup import Inject, injectable
 
-from peewee import fn
 from src.core.entities import Campaign, Flow
 from src.core.enums import FlowActionType, SortOrder
 from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError, LandingPageUploadError

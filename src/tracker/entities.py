@@ -1,4 +1,5 @@
 from peewee import CharField, DecimalField, IntegerField
+
 from src.core.entities import Entity
 from src.core.peewee import BinaryUUIDField, JSONField
 

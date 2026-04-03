@@ -1,6 +1,6 @@
+from peewee import JOIN, Case, MySQLDatabase, fn
 from wireup import injectable
 
-from peewee import JOIN, Case, MySQLDatabase, fn
 from src.facebook_pacs.entities import BusinessPortfolio, BusinessPortfolioAccessUrl
 
 

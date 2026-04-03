@@ -4,8 +4,8 @@ import humps
 from flask.views import MethodView
 
 from src.auth import auth
-from src.core.blueprint import Blueprint
 from src.container import container
+from src.core.blueprint import Blueprint
 from src.core.schemas import PaginationRequestSchema
 from src.facebook_pacs.schemas import (
     FacebookPacsAdCabinetListResponseSchema,

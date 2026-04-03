@@ -1,6 +1,6 @@
+from peewee import BooleanField, CharField, ForeignKeyField, ManyToManyField
 from playhouse.shortcuts import model_to_dict
 
-from peewee import BooleanField, CharField, ForeignKeyField, ManyToManyField
 from src.core.entities import Campaign as CoreCampaign
 from src.core.entities import Entity
 from src.core.peewee import UTCTimestampField
