@@ -7,26 +7,26 @@ pytest:
 
 check-black:
 	echo "=== Running Black Checker ==="
-	black --check --diff -l 120 -S ./src ./tests
+	black --check --diff -l 120 -S ./src ./tests ./perf
 
 check-flake8:
 	echo "=== Running Flake8 Checker ==="
-	flake8 --ignore=E203,E711,E712,E731,W503 --max-line-length=120 ./src ./tests
+	flake8 --ignore=E203,E711,E712,E731,W503 --max-line-length=120 ./src ./tests ./perf
 
 check-isort:
 	echo "=== Running Isort Checker ==="
-	isort -l 120 --profile black ./src ./tests -c
+	isort -l 120 --profile black ./src ./tests ./perf -c
 
 
 test: check-black check-isort check-flake8 pytest
 
 run-black:
 	echo "=== Running Black ==="
-	black -l 120 -S ./src ./tests
+	black -l 120 -S ./src ./tests ./perf
 
 run-isort:
 	echo "=== Running Isort ==="
-	isort -l 120 --profile black ./src ./tests
+	isort -l 120 --profile black ./src ./tests ./perf
 
 lint: run-isort run-black check-flake8
 

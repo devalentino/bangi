@@ -95,6 +95,27 @@ fi
 if [[ -n "${CAMPAIGN_ID:-}" ]]; then
   docker_args+=(-e "CAMPAIGN_ID=$CAMPAIGN_ID")
 fi
+if [[ -n "${PROCESS_QUERY:-}" ]]; then
+  docker_args+=(-e "PROCESS_QUERY=$PROCESS_QUERY")
+fi
+if [[ -n "${EXPECTED_STATUSES:-}" ]]; then
+  docker_args+=(-e "EXPECTED_STATUSES=$EXPECTED_STATUSES")
+fi
+if [[ -n "${EXPECTED_CONTENT_TYPE:-}" ]]; then
+  docker_args+=(-e "EXPECTED_CONTENT_TYPE=$EXPECTED_CONTENT_TYPE")
+fi
+if [[ -n "${PROCESS_RATE_STAGES:-}" ]]; then
+  docker_args+=(-e "PROCESS_RATE_STAGES=$PROCESS_RATE_STAGES")
+fi
+if [[ -n "${PROCESS_TIME_UNIT:-}" ]]; then
+  docker_args+=(-e "PROCESS_TIME_UNIT=$PROCESS_TIME_UNIT")
+fi
+if [[ -n "${PROCESS_PRE_ALLOCATED_VUS:-}" ]]; then
+  docker_args+=(-e "PROCESS_PRE_ALLOCATED_VUS=$PROCESS_PRE_ALLOCATED_VUS")
+fi
+if [[ -n "${PROCESS_MAX_VUS:-}" ]]; then
+  docker_args+=(-e "PROCESS_MAX_VUS=$PROCESS_MAX_VUS")
+fi
 if [[ -n "${CLICK_RATE_STAGES:-}" ]]; then
   docker_args+=(-e "CLICK_RATE_STAGES=$CLICK_RATE_STAGES")
 fi
