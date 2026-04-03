@@ -1,9 +1,8 @@
 from typing import Annotated
 
+from peewee import InterfaceError, MySQLDatabase
 from playhouse.shortcuts import ReconnectMixin
 from wireup import Inject, injectable
-
-from peewee import InterfaceError, MySQLDatabase
 
 
 class ReconnectPooledMySQLDatabase(ReconnectMixin, MySQLDatabase):

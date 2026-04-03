@@ -6,9 +6,9 @@ from queue import Queue
 from threading import Event, Lock, Thread
 from typing import Annotated, TypeAlias
 
+from peewee import MySQLDatabase
 from wireup import Inject, injectable
 
-from peewee import MySQLDatabase
 from src.core.db import ReconnectPooledMySQLDatabase
 
 logger = logging.getLogger(__name__)

@@ -1,9 +1,9 @@
 import os
 from typing import TypeVar
 
+from peewee import MySQLDatabase
 from wireup import create_sync_container
 
-from peewee import MySQLDatabase
 from src.alerts.repositories import BusinessPortfolioRepository
 from src.alerts.services import AlertService
 from src.auth.services import AuthenticationService

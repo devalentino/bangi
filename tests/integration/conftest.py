@@ -4,10 +4,9 @@ import pathlib
 from unittest import mock
 
 import pytest
+from peewee import MySQLDatabase
 from peewee_migrate import Router
 from pytest_mysql import factories
-
-from peewee import MySQLDatabase
 
 mysql_in_docker = factories.mysql_noproc(
     host='localhost',

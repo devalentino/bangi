@@ -1,32 +1,15 @@
 Use `k6` to find the highest stable request rate under the current Docker memory limits.
 
-Seed realistic historical data before running the benchmark:
-
-```bash
-export $(grep -v '^#' .env | xargs) && python perf/seed.py --campaign-id 1 --clicks 1000000 --lead-ratio 0.15 --postback-ratio 0.85 --days 14
-```
+## Common notes
 
 Safety guard:
 
-- `perf/seed.py` prompts for confirmation if `MARIADB_HOST` is non-local.
+- `perf/track_and_reports_seed.py` prompts for confirmation if `MARIADB_HOST` is non-local.
+- `perf/process_and_reports_seed.py` prompts for confirmation if `MARIADB_HOST` is non-local.
+- `perf/process_and_reports_seed.py` also refuses to run if the `campaign` table is not empty.
+- `perf/track_and_reports_seed.py` also refuses to run if the `campaign` table is not empty.
 - `perf/run_k6.sh` prompts for confirmation if `BASE_URL` is non-local.
 - You must type `yes` before the script proceeds.
-
-Examples:
-
-```bash
-export $(grep -v '^#' .env | xargs) && python perf/seed.py --campaign-id 1 --clicks 1000000
-```
-
-```bash
-BASE_URL=https://example.com bash perf/run_k6.sh perf/single_endpoint.js
-```
-
-If you want to replace existing tracker data for that campaign:
-
-```bash
-export $(grep -v '^#' .env | xargs) && python perf/seed.py --campaign-id 1 --clicks 1000000 --lead-ratio 0.15 --postback-ratio 0.85 --days 14 --truncate
-```
 
 Suggested flow:
 
@@ -40,50 +23,6 @@ Observer:
 ```bash
 bash perf/observe.sh perf/out
 ```
-
-Health endpoint example:
-
-```bash
-BASE_URL=http://host.docker.internal:8000 \
-ENDPOINT=/api/v2/health \
-RATE_STAGES=5:2m,10:5m,15:5m,20:5m,25:5m \
-bash perf/run_k6.sh perf/single_endpoint.js
-```
-
-Authorized leads report example:
-
-```bash
-BASE_URL=http://host.docker.internal:8000 \
-ENDPOINT='/api/v2/reports/leads?campaignId=1&page=1&pageSize=20&sortBy=createdAt&sortOrder=desc' \
-AUTHORIZATION='Basic <base64-user-pass>' \
-TIME_UNIT=1m \
-RATE_STAGES=1:5m \
-bash perf/run_k6.sh perf/single_endpoint.js
-```
-
-Authorized statistics report example:
-
-```bash
-BASE_URL=http://host.docker.internal:8000 \
-ENDPOINT='/api/v2/reports/statistics?campaignId=1&periodStart=2026-03-23&periodEnd=2026-03-23' \
-AUTHORIZATION='Basic <base64-user-pass>' \
-TIME_UNIT=1m \
-RATE_STAGES=1:5m \
-bash perf/run_k6.sh perf/single_endpoint.js
-```
-
-POST example:
-
-```bash
-BASE_URL=http://host.docker.internal:8000 \
-ENDPOINT=/api/v2/track/click \
-METHOD=POST \
-PAYLOAD='{"clickId":"550e8400-e29b-41d4-a716-446655440000","campaignId":1}' \
-RATE_STAGES=5:2m,10:5m,15:5m \
-bash perf/run_k6.sh perf/single_endpoint.js
-```
-
-For `perf/single_endpoint.js`, `RATE_STAGES` are interpreted relative to `TIME_UNIT`. For example, `TIME_UNIT=1m` with `RATE_STAGES=1:5m` means 1 request per minute for 5 minutes.
 
 What to look for:
 
@@ -100,45 +39,45 @@ free -m
 vmstat 1
 ```
 
-Mixed workload example:
+## Track Performance Scenario
 
-This runs click registration continuously, sometimes creates leads/postbacks for the same click, and hits report endpoints in parallel.
+This workload continuously writes tracking data and reads both reports endpoints in parallel.
+
+How it works:
+
+- Every tracking iteration sends one `/api/v2/track/click`.
+- About `30%` of clicks also send `/api/v2/track/lead` after `10s`.
+- About `15%` of leads also send `/api/v2/track/postback` after another `15s`.
+- A parallel scenario reads `/api/v2/reports/leads` and `/api/v2/reports/statistics`.
+- `CLICK_RATE_STAGES` and `REPORT_RATE_STAGES` are interpreted relative to `CLICK_TIME_UNIT` and `REPORT_TIME_UNIT`.
+
+Preparation:
+
+Create a dedicated campaign and seed realistic historical data before running this workload:
+
+```bash
+export $(grep -v '^#' .env | xargs) && python perf/track_and_reports_seed.py --clicks 1000000 --lead-ratio 0.15 --postback-ratio 0.85 --days 14
+```
+
+The script only runs when the `campaign` table is empty, uses hardcoded perf campaign defaults, seeds tracker history, and prints the created `campaign_id`.
+It also prints the final inserted `clicks`, `leads`, and `postbacks` counts.
+
+Run:
 
 ```bash
 BASE_URL=http://host.docker.internal:8000 \
 CAMPAIGN_ID=1 \
-AUTHORIZATION='Basic <base64-user-pass>' \
+AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
 CLICK_RATE_STAGES=5:2m,10:5m,15:5m,20:5m \
 CLICK_TIME_UNIT=1s \
 REPORT_RATE_STAGES=1:2m,2:5m,3:5m \
 REPORT_TIME_UNIT=1m \
 LEAD_PROBABILITY=0.30 \
-POSTBACK_PROBABILITY=0.15 \
+POSTBACK_PROBABILITY=0.85 \
 LEAD_DELAY_SECONDS=10 \
 POSTBACK_DELAY_SECONDS=15 \
-bash perf/run_k6.sh perf/mixed_workload.js
+bash perf/run_k6.sh perf/track_and_reports_workload.js
 ```
-
-How the mixed scenario works:
-
-- Every tracking iteration sends one `/api/v2/track/click`.
-- About `30%` of clicks also send `/api/v2/track/lead` after `10s`.
-- About `15%` of leads also send `/api/v2/track/postback` after another `15s`.
-- `CLICK_RATE_STAGES` and `REPORT_RATE_STAGES` are interpreted relative to `CLICK_TIME_UNIT` and `REPORT_TIME_UNIT`.
-- A parallel scenario reads:
-  - `/api/v2/reports/leads`
-  - `/api/v2/reports/statistics`
-
-Recommended process:
-
-1. Seed one realistic campaign with enough historical clicks.
-2. Start `perf/observe.sh`.
-3. Run `perf/mixed_workload.js` with low stages first.
-4. Increase click rate until you see either:
-   - `p95/p99` jump sharply
-   - `5xx` or timeouts
-   - backend or MariaDB restarts
-   - swap growth that does not recover
 
 Suggested first target on a 512 MB host:
 
@@ -150,3 +89,73 @@ Then raise one side at a time:
 - If writes are stable, increase reports.
 - If reports are stable, increase clicks.
 - Once one component starts degrading, you found the likely bottleneck.
+
+## Process Performance Scenario
+
+This workload continuously hits `/process/<campaignId>` and reads both reports endpoints in parallel.
+
+How it works:
+
+- Every process iteration sends one `GET /process/<campaignId>`.
+- Each `/process` request gets a unique `clickId`.
+- About `15%` of process clicks also send `/api/v2/track/postback` after `15s`.
+- Redirects are not followed, so you measure the gateway response rather than the downstream landing target.
+- A parallel scenario reads `/api/v2/reports/leads` and `/api/v2/reports/statistics`.
+- `PROCESS_RATE_STAGES` and `REPORT_RATE_STAGES` are interpreted relative to `PROCESS_TIME_UNIT` and `REPORT_TIME_UNIT`.
+- `POSTBACK_PROBABILITY` and `POSTBACK_DELAY_SECONDS` control the postback side flow.
+
+Preparation:
+
+- Create a dedicated campaign and flow for this scenario:
+- The script only runs when the `campaign` table is empty.
+- Campaign, flow, redirect URL, landing content, and campaign pricing use hardcoded perf defaults.
+- The script also seeds tracker history for the created campaign before printing the result.
+
+```bash
+export $(grep -v '^#' .env | xargs) && python perf/process_and_reports_seed.py --action-type redirect --clicks 100000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
+```
+
+- For a render flow, create the campaign, flow, and landing files:
+
+```bash
+export $(grep -v '^#' .env | xargs) && python perf/process_and_reports_seed.py --action-type render --clicks 100000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
+```
+
+- The script prints the created `campaign_id`, `flow_id`, and `landing_index_path` for render flows.
+- It also prints the final inserted `clicks`, `leads`, and `postbacks` counts.
+- `LANDING_PAGES_BASE_PATH` must be set for `--action-type render`.
+
+Run for redirect flows:
+
+```bash
+BASE_URL=http://host.docker.internal:8000 \
+CAMPAIGN_ID=1 \
+AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
+PROCESS_QUERY='{"status":"accept","tid":"123","payout":10,"offer_id":"456","lead_status":"accept,expect","sale_status":"confirm","rejected_status":"reject,fail,trash,error","return":"OK","from":"terraleads.com"}' \
+EXPECTED_STATUSES=302 \
+PROCESS_RATE_STAGES=5:2m,10:5m,15:5m,20:5m \
+PROCESS_TIME_UNIT=1s \
+REPORT_RATE_STAGES=1:2m,2:5m,3:5m \
+REPORT_TIME_UNIT=1m \
+POSTBACK_PROBABILITY=0.15 \
+POSTBACK_DELAY_SECONDS=15 \
+bash perf/run_k6.sh perf/process_and_reports_workload.js
+```
+
+Run for render flows:
+
+```bash
+BASE_URL=http://host.docker.internal:8000 \
+CAMPAIGN_ID=1 \
+AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
+PROCESS_QUERY='{"status":"accept","tid":"123","payout":10,"offer_id":"456","lead_status":"accept,expect","sale_status":"confirm","rejected_status":"reject,fail,trash,error","return":"OK","from":"terraleads.com"}' \
+EXPECTED_STATUSES=200 \
+EXPECTED_CONTENT_TYPE='text/html; charset=utf-8' \
+PROCESS_RATE_STAGES=5:2m,10:5m,15:5m,20:5m \
+PROCESS_TIME_UNIT=1s \
+REPORT_RATE_STAGES=1:2m,2:5m,3:5m \
+REPORT_TIME_UNIT=1m \
+POSTBACK_PROBABILITY=0.15 \
+POSTBACK_DELAY_SECONDS=15 \
+bash perf/run_k6.sh perf/process_and_reports_workload.js
+```

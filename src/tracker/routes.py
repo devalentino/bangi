@@ -3,8 +3,8 @@ from uuid import uuid4
 from flask import make_response, redirect, request
 from flask.views import MethodView
 
-from src.blueprint import Blueprint
 from src.container import container
+from src.core.blueprint import Blueprint
 from src.core.enums import FlowActionType
 from src.core.services import ClientService, FlowService
 from src.tracker.schemas import (
