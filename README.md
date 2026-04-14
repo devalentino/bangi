@@ -1,104 +1,49 @@
-# Bangi Backend
+# Bangi Monorepo
 
-Backend for Bangi CPA.
+Bangi is now organized as a monorepo with separate application boundaries for the API and web UI.
 
-## Tech stack
+## Repository layout
 
-- Python 3.12
-- Flask + Flask-Smorest (OpenAPI/Swagger)
-- Peewee ORM + `peewee-migrate`
-- MariaDB
-- Gunicorn
-- Pytest
+- `apps/api` Flask backend API
+- `apps/web` Mithril frontend dashboard
+- `infra` shared runtime infrastructure such as MariaDB and Nginx config
+- `landings` local uploaded landing page assets used by the development environment
+- `_bmad` BMAD workflows and project-level agent assets
+- `_bmad-output` generated BMAD artifacts
+- `.github/workflows` CI pipelines
 
-## Project structure
+## Working with the apps
 
-- `src/` application code (`auth`, `core`, `facebook_pacs`, `reports`, `tracker`, `health`)
-- `tests/integration/` integration test suite
-- `migrations/` database migrations
-- `infra/core.Dockerfile` backend container image
+### Backend API
 
-## Environment variables
-
-This project uses a local `.env` file (already included in `Makefile` and `docker-compose.yml`).
-
-Main variables used by the backend:
-
-- `MARIADB_HOST`
-- `MARIADB_PORT`
-- `MARIADB_USER`
-- `MARIADB_PASSWORD`
-- `MARIADB_DATABASE`
-- `BASIC_AUTHENTICATION_USERNAME`
-- `BASIC_AUTHENTICATION_PASSWORD`
-- `LANDING_PAGES_BASE_PATH`
-- `IP2LOCATION_DB_PATH`
-- `LANDING_PAGE_RENDERER_BASE_URL`
-- `INTERNAL_PROCESS_BASE_URL`
-
-## Database migrations
-
-Apply migrations:
+From the repository root:
 
 ```bash
-make migrate
+make api-test
+make api-lint
+make api-pytest
+docker compose up
 ```
 
-Generate a migration:
+Or work directly inside `apps/api`.
+
+### Web UI
+
+From the repository root:
 
 ```bash
-make generate-migration name=<migration_name>
+make web-install
+make web-build
+make web-start
+make web-openapi-check
 ```
 
-## Testing and linting
+Or work directly inside `apps/web`.
 
-Run integration tests:
+## Monorepo rules
 
-```bash
-make pytest
-```
-
-Run full checks (format checks + lint + tests):
-
-```bash
-make test
-```
-
-Format and lint:
-
-```bash
-make lint
-```
-
-## Build Image
-
-### Development
-
-Build the latest development image on the `develop` branch
-
-```bash
-docker build -f infra/core.Dockerfile -t ghcr.io/devalentino/bangi-backend:dev-$(git rev-parse --short HEAD) .
-```
-
-## Deploy Image
-```bash
-docker push ghcr.io/devalentino/bangi-backend:dev-$(git rev-parse --short HEAD)
-```
-
-### Release
-
-For release please merge code to the `master` and create tag. Then build image with the tag
-
-```bash
-docker build -f infra/core.Dockerfile -t ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-match) .
-```
-
-## Deploy Image
-```bash
-docker push ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-match)
-```
-
-## Useful endpoints:
-
-- Health check: `/api/v2/health`
-- OpenAPI docs: `/openapi/swagger-ui`
+- Applications stay isolated under `apps/`
+- Backend and frontend keep separate tooling and dependency graphs
+- Shared runtime/service configuration lives under `infra/`
+- BMAD/spec/process assets live at the repository root
+- Cross-stack feature PRs are allowed, but the app boundaries stay explicit

@@ -5,11 +5,11 @@ services:
     mem_limit: 160m
     mem_reservation: 128m
     env_file:
-      - .env
+      - ./.env
     ports:
       - '3306:3306'
     volumes:
-      - ./infra/mariadb-low-memory.cnf:/etc/mysql/conf.d/zzz-low-memory.cnf:ro
+      - ./infra/mariadb/low-memory.cnf:/etc/mysql/conf.d/zzz-low-memory.cnf:ro
     healthcheck:
       test: [ 'CMD', 'mariadb', '-u', 'root', '-p$MARIADB_ROOT_PASSWORD', '-e', 'SHOW DATABASES' ]
       interval: 5s
@@ -23,19 +23,19 @@ services:
       - ./landings:/var/www/html/landings
   backend:
     build:
-      context: .
-      dockerfile: infra/core.Dockerfile
+      context: ./apps/api
+      dockerfile: Dockerfile
     restart: always
     mem_limit: 160m
     mem_reservation: 128m
     env_file:
-      - .env
+      - ./.env
     environment:
       MARIADB_HOST: mariadb
     ports:
       - '8000:5000'
     volumes:
-      - ./src:/app/src
+      - ./apps/api/src:/app/src
       - ./.env:/app/.env
       - ./landings:/app/landings
     links:
