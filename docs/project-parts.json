@@ -1,0 +1,46 @@
+{
+  "project_name": "bangi-backend",
+  "repository_type": "monorepo",
+  "parts": [
+    {
+      "id": "api",
+      "name": "Backend API",
+      "type": "backend",
+      "root_path": "apps/api",
+      "entry_point": "apps/api/src/api.py",
+      "stack": [
+        "Python 3.12",
+        "Flask",
+        "Flask-Smorest",
+        "Peewee",
+        "MariaDB",
+        "Pytest"
+      ],
+      "purpose": "Core tracking, reporting, authentication, and Facebook PACS integration API."
+    },
+    {
+      "id": "web",
+      "name": "Web UI",
+      "type": "web",
+      "root_path": "apps/web",
+      "entry_point": "apps/web/index.js",
+      "stack": [
+        "JavaScript",
+        "Mithril",
+        "esbuild",
+        "Chart.js"
+      ],
+      "purpose": "Dashboard UI for reports, campaigns, PACS management, and sign-in."
+    }
+  ],
+  "shared_runtime": {
+    "infrastructure": [
+      "docker-compose.yml",
+      "infra/mariadb/low-memory.cnf",
+      "infra/nginx/nginx.conf"
+    ],
+    "assets": [
+      "landings/"
+    ]
+  }
+}
