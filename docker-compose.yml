@@ -38,8 +38,7 @@ services:
       - ./apps/api/src:/app/src
       - ./.env:/app/.env
       - ./landings:/app/landings
-    links:
-      - mariadb
+      - ./infra/IP2LOCATION-LITE-DB1.IPV6.BIN:/app/IP2LOCATION-LITE-DB1.IPV6.BIN
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://0.0.0.0:5000/api/v2/health" ]
       interval: 120s

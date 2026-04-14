@@ -2,7 +2,7 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY apps/web/package.json apps/web/package-lock.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY apps/web/ .
@@ -12,7 +12,7 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 
-COPY infra/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+COPY ../../infra/nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY --from=builder /app/index.html /usr/share/nginx/html/index.html
 COPY --from=builder /app/bin /usr/share/nginx/html/bin
