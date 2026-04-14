@@ -2,7 +2,7 @@ name: PR Pipelines
 run-name: Tests check on
 on: [pull_request]
 jobs:
-  black:
+  api-black:
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
@@ -12,7 +12,7 @@ jobs:
         python-version: '3.12'
     - run: pip install -r requirements-dev.txt && cp env-ci .env && make check-black
       working-directory: apps/api
-  isort:
+  api-isort:
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt && cp env-ci .env && make check-isort
         working-directory: apps/api
-  flake8:
+  api-flake8:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,7 +31,7 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt && cp env-ci .env && make check-flake8
         working-directory: apps/api
-  pytest:
+  api-pytest:
     continue-on-error: true
     runs-on: ubuntu-latest
     services:
