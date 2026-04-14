@@ -1,0 +1,57 @@
+.statistics-chart-tabs .nav-link {
+  font-size: 14px;
+  line-height: 1.2;
+  min-height: 44px;
+}
+
+.statistics-chart-tabs .nav-link span {
+  display: inline-block;
+}
+
+.statistics-table {
+  font-size: 14px;
+}
+
+.statistics-table th,
+.statistics-table td {
+  text-align: center;
+}
+
+.statistics-table th:first-child,
+.statistics-table td:first-child {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  white-space: nowrap;
+}
+
+.statistics-table tr.statistics-total-row > * {
+  background-color: #e0e0e0;
+}
+
+.alerts-bell-icon {
+  font-size: 18px;
+}
+
+.alerts-bell-icon-info {
+  color: #fd7e14;
+}
+
+.alerts-dropdown {
+  min-width: 320px;
+  max-width: 420px;
+}
+
+.alerts-dropdown-item {
+  padding: 0.75rem 1rem;
+}
+
+.alerts-item-icon {
+  font-size: 18px;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.alerts-dropdown-item:last-child {
+  border-bottom: 0 !important;
+}
