@@ -176,6 +176,15 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 .data/
+.DS_Store
+node_modules/
+.cache/
+_bmad-output/
+apps/web/bin/
+apps/web/css/
+apps/web/img/
+apps/web/lib/
+apps/web/.env.local
 
 # Abstra
 # Abstra is an AI-powered process automation framework.
@@ -210,3 +219,4 @@ __marimo__/
 
 landings
 perf/out
+IP2LOCATION*BIN
