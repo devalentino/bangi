@@ -5,8 +5,9 @@ from uuid import uuid4
 
 class TestLead:
     def test_track_lead__post(self, client, read_from_db):
+        click_id = uuid4()
         request_payload = {
-            'clickId': str(uuid4()),
+            'clickId': str(click_id),
             'status': 'accept',
             'tid': '123',
             'offer_id': '456',
@@ -19,7 +20,7 @@ class TestLead:
         lead = read_from_db('track_lead')
         assert lead == {
             'id': mock.ANY,
-            'click_id': request_payload['clickId'],
+            'click_id': click_id,
             'parameters': mock.ANY,
             'created_at': mock.ANY,
         }
@@ -32,8 +33,9 @@ class TestLead:
         }
 
     def test_track_lead__get(self, client, read_from_db):
+        click_id = uuid4()
         request_payload = {
-            'clickId': str(uuid4()),
+            'clickId': str(click_id),
             'status': 'accept',
             'tid': '123',
             'offer_id': '456',
@@ -46,7 +48,7 @@ class TestLead:
         lead = read_from_db('track_lead')
         assert lead == {
             'id': mock.ANY,
-            'click_id': request_payload['clickId'],
+            'click_id': click_id,
             'parameters': mock.ANY,
             'created_at': mock.ANY,
         }

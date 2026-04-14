@@ -4,8 +4,9 @@ from uuid import uuid4
 
 
 def test_track_click(client, campaign, read_from_db):
+    click_id = uuid4()
     request_payload = {
-        'clickId': str(uuid4()),
+        'clickId': str(click_id),
         'campaignId': campaign['id'],
         'campaign_name': 'test campaign',
         'adset_name': 'adset1',
@@ -20,7 +21,7 @@ def test_track_click(client, campaign, read_from_db):
     assert click == {
         'id': mock.ANY,
         'campaign_id': campaign['id'],
-        'click_id': request_payload['clickId'],
+        'click_id': click_id,
         'parameters': mock.ANY,
         'created_at': mock.ANY,
     }

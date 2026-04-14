@@ -2,8 +2,8 @@ import humps
 from flask.views import MethodView
 
 from src.auth import auth
-from src.blueprint import Blueprint
 from src.container import container
+from src.core.blueprint import Blueprint
 from src.core.services import CampaignService
 from src.reports.schemas import (
     ExpensesDistributionParametersRequestSchema,
@@ -103,11 +103,11 @@ class PostbacksReport(MethodView):
         return {
             'content': [
                 {
-                    'clickId': p['click_id'],
-                    'status': p['status'],
-                    'costValue': p['cost_value'],
-                    'currency': p['currency'],
-                    'createdAt': int(p['created_at'].timestamp()),
+                    'clickId': p.click_id,
+                    'status': p.status,
+                    'costValue': p.cost_value,
+                    'currency': p.currency,
+                    'createdAt': int(p.click_created_at.timestamp()),
                 }
                 for p in postbacks
             ],

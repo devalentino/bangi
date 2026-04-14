@@ -6,5 +6,6 @@ readme = "README.md"
 
 [tool.pytest.ini_options]
 pythonpath = [
-    "."
+    ".",
+    "tests",
 ]

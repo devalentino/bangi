@@ -1,13 +1,13 @@
 from datetime import datetime, time
 from typing import Annotated
 
+from peewee import JOIN, Case, MySQLDatabase, fn
 from pymysql.converters import escape_string
 from wireup import Inject, injectable
 
-from peewee import JOIN, Case, MySQLDatabase, fn
 from src.core.enums import LeadStatus
 from src.core.utils import log_execution_time
-from src.reports.entities import Expense
+from src.reports.entities import Expense, ReportLead
 from src.tracker.entities import TrackClick, TrackLead, TrackPostback
 
 
@@ -139,75 +139,32 @@ class StatisticsReportRepository:
         cursor = self.database.execute(query)
         return cursor.fetchall()
 
-    def _get_leads_total(self, campaign_id):
-        query = (
-            TrackClick.select(fn.COUNT(fn.DISTINCT(TrackClick.id)))
-            .join(TrackLead, JOIN.LEFT_OUTER, on=(TrackClick.click_id == TrackLead.click_id))
-            .join(TrackPostback, JOIN.LEFT_OUTER, on=(TrackClick.click_id == TrackPostback.click_id))
-            .where(
-                (TrackClick.campaign_id == campaign_id)
-                & (TrackLead.id.is_null(False) | TrackPostback.id.is_null(False))
-            )
-        )
-        return query.scalar() or 0
-
     @log_execution_time
     def get_leads(self, page, page_size, sort_by, desc, campaign_id):
-        order_by = getattr(TrackClick, sort_by)
+        if sort_by == 'created_at':
+            order_by = ReportLead.click_created_at
+        else:
+            order_by = getattr(ReportLead, sort_by)
+
         if desc:
             order_by = order_by.desc()
 
-        postback_row_number = (
-            fn.row_number()
-            .over(partition_by=TrackPostback.click_id, order_by=TrackPostback.id.desc())
-            .alias('row_number')
-        )
-
-        postbacks_subquery = TrackPostback.select(
-            TrackPostback.click_id,
-            TrackPostback.status,
-            TrackPostback.cost_value,
-            TrackPostback.currency,
-            postback_row_number,
-        )
-
-        lead_row_number = (
-            fn.row_number().over(partition_by=TrackLead.click_id, order_by=TrackLead.id.desc()).alias('row_number')
-        )
-
-        leads_subquery = TrackLead.select(
-            TrackLead.click_id,
-            lead_row_number,
-        )
-
         query = (
-            TrackClick.select(
-                TrackClick.click_id,
-                TrackClick.created_at,
-                postbacks_subquery.c.status,
-                postbacks_subquery.c.cost_value,
-                postbacks_subquery.c.currency,
+            ReportLead.select(
+                ReportLead.click_id,
+                ReportLead.click_created_at,
+                ReportLead.status,
+                ReportLead.cost_value,
+                ReportLead.currency,
             )
-            .join(
-                postbacks_subquery,
-                JOIN.LEFT_OUTER,
-                on=((TrackClick.click_id == postbacks_subquery.c.click_id) & (postbacks_subquery.c.row_number == 1)),
-            )
-            .join(
-                leads_subquery,
-                JOIN.LEFT_OUTER,
-                on=((TrackClick.click_id == leads_subquery.c.click_id) & (leads_subquery.c.row_number == 1)),
-            )
-            .where(
-                (TrackClick.campaign_id == campaign_id)
-                & (postbacks_subquery.c.click_id.is_null(False) | leads_subquery.c.click_id.is_null(False))
-            )
+            .where(ReportLead.campaign_id == campaign_id)
+            .order_by(order_by)
+            .limit(page_size)
+            .offset((page - 1) * page_size)
         )
 
-        total = self._get_leads_total(campaign_id)
-
-        query = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
-        return list(query.dicts()), total
+        total = ReportLead.select(fn.COUNT(ReportLead.id)).where(ReportLead.campaign_id == campaign_id).scalar()
+        return list(query), total
 
     def get_lead(self, click_id):
         click = TrackClick.get_or_none(TrackClick.click_id == click_id)

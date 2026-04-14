@@ -1,4 +1,4 @@
-from tests.fixtures.utils import click_uuid
+from fixtures.utils import click_uuid
 
 
 def test_get_expenses_distribution_parameters(client, authorization, campaign, write_to_db):

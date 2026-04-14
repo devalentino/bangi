@@ -2,8 +2,7 @@ from datetime import datetime, timedelta
 from unittest import mock
 
 import pytest
-
-from tests.fixtures.utils import click_uuid
+from fixtures.utils import click_uuid
 
 
 def test_get_report(client, authorization, campaign, statistics_expenses, today):

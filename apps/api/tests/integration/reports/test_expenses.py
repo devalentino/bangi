@@ -3,8 +3,7 @@ from datetime import timedelta
 from unittest import mock
 
 import pytest
-
-from tests.fixtures.utils import click_uuid
+from fixtures.utils import click_uuid
 
 
 class TestExpensesReport:

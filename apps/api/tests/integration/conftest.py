@@ -4,10 +4,9 @@ import pathlib
 from unittest import mock
 
 import pytest
+from peewee import MySQLDatabase
 from peewee_migrate import Router
 from pytest_mysql import factories
-
-from peewee import MySQLDatabase
 
 mysql_in_docker = factories.mysql_noproc(
     host='localhost',
@@ -50,8 +49,11 @@ def create_tables(mock_environment, mysql):
         port=mysql.port,
     )
 
-    router = Router(db, migrate_dir=pathlib.Path(__file__).parent.parent.parent / 'migrations')
-    router.run()
+    try:
+        router = Router(db, migrate_dir=pathlib.Path(__file__).parent.parent.parent / 'migrations')
+        router.run()
+    finally:
+        db.close()
 
 
 @pytest.fixture
