@@ -315,7 +315,13 @@ class FlowService:
         )
 
     def process_flows(self, campaign_id: int, client: Client):
-        flows = Flow.select().where(Flow.campaign_id == campaign_id).order_by(Flow.order_value.desc())
+        flows = (
+            Flow.select()
+            .where(
+                (Flow.campaign_id == campaign_id) & (Flow.is_enabled == True) & (Flow.is_deleted == False)
+            )
+            .order_by(Flow.order_value.desc(), Flow.id.asc())
+        )
 
         matched_flow = None
         for flow in flows:
