@@ -278,8 +278,7 @@ class FlowService:
         if name:
             flow.name = name
 
-        if rule is not None:
-            flow.rule = rule
+        flow.rule = rule
 
         if action_type is not None:
             flow.action_type = action_type

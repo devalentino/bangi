@@ -122,7 +122,7 @@ class FlowPaginationResponseSchema(FlowPaginationRequestSchema):
 
 class FlowUpdateRequestSchema(Schema):
     name = fields.String(required=False)
-    rule = fields.String(required=True)
+    rule = fields.String(required=False, allow_none=True, load_default=None)
     actionType = fields.Enum(FlowActionType, required=True)
     redirectUrl = fields.Url(allow_none=True, load_default=None)
     isEnabled = fields.Boolean()
@@ -137,9 +137,10 @@ class FlowUpdateRequestSchema(Schema):
     @validates_schema
     def validate_rule(self, data, **kwargs):
         rule = data.get('rule')
-        if rule is None or rule == '':
-            data['rule'] = None
+        if rule is None:
             return
+        if rule == '' or rule.strip() == '':
+            raise ValidationError('rule cannot be blank.', field_name='rule')
         try:
             rule_engine.Rule(rule, context=Client.rule_engine_context())
         except rule_engine.errors.SymbolResolutionError as e:

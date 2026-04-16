@@ -148,13 +148,14 @@ class CoreFlowView {
                         m("textarea.form-control", {
                           id: "flowRule",
                           rows: "4",
-                          placeholder: "Enter flow rule (optional)",
+                          placeholder:
+                            'Leave blank for catch-all traffic, or enter a rule like country == "US"',
                           value: this.model.form.rule,
                           oninput: function (event) {
                             this.model.form.rule = event.target.value;
                           }.bind(this),
                         }),
-                        m(".form-text", "Optional."),
+                        m(".form-text", "Leave blank for a catch-all flow."),
                       ]),
                       m(".form-check.mt-3", [
                         m("input.form-check-input", {

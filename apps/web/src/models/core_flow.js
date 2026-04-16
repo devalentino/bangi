@@ -72,12 +72,13 @@ class CoreFlowModel {
 
     if (this.form.actionType === "redirect") {
       let redirectUrl = (this.form.redirectUrl || "").trim();
-      if (redirectUrl) {
-        try {
-          new URL(redirectUrl);
-        } catch (error) {
-          return "Redirect URL must be a valid URL.";
-        }
+      if (!redirectUrl) {
+        return "Redirect URL is required.";
+      }
+      try {
+        new URL(redirectUrl);
+      } catch (error) {
+        return "Redirect URL must be a valid URL.";
       }
     }
 
@@ -89,9 +90,11 @@ class CoreFlowModel {
   }
 
   buildPayload() {
+    let rule = this.form.rule ? this.form.rule.trim() : null;
+
     return {
       name: this.form.name.trim(),
-      rule: this.form.rule ? this.form.rule.trim() : "",
+      rule: rule,
       actionType: this.form.actionType,
       redirectUrl:
         this.form.actionType === "redirect"
@@ -156,7 +159,36 @@ class CoreFlowModel {
           }
         }.bind(this), 2000);
       }.bind(this))
-      .catch(function () {
+      .catch(function (error) {
+        let formErrors =
+          error &&
+          error.response &&
+          error.response.errors &&
+          error.response.errors.form;
+
+        if (formErrors && formErrors.rule && formErrors.rule.length > 0) {
+          this.error = formErrors.rule[0];
+          return;
+        }
+
+        if (
+          formErrors &&
+          formErrors.redirectUrl &&
+          formErrors.redirectUrl.length > 0
+        ) {
+          this.error = formErrors.redirectUrl[0];
+          return;
+        }
+
+        if (
+          formErrors &&
+          formErrors.landingArchive &&
+          formErrors.landingArchive.length > 0
+        ) {
+          this.error = formErrors.landingArchive[0];
+          return;
+        }
+
         this.error = isNew
           ? "Failed to create flow."
           : "Failed to update flow.";
