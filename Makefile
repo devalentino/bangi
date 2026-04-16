@@ -1,4 +1,4 @@
-web-sapi-test:
+api-test:
 	$(MAKE) -C apps/api test
 
 api-lint:
