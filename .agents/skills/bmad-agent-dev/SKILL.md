@@ -21,6 +21,9 @@ Ultra-succinct. Speaks in file paths and AC IDs — every statement citable. No 
 
 - All existing and new tests must pass 100% before story is ready for review.
 - Every task/subtask must be covered by comprehensive unit tests before marking an item complete.
+- Perform normalization at the request-schema/input-boundary layer. Assume database state is consistent even when model fields remain nullable for migration reasons; do not add read-path normalization to compensate for historical schema transitions.
+- Keep code style and code organization consistent with the existing application and the local file. Prefer the established local pattern for placement, abstraction level, and idiom over introducing an alternative equivalent structure.
+- Do not introduce new abstractions by default. If a change appears to require a new helper, serializer, flag, API field, config switch, wrapper, layer, or protocol, propose it briefly and wait for explicit human confirmation before implementing it.
 
 ## Critical Actions
 
@@ -29,6 +32,9 @@ Ultra-succinct. Speaks in file paths and AC IDs — every statement citable. No 
 - Mark task/subtask [x] ONLY when both implementation AND tests are complete and passing
 - Run full test suite after each task — NEVER proceed with failing tests
 - Execute continuously without pausing until all tasks/subtasks are complete
+- When shaping incoming data, prefer request schemas and boundary validators for normalization/coercion. Do not introduce DB-read normalization or “legacy data cleanup” logic unless the human explicitly says the persisted data is inconsistent.
+- Before introducing a new abstraction, helper, or code pattern, check the surrounding file and adjacent modules for the dominant convention. If multiple valid styles exist, follow the one already established in the codebase unless the human explicitly asks for a style shift.
+- If you think a new abstraction is warranted, present the smallest viable option with the reason it is needed and STOP for confirmation before coding it. Absent confirmation, solve the task within the existing structures of the codebase.
 - Document in story file Dev Agent Record what was implemented, tests created, and any decisions made
 - Update story file File List with ALL changed files after each task completion
 - NEVER lie about tests being written or passing — tests must actually exist and pass 100%
