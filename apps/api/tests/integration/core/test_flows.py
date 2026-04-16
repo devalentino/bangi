@@ -320,11 +320,10 @@ def test_delete_flow(client, authorization, flow, campaign, flow_rule, write_to_
     assert read_from_db('flow', filters={'id': flow['id']})['is_deleted'] == 1
 
 
-@pytest.mark.parametrize('flow_rule', ['country == "MD"', ''])
-def test_create_flow__redirect_action_success(client, authorization, campaign, flow_rule, read_from_db):
+def test_create_flow__redirect_action_success(client, authorization, campaign, read_from_db):
     request_payload = {
         'name': 'Black flow',
-        'rule': flow_rule,
+        'rule': 'country == "MD"',
         'actionType': 'redirect',
         'redirectUrl': 'https://example.com',
         'isEnabled': True,
@@ -352,6 +351,27 @@ def test_create_flow__redirect_action_success(client, authorization, campaign, f
         'is_enabled': request_payload['isEnabled'],
         'is_deleted': False,
     }
+
+
+def test_create_flow__without_rule(client, authorization, campaign, read_from_db):
+    request_payload = {
+        'name': 'Catch-all flow',
+        'actionType': 'redirect',
+        'redirectUrl': 'https://example.com',
+        'isEnabled': True,
+    }
+
+    response = client.post(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+        data=request_payload,
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 201, response.text
+
+    flow = read_from_db('flow')
+    assert flow['rule'] is None
 
 
 def test_create_flow__render_action_success(
@@ -523,6 +543,29 @@ def test_create_flow__rejects_rule_with_unsupported_term(client, authorization, 
     }
 
 
+@pytest.mark.parametrize('input_rule', ['', '   \n\t'])
+def test_create_flow__rejects_blank_rule_variations(client, authorization, campaign, input_rule):
+    response = client.post(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+        data={
+            'name': 'Invalid flow',
+            'rule': input_rule,
+            'actionType': 'redirect',
+            'redirectUrl': 'https://example.com',
+            'isEnabled': True,
+        },
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {'form': {'rule': ['rule cannot be blank.']}},
+        'status': 'Unprocessable Entity',
+    }
+
+
 def test_update_flow__redirect_action_success(client, authorization, flow, read_from_db):
     request_payload = {
         'name': 'Black flow',
@@ -553,6 +596,82 @@ def test_update_flow__redirect_action_success(client, authorization, flow, read_
         'redirect_url': request_payload['redirectUrl'],
         'is_enabled': request_payload['isEnabled'],
         'is_deleted': False,
+    }
+
+
+@pytest.mark.parametrize('input_rule', ['', '   '])
+def test_update_flow__rejects_blank_rule_variations(client, authorization, flow, input_rule):
+    response = client.patch(
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+        data={
+            'rule': input_rule,
+            'actionType': 'redirect',
+            'redirectUrl': 'https://example.org',
+        },
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {'form': {'rule': ['rule cannot be blank.']}},
+        'status': 'Unprocessable Entity',
+    }
+
+
+def test_update_flow__without_rule_clears_rule(client, authorization, flow, read_from_db):
+    assert flow['rule'] is not None
+
+    response = client.patch(
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+        data={
+            'actionType': 'redirect',
+            'redirectUrl': 'https://example.org',
+            'isEnabled': False,
+        },
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 200, response.text
+
+    updated = read_from_db('flow')
+    assert updated['rule'] is None
+
+
+def test_get_flow__without_rule(client, authorization, campaign, write_to_db):
+    flow = write_to_db(
+        'flow',
+        {
+            'name': 'No Rule Flow',
+            'campaign_id': campaign['id'],
+            'rule': None,
+            'order_value': 1,
+            'action_type': 'redirect',
+            'redirect_url': 'https://example.com/no-rule',
+            'is_enabled': True,
+            'is_deleted': False,
+        },
+    )
+
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'id': flow['id'],
+        'name': flow['name'],
+        'campaignId': flow['campaign_id'],
+        'campaignName': campaign['name'],
+        'rule': None,
+        'orderValue': flow['order_value'],
+        'actionType': flow['action_type'],
+        'redirectUrl': flow['redirect_url'],
+        'landingPath': None,
+        'isEnabled': bool(flow['is_enabled']),
     }
 
 
