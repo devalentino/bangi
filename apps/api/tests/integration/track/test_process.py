@@ -104,6 +104,122 @@ class TestTrackRedirect:
         assert response.status_code == 302, response.text
         assert response.headers['Location'] == flow['redirect_url']
 
+    def test_track_redirect__ignores_disabled_and_deleted_flows(self, client, campaign, write_to_db, ip2location_mock):
+        write_to_db(
+            'flow',
+            {
+                'name': 'Disabled fallback',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 50,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/disabled',
+                'is_enabled': False,
+                'is_deleted': False,
+            },
+        )
+        write_to_db(
+            'flow',
+            {
+                'name': 'Deleted fallback',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 40,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/deleted',
+                'is_enabled': True,
+                'is_deleted': True,
+            },
+        )
+        runnable_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Runnable fallback',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 30,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/runnable',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == runnable_flow['redirect_url']
+
+    def test_track_redirect__returns_no_match_when_only_non_runnable_flows_remain(
+        self, client, campaign, write_to_db, ip2location_mock
+    ):
+        write_to_db(
+            'flow',
+            {
+                'name': 'Disabled fallback',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 50,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/disabled',
+                'is_enabled': False,
+                'is_deleted': False,
+            },
+        )
+        write_to_db(
+            'flow',
+            {
+                'name': 'Deleted fallback',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 40,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/deleted',
+                'is_enabled': True,
+                'is_deleted': True,
+            },
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 200, response.text
+        assert response.text == ''
+
+    def test_track_redirect__uses_deterministic_order_for_runnable_flows(
+        self, client, campaign, write_to_db, ip2location_mock
+    ):
+        first_inserted_flow = write_to_db(
+            'flow',
+            {
+                'name': 'First runnable fallback',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/first',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        write_to_db(
+            'flow',
+            {
+                'name': 'Second runnable fallback',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/second',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == first_inserted_flow['redirect_url']
+
 
 class TestTrackLanding:
     @pytest.fixture
