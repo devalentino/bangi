@@ -1,9 +1,15 @@
 import json
 from unittest import mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
+
+
+MOBILE_SAFARI_USER_AGENT = (
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
+    'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+)
 
 
 @pytest.fixture
@@ -22,6 +28,56 @@ def ip2location_mock(environment):
 
 
 class TestTrackRedirect:
+    def test_track_redirect__tracks_discard_when_no_flow_matches(
+        self, client, campaign, write_to_db, read_from_db, ip2location_mock
+    ):
+        click_id = uuid4()
+        write_to_db(
+            'flow',
+            {
+                'name': 'US only',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "US"',
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/us',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+        response = client.get(
+            f'/process/{campaign["id"]}',
+            query_string={'clickId': str(click_id)},
+            headers={'User-Agent': MOBILE_SAFARI_USER_AGENT},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.text == ''
+
+        click = read_from_db('track_click')
+        assert click == {
+            'id': mock.ANY,
+            'click_id': click_id,
+            'campaign_id': campaign['id'],
+            'parameters': '{}',
+            'created_at': mock.ANY,
+        }
+
+        discard = read_from_db('track_discard')
+        assert discard == {
+            'id': mock.ANY,
+            'click_id': click_id,
+            'campaign_id': campaign['id'],
+            'country': 'MD',
+            'browser_family': 'Mobile Safari',
+            'os_family': 'iOS',
+            'device_family': 'iPhone',
+            'is_mobile': True,
+            'is_bot': False,
+            'created_at': mock.ANY,
+        }
+
     def test_track_redirect(self, client, campaign, flow, read_from_db, ip2location_mock):
         click_id = uuid4()
         request_payload = {
@@ -185,6 +241,53 @@ class TestTrackRedirect:
         assert response.status_code == 200, response.text
         assert response.text == ''
 
+    def test_track_redirect__does_not_track_discard_when_flow_matches(
+        self, client, campaign, flow, read_from_db, ip2location_mock
+    ):
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == flow['redirect_url']
+        assert read_from_db('track_discard') is None
+
+    def test_track_redirect__generates_click_id_when_missing(
+        self, client, campaign, write_to_db, read_from_db, ip2location_mock
+    ):
+        write_to_db(
+            'flow',
+            {
+                'name': 'US only',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "US"',
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/us',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+        response = client.get(
+            f'/process/{campaign["id"]}',
+            headers={'User-Agent': MOBILE_SAFARI_USER_AGENT},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.text == ''
+
+        click = read_from_db('track_click')
+        assert click == {
+            'id': mock.ANY,
+            'click_id': mock.ANY,
+            'campaign_id': campaign['id'],
+            'parameters': '{}',
+            'created_at': mock.ANY,
+        }
+        assert isinstance(click['click_id'], UUID)
+
+        discard = read_from_db('track_discard')
+        assert discard['click_id'] == click['click_id']
+
     def test_track_redirect__uses_deterministic_order_for_runnable_flows(
         self, client, campaign, write_to_db, ip2location_mock
     ):
@@ -286,6 +389,3 @@ class TestTrackLanding:
             'status': request_payload['status'],
             'tid': request_payload['tid'],
         }
-
-
-# TODO: write a test if there are no appropriate flow

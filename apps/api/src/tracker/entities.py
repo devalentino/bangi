@@ -1,4 +1,4 @@
-from peewee import CharField, DecimalField, IntegerField
+from peewee import BooleanField, CharField, DecimalField, IntegerField
 
 from src.core.entities import Entity
 from src.core.peewee import BinaryUUIDField, JSONField
@@ -31,3 +31,21 @@ class TrackLead(Entity):
 
     class Meta:
         table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')
+
+
+class TrackDiscard(Entity):
+    click_id = BinaryUUIDField()
+    campaign_id = IntegerField()
+    country = CharField(max_length=2, null=True)
+    browser_family = CharField(null=True)
+    os_family = CharField(null=True)
+    device_family = CharField(null=True)
+    is_mobile = BooleanField()
+    is_bot = BooleanField()
+
+    class Meta:
+        table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')
+        indexes = (
+            (('campaign_id', 'created_at'), False),
+            (('created_at',), False),
+        )
