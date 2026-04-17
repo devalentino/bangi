@@ -80,16 +80,15 @@ class Process(MethodView):
 
         track_click_service.track_click(click_id, campaign_id=campaignId, parameters=process_payload)
 
-        action_type, subject = flow_service.process_flows(
-            campaignId,
-            client_service.client_info(
-                request.user_agent.string, request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
-            ),
+        client = client_service.client_info(
+            request.user_agent.string, request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
         )
+        action_type, subject = flow_service.process_flows(campaignId, client)
 
         if action_type == FlowActionType.redirect:
             return redirect(subject)
         elif action_type == FlowActionType.render:
             return make_response(subject)
         else:
+            track_click_service.track_discard(click_id, campaignId, client)
             return make_response('')

@@ -8,7 +8,7 @@ from src.core.entities import Campaign
 from src.core.enums import LeadStatus
 from src.core.supervisor import WorkerSupervisor
 from src.reports.workers import refresh_report_leads_worker
-from src.tracker.entities import TrackClick, TrackLead, TrackPostback
+from src.tracker.entities import TrackClick, TrackDiscard, TrackLead, TrackPostback
 from src.tracker.enums import TrackSource
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,19 @@ class TrackService:
     def track_click(self, click_id: str, campaign_id: int, parameters: dict) -> None:
         click = TrackClick(click_id=click_id, campaign_id=campaign_id, parameters=parameters)
         click.save()
+
+    def track_discard(self, click_id: str, campaign_id: int, client) -> None:
+        discard = TrackDiscard(
+            click_id=click_id,
+            campaign_id=campaign_id,
+            country=client.country,
+            browser_family=client.browser_family,
+            os_family=client.os_family,
+            device_family=client.device_family,
+            is_mobile=client.is_mobile,
+            is_bot=client.is_bot,
+        )
+        discard.save()
 
     def track_postback(self, click_id: str, parameters: dict) -> None:
         status = None
