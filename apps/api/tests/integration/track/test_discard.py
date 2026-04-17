@@ -1,30 +1,19 @@
 from time import sleep
 
 import pytest
-
-from src.container import container
-from src.core.supervisor import WorkerContext
-from src.tracker import workers
-from tests.fixtures.utils import click_uuid
+from fixtures.utils import click_uuid
 
 
 class TestCleanupDiscardWorker:
     @pytest.fixture(autouse=True)
     def mock_cleanup_discard_worker_settings(self, monkeypatch):
-        monkeypatch.setattr(workers, 'DISCARD_RETENTION_SECONDS', 300)
-        monkeypatch.setattr(workers, 'DISCARD_CLEANUP_PERIOD_SECONDS', 0.1)
-
-    @pytest.fixture(autouse=True)
-    def reset_cleanup_discard_worker_state(self):
-        state = container.get(WorkerContext).get_state(workers.cleanup_discard_worker)
-        state.clear()
-        yield
-        state.clear()
+        monkeypatch.setattr('src.tracker.workers.DISCARD_RETENTION_SECONDS', 300)
+        monkeypatch.setattr('src.tracker.workers.DISCARD_CLEANUP_PERIOD_SECONDS', 0.1)
 
     def test_cleanup_discard_worker__deletes_expired_discards(
         self, client, campaign, write_to_db, read_from_db, monkeypatch
     ):
-        monkeypatch.setattr(workers.time, 'time', lambda: 2000)
+        monkeypatch.setattr('src.tracker.workers.time.time', lambda: 2000)
 
         write_to_db(
             'track_discard',
