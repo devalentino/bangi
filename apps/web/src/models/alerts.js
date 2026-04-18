@@ -1,7 +1,7 @@
 const m = require("mithril");
 var config = require("../config");
 
-var POLL_INTERVAL_MS = 10 * 60 * 1000;
+var POLL_INTERVAL_MS = 1 * 60 * 1000;
 
 class AlertsModel {
   constructor(auth) {
@@ -63,10 +63,11 @@ class AlertsModel {
       return item.severity;
     });
 
-    if (
-      severities.indexOf("warning") !== -1 ||
-      severities.indexOf("error") !== -1
-    ) {
+    if (severities.indexOf("error") !== -1) {
+      return "error";
+    }
+
+    if (severities.indexOf("warning") !== -1) {
       return "warning";
     }
 

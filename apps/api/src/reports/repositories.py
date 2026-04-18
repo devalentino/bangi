@@ -5,10 +5,11 @@ from peewee import JOIN, Case, MySQLDatabase, fn
 from pymysql.converters import escape_string
 from wireup import Inject, injectable
 
+from src.core.entities import Campaign
 from src.core.enums import LeadStatus
 from src.core.utils import log_execution_time
 from src.reports.entities import Expense, ReportLead
-from src.tracker.entities import TrackClick, TrackLead, TrackPostback
+from src.tracker.entities import TrackClick, TrackDiscard, TrackLead, TrackPostback
 
 
 @injectable
@@ -178,3 +179,31 @@ class StatisticsReportRepository:
         )
 
         return click, list(leads_query), list(postbacks_query)
+
+    def campaign_window_totals(self, *, start_5m: int, start_1h: int, start_1d: int):
+        query = (
+            TrackClick.select(
+                TrackClick.campaign_id.alias('campaign_id'),
+                Campaign.name.alias('campaign_name'),
+                fn.SUM(TrackClick.created_at >= start_5m).alias('total_5m'),
+                fn.SUM(TrackClick.created_at >= start_1h).alias('total_1h'),
+                fn.SUM(TrackClick.created_at >= start_1d).alias('total_1d'),
+            )
+            .join(Campaign, JOIN.INNER, on=(TrackClick.campaign_id == Campaign.id))
+            .where(TrackClick.created_at >= start_1d)
+            .group_by(TrackClick.campaign_id, Campaign.name)
+        )
+        return list(query.dicts())
+
+    def campaign_window_discard_totals(self, *, start_5m: int, start_1h: int, start_1d: int):
+        query = (
+            TrackDiscard.select(
+                TrackDiscard.campaign_id.alias('campaign_id'),
+                fn.SUM(TrackDiscard.created_at >= start_5m).alias('discard_5m'),
+                fn.SUM(TrackDiscard.created_at >= start_1h).alias('discard_1h'),
+                fn.SUM(TrackDiscard.created_at >= start_1d).alias('discard_1d'),
+            )
+            .where(TrackDiscard.created_at >= start_1d)
+            .group_by(TrackDiscard.campaign_id)
+        )
+        return list(query.dicts())

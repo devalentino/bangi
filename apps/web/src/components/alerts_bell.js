@@ -7,8 +7,12 @@ function severityClass(alerts) {
 
   var severity = alerts.highestSeverity();
 
+  if (severity === "error") {
+    return "alerts-bell-icon alerts-bell-icon-error";
+  }
+
   if (severity === "warning") {
-    return "text-danger";
+    return "alerts-bell-icon alerts-bell-icon-warning";
   }
 
   if (severity === "info") {
@@ -19,6 +23,10 @@ function severityClass(alerts) {
 }
 
 function alertIconClass(code) {
+  if (code === "core_campaign_discard") {
+    return "fa fa-exclamation-triangle";
+  }
+
   if (
       code === "facebook_pacs_business_portfolio_access_url_missing"
       || code === "facebook_pacs_business_portfolio_access_url_expiring_soon"
@@ -31,8 +39,12 @@ function alertIconClass(code) {
 }
 
 function itemSeverityClass(severity) {
-  if (severity === "warning" || severity === "error") {
-    return "text-danger";
+  if (severity === "error") {
+    return "alerts-bell-icon-error";
+  }
+
+  if (severity === "warning") {
+    return "alerts-bell-icon-warning";
   }
 
   if (severity === "info") {
