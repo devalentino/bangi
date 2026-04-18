@@ -4,6 +4,7 @@ from decimal import ROUND_FLOOR, Decimal
 
 from wireup import injectable
 
+from src.alerts import Alert, AlertCode, AlertSeverity, register_alert_callback
 from src.core.entities import Campaign
 from src.core.enums import LeadStatus, SortOrder
 from src.core.services import CampaignService
@@ -13,6 +14,13 @@ from src.reports.exceptions import ClickDoesNotExistError, ExpensesDistributionP
 from src.reports.repositories import StatisticsReportRepository
 from src.tracker.entities import TrackClick
 from src.tracker.services import TrackService
+
+DISCARD_WINDOW_SECONDS = {
+    '5m': 5 * 60,
+    '1h': 60 * 60,
+    '1d': 24 * 60 * 60,
+}
+DISCARD_MIN_TOTAL = 20
 
 
 @injectable
@@ -343,6 +351,34 @@ class ReportService:
 
 @injectable
 class ReportHelperService:
+    @staticmethod
+    def build_discard_metric(discard_count: int, total_count: int) -> dict:
+        rate = round(discard_count / total_count, 4) if total_count else 0.0
+        return {
+            'discardCount': discard_count,
+            'totalCount': total_count,
+            'rate': rate,
+            'eligible': total_count >= DISCARD_MIN_TOTAL,
+        }
+
+    @staticmethod
+    def get_discard_severity(metric: dict) -> AlertSeverity | None:
+        if not metric['eligible'] or metric['rate'] <= 0:
+            return None
+        if metric['rate'] < 0.02:
+            return AlertSeverity.INFO
+        if metric['rate'] < 0.20:
+            return AlertSeverity.WARNING
+        return AlertSeverity.ERROR
+
+    @staticmethod
+    def format_discard_message(campaign_name: str, metrics: dict[str, dict]) -> str:
+        metrics_text = ', '.join(
+            f'{window}: {metric["discardCount"]}/{metric["totalCount"]} ({metric["rate"] * 100:.1f}%)'
+            for window, metric in metrics.items()
+        )
+        return f'Campaign "{campaign_name}" has discards. {metrics_text}. Review flow routing.'
+
     def list_expenses_distribution_parameters(self, campaign_id):
         parameters = set()
         query = TrackClick.select(TrackClick.parameters).where(TrackClick.campaign_id == campaign_id)
@@ -362,3 +398,66 @@ class ReportHelperService:
             values.add(value)
 
         return sorted(values)
+
+
+@register_alert_callback
+def collect_discard_alerts(container):
+    statistics_report_repository = container.get(StatisticsReportRepository)
+
+    now_timestamp = int(utcnow().timestamp())
+    window_starts = {window: now_timestamp - seconds for window, seconds in DISCARD_WINDOW_SECONDS.items()}
+
+    totals_by_campaign = {
+        row['campaign_id']: row
+        for row in statistics_report_repository.campaign_window_totals(
+            start_5m=window_starts['5m'],
+            start_1h=window_starts['1h'],
+            start_1d=window_starts['1d'],
+        )
+    }
+    discard_by_campaign = {
+        row['campaign_id']: row
+        for row in statistics_report_repository.campaign_window_discard_totals(
+            start_5m=window_starts['5m'],
+            start_1h=window_starts['1h'],
+            start_1d=window_starts['1d'],
+        )
+    }
+
+    alerts = []
+    for campaign_id, total_row in totals_by_campaign.items():
+        discard_row = discard_by_campaign.get(campaign_id, {})
+        metrics = {
+            '5m': ReportHelperService.build_discard_metric(
+                int(discard_row.get('discard_5m') or 0),
+                int(total_row.get('total_5m') or 0),
+            ),
+            '1h': ReportHelperService.build_discard_metric(
+                int(discard_row.get('discard_1h') or 0),
+                int(total_row.get('total_1h') or 0),
+            ),
+            '1d': ReportHelperService.build_discard_metric(
+                int(discard_row.get('discard_1d') or 0),
+                int(total_row.get('total_1d') or 0),
+            ),
+        }
+
+        severity = ReportHelperService.get_discard_severity(metrics['1h'])
+        if severity is None:
+            continue
+
+        alerts.append(
+            Alert(
+                code=AlertCode.CORE_CAMPAIGN_DISCARD,
+                message=ReportHelperService.format_discard_message(total_row['campaign_name'], metrics),
+                severity=severity,
+                payload={
+                    'campaignId': campaign_id,
+                    'campaignName': total_row['campaign_name'],
+                    'severityWindow': '1h',
+                    'metrics': metrics,
+                },
+            )
+        )
+
+    return alerts

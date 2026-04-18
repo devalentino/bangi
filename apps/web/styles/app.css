@@ -37,6 +37,14 @@
   color: #fd7e14;
 }
 
+.alerts-bell-icon-warning {
+  color: #fd7e14;
+}
+
+.alerts-bell-icon-error {
+  color: #dc3545;
+}
+
 .alerts-dropdown {
   min-width: 320px;
   max-width: 420px;
