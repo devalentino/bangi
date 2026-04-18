@@ -134,7 +134,7 @@ class DiscardReportTotalsSchema(Schema):
 
 
 class DiscardReportRowSchema(Schema):
-    value = fields.String(required=True)
+    value = fields.Raw(required=True, allow_none=True)
     count = fields.Integer(required=True)
     share = fields.Float(required=True)
 

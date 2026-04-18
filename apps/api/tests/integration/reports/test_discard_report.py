@@ -36,7 +36,6 @@ class TestDiscardReport:
             (1, 'UA', timestamp - 60),
             (2, 'UA', timestamp - 60),
             (3, 'MD', timestamp - 60),
-            (4, None, timestamp - 60),
             (1001, 'RO', timestamp - 7200),
             (1002, 'RO', timestamp - 7200),
         ):
@@ -52,6 +51,37 @@ class TestDiscardReport:
                     'is_mobile': False,
                     'is_bot': False,
                     'created_at': created_at,
+                },
+                returning=False,
+            )
+
+    @pytest.fixture
+    def discard_country_report_with_null_group_preconditions(self, campaign, timestamp, write_to_db):
+        for index in range(20):
+            write_to_db(
+                'track_click',
+                {
+                    'click_id': click_uuid(index + 1),
+                    'campaign_id': campaign['id'],
+                    'parameters': {},
+                    'created_at': timestamp - 60,
+                },
+                returning=False,
+            )
+
+        for click_number, country in ((1, 'UA'), (2, None)):
+            write_to_db(
+                'track_discard',
+                {
+                    'click_id': click_uuid(click_number),
+                    'campaign_id': campaign['id'],
+                    'country': country,
+                    'browser_family': None,
+                    'os_family': None,
+                    'device_family': None,
+                    'is_mobile': False,
+                    'is_bot': False,
+                    'created_at': timestamp - 60,
                 },
                 returning=False,
             )
@@ -84,7 +114,7 @@ class TestDiscardReport:
                 returning=False,
             )
 
-        # Mixed recent and older discards verify boolean normalization and window filtering together.
+        # Mixed recent and older discards verify raw boolean grouping and window filtering together.
         for click_number, is_mobile, created_at in (
             (1, True, timestamp - 60),
             (2, True, timestamp - 60),
@@ -96,7 +126,7 @@ class TestDiscardReport:
                 {
                     'click_id': click_uuid(click_number),
                     'campaign_id': campaign['id'],
-                    'country': None,
+                    'country': 'UA',
                     'browser_family': None,
                     'os_family': None,
                     'device_family': None,
@@ -121,17 +151,37 @@ class TestDiscardReport:
             'content': {
                 'window': '1h',
                 'groupBy': 'country',
-                'totals': {'discardCount': 4, 'totalCount': 50, 'rate': 0.08, 'eligible': True},
+                'totals': {'discardCount': 3, 'totalCount': 50, 'rate': 0.06, 'eligible': True},
                 'rows': [
-                    {'value': 'UA', 'count': 2, 'share': 0.5},
-                    {'value': 'MD', 'count': 1, 'share': 0.25},
-                    {'value': 'unknown', 'count': 1, 'share': 0.25},
+                    {'value': 'UA', 'count': 2, 'share': 0.6667},
+                    {'value': 'MD', 'count': 1, 'share': 0.3333},
+                ],
+            }
+        }
+
+    @pytest.mark.usefixtures('discard_country_report_with_null_group_preconditions')
+    def test_get_discard_report__returns_raw_null_when_group_value_is_null(self, client, authorization, campaign):
+        response = client.get(
+            '/api/v2/reports/discard',
+            headers={'Authorization': authorization},
+            query_string={'campaignId': campaign['id'], 'window': '1h', 'groupBy': 'country'},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': {
+                'window': '1h',
+                'groupBy': 'country',
+                'totals': {'discardCount': 2, 'totalCount': 20, 'rate': 0.1, 'eligible': True},
+                'rows': [
+                    {'value': 'UA', 'count': 1, 'share': 0.5},
+                    {'value': None, 'count': 1, 'share': 0.5},
                 ],
             }
         }
 
     @pytest.mark.usefixtures('discard_mobile_report_preconditions')
-    def test_get_discard_report__normalizes_boolean_grouping_values(self, client, authorization, campaign):
+    def test_get_discard_report__returns_raw_boolean_grouping_values(self, client, authorization, campaign):
         response = client.get(
             '/api/v2/reports/discard',
             headers={'Authorization': authorization},
@@ -146,8 +196,8 @@ class TestDiscardReport:
                 'groupBy': 'isMobile',
                 'totals': {'discardCount': 3, 'totalCount': 25, 'rate': 0.12, 'eligible': True},
                 'rows': [
-                    {'value': 'mobile', 'count': 2, 'share': 0.6667},
-                    {'value': 'non-mobile', 'count': 1, 'share': 0.3333},
+                    {'value': True, 'count': 2, 'share': 0.6667},
+                    {'value': False, 'count': 1, 'share': 0.3333},
                 ],
             }
         }
@@ -158,7 +208,7 @@ class TestDiscardReport:
             ('browserFamily', {'browser_family': 'Mobile Safari'}, 'Mobile Safari'),
             ('osFamily', {'os_family': 'iOS'}, 'iOS'),
             ('deviceFamily', {'device_family': 'iPhone'}, 'iPhone'),
-            ('isBot', {'is_bot': True}, 'bot'),
+            ('isBot', {'is_bot': True}, True),
         ],
     )
     def test_get_discard_report__supports_each_dimension(
@@ -188,13 +238,13 @@ class TestDiscardReport:
                 returning=False,
             )
 
-        # A single discard row isolates the expected value mapping for the current grouping dimension.
+        # A single discard row isolates the grouped value returned for the current dimension.
         write_to_db(
             'track_discard',
             {
                 'click_id': click_uuid(10001),
                 'campaign_id': report_campaign['id'],
-                'country': None,
+                'country': 'UA',
                 'browser_family': discard_payload.get('browser_family'),
                 'os_family': discard_payload.get('os_family'),
                 'device_family': discard_payload.get('device_family'),

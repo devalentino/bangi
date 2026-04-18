@@ -21,10 +21,6 @@ DISCARD_WINDOW_SECONDS = {
     '1d': 24 * 60 * 60,
 }
 DISCARD_MIN_TOTAL = 20
-DISCARD_BOOLEAN_GROUP_VALUES = {
-    'is_mobile': {True: 'mobile', False: 'non-mobile'},
-    'is_bot': {True: 'bot', False: 'human'},
-}
 
 
 @injectable
@@ -38,14 +34,6 @@ class ReportService:
         self.campaign_service = campaign_service
         self.track_service = track_service
         self.statistics_report_repository = statistics_report_repository
-
-    @staticmethod
-    def _normalize_discard_group_value(group_by_field: str, value) -> str:
-        if value is None:
-            return 'unknown'
-        if group_by_field in DISCARD_BOOLEAN_GROUP_VALUES:
-            return DISCARD_BOOLEAN_GROUP_VALUES[group_by_field][bool(value)]
-        return str(value)
 
     def _calculate_sum_of_clicks(self, stats):
         print(stats)
@@ -386,10 +374,9 @@ class ReportService:
             start_timestamp=start_timestamp,
             group_by=group_by_field,
         ):
-            value = self._normalize_discard_group_value(group_by_field, row['value'])
             count = int(row['count'])
             share = round(count / discard_count, 4) if discard_count else 0.0
-            rows.append({'value': value, 'count': count, 'share': share})
+            rows.append({'value': row['value'], 'count': count, 'share': share})
 
         rows.sort(key=lambda row: (-row['count'], row['value']))
 
