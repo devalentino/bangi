@@ -41,10 +41,26 @@ This workflow prepares and opens a GitHub pull request from the current branch b
    - Ensure no template headings are removed.
    - Ensure required bullets are not blank placeholders.
    - Ensure the body does not leave empty `Included`, `Not included`, `Jira`, or `Spec` lines.
+   - Ensure the PR title matches either `<jira_ticket>: <prefix>: <pr_title>` or `<prefix>: <pr_title>`.
+   - When `jira_ticket` is present, ensure it is a concrete ticket ID such as `KAN-11`, not `TBD`.
+   - Ensure `prefix` is exactly one of: `feat`, `fix`, `migration`, `refactor`, `chore`, `test`, `docs`, `perf`.
    - If essential context is missing and cannot be inferred safely, stop and ask the user for the missing item instead of opening a weak PR.
 
 5. Create the PR.
-   - Build the PR title from the ticket/branch context and actual change scope.
+   - Build the PR title as `<jira_ticket>: <prefix>: <pr_title>` when a Jira ticket can be resolved confidently; otherwise build it as `<prefix>: <pr_title>`.
+   - Resolve `jira_ticket` from the strongest available repo context, preferring branch name, then recent commits, then user-provided context.
+   - If no Jira ticket can be resolved confidently, omit it from the title instead of using a placeholder.
+   - Choose `prefix` from the actual scope of change:
+     - `feat`: A new feature for the user or system.
+     - `fix`: A bug fix for the existing functionality.
+     - `migration`: Database schema changes or major version upgrades.
+     - `refactor`: Code changes that neither fix a bug nor add a feature.
+     - `chore`: Routine tasks, dependency updates, or configuration changes.
+     - `test`: Adding missing tests or correcting existing ones.
+     - `docs`: Documentation-only changes.
+     - `perf`: A code change that improves performance.
+   - Write `pr_title` as a concise reviewer-oriented summary of the actual change, without repeating the ticket or prefix.
+   - If the workflow cannot determine a valid `prefix` confidently, stop and ask the user instead of guessing.
    - Open the PR with `gh pr create`.
    - Always pass the resolved default branch explicitly via `--base`.
    - Pass the generated PR body via `--body-file`.
@@ -59,6 +75,9 @@ This workflow prepares and opens a GitHub pull request from the current branch b
 
 - Do not open a PR with unfilled template placeholders.
 - Do not guess Jira or spec links when the repo context does not support them; use `TBD` or ask the user if the link is essential.
+- Do not open a PR whose title does not match either `<jira_ticket>: <prefix>: <pr_title>` or `<prefix>: <pr_title>`.
+- Do not use placeholder ticket values in the title when Jira context is missing; omit the ticket segment instead.
+- Do not invent or normalize unsupported prefixes; use only `feat`, `fix`, `migration`, `refactor`, `chore`, `test`, `docs`, or `perf`.
 - Do not target a non-default base branch unless the user explicitly asks for it.
 - Keep the PR body aligned with `.github/pull_request_template.md`; do not invent extra sections unless the user asks for them.
 
