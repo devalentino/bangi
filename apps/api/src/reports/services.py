@@ -21,6 +21,10 @@ DISCARD_WINDOW_SECONDS = {
     '1d': 24 * 60 * 60,
 }
 DISCARD_MIN_TOTAL = 20
+DISCARD_BOOLEAN_GROUP_VALUES = {
+    'is_mobile': {True: 'mobile', False: 'non-mobile'},
+    'is_bot': {True: 'bot', False: 'human'},
+}
 
 
 @injectable
@@ -34,6 +38,14 @@ class ReportService:
         self.campaign_service = campaign_service
         self.track_service = track_service
         self.statistics_report_repository = statistics_report_repository
+
+    @staticmethod
+    def _normalize_discard_group_value(group_by_field: str, value) -> str:
+        if value is None:
+            return 'unknown'
+        if group_by_field in DISCARD_BOOLEAN_GROUP_VALUES:
+            return DISCARD_BOOLEAN_GROUP_VALUES[group_by_field][bool(value)]
+        return str(value)
 
     def _calculate_sum_of_clicks(self, stats):
         print(stats)
@@ -347,6 +359,46 @@ class ReportService:
             raise ClickDoesNotExistError()
 
         return click, leads, postbacks
+
+    def discard_report(self, *, campaign_id: int, window: str, group_by: str, group_by_field: str):
+        self.campaign_service.get(campaign_id)
+
+        start_timestamp = int(utcnow().timestamp()) - DISCARD_WINDOW_SECONDS[window]
+        total_count = int(
+            self.statistics_report_repository.campaign_total_count(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+            )
+            or 0
+        )
+        discard_count = int(
+            self.statistics_report_repository.campaign_discard_count(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+            )
+            or 0
+        )
+        totals = ReportHelperService.build_discard_metric(discard_count, total_count)
+
+        rows = []
+        for row in self.statistics_report_repository.campaign_discard_distribution(
+            campaign_id=campaign_id,
+            start_timestamp=start_timestamp,
+            group_by=group_by_field,
+        ):
+            value = self._normalize_discard_group_value(group_by_field, row['value'])
+            count = int(row['count'])
+            share = round(count / discard_count, 4) if discard_count else 0.0
+            rows.append({'value': value, 'count': count, 'share': share})
+
+        rows.sort(key=lambda row: (-row['count'], row['value']))
+
+        return {
+            'window': window,
+            'groupBy': group_by,
+            'totals': totals,
+            'rows': rows,
+        }
 
 
 @injectable

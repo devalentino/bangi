@@ -1,7 +1,7 @@
 from marshmallow import INCLUDE, fields
 
 from src.core.schemas import ComaSeparatedStringsField, PaginationRequestSchema, PaginationResponseSchema, Schema
-from src.reports.enums import ExpenseSortBy
+from src.reports.enums import DiscardGroupBy, DiscardWindow, ExpenseSortBy
 
 
 class StatisticsReportRequest(Schema):
@@ -118,3 +118,33 @@ class LeadResponseSchema(Schema):
     createdAt = fields.Integer(required=True)
     leads = fields.Nested(LeadResponseLeadItem(many=True), required=True)
     postbacks = fields.Nested(LeadResponsePostbackItem(many=True), required=True)
+
+
+class DiscardReportRequestSchema(Schema):
+    campaignId = fields.Integer(required=True)
+    window = fields.Enum(DiscardWindow, required=True)
+    groupBy = fields.Enum(DiscardGroupBy, required=True)
+
+
+class DiscardReportTotalsSchema(Schema):
+    discardCount = fields.Integer(required=True)
+    totalCount = fields.Integer(required=True)
+    rate = fields.Float(required=True)
+    eligible = fields.Boolean(required=True)
+
+
+class DiscardReportRowSchema(Schema):
+    value = fields.String(required=True)
+    count = fields.Integer(required=True)
+    share = fields.Float(required=True)
+
+
+class DiscardReportContentSchema(Schema):
+    window = fields.String(required=True)
+    groupBy = fields.String(required=True)
+    totals = fields.Nested(DiscardReportTotalsSchema(), required=True)
+    rows = fields.Nested(DiscardReportRowSchema(many=True), required=True)
+
+
+class DiscardReportResponseSchema(Schema):
+    content = fields.Nested(DiscardReportContentSchema(), required=True)

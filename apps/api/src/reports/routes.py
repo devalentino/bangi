@@ -6,6 +6,8 @@ from src.container import container
 from src.core.blueprint import Blueprint
 from src.core.services import CampaignService
 from src.reports.schemas import (
+    DiscardReportRequestSchema,
+    DiscardReportResponseSchema,
     ExpensesDistributionParametersRequestSchema,
     ExpensesDistributionParametersResponseSchema,
     ExpensesDistributionParameterValuesRequestSchema,
@@ -151,6 +153,23 @@ class Lead(MethodView):
                 }
                 for postback in postbacks
             ],
+        }
+
+
+@blueprint.route('/discard')
+class DiscardReport(MethodView):
+    @blueprint.arguments(DiscardReportRequestSchema, location='query')
+    @blueprint.response(200, DiscardReportResponseSchema)
+    @auth.login_required
+    def get(self, params):
+        report_service = container.get(ReportService)
+        return {
+            'content': report_service.discard_report(
+                campaign_id=params['campaignId'],
+                window=params['window'].value,
+                group_by=params['groupBy'].value,
+                group_by_field=humps.decamelize(params['groupBy'].value),
+            )
         }
 
 
