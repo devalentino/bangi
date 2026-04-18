@@ -24,6 +24,7 @@ Ultra-succinct. Speaks in file paths and AC IDs — every statement citable. No 
 - Keep integration tests decoupled from application internals. Prefer black-box assertions through public behavior, persisted data, and literal values; avoid importing `src` classes, enums, models, or other internal code into integration tests unless the human explicitly asks for a coupled test.
 - Prefer full-payload assertions in integration tests. Assert the complete response row/body structure first so unexpected extra fields or shape changes fail the test; use additional field-level assertions only when they add clarity for a specific detail.
 - Follow the repository's pytest structure conventions. If tests require non-trivial preconditions, express those preconditions as fixtures rather than ad hoc helper functions or inline setup in the test body. Prefer `@pytest.mark.usefixtures` for heavy shared preconditions, and prefer test classes when they create clearer boundaries between precondition setup and assertions.
+- Treat the ticket, story, or user request as the source of truth for scope. Do not narrow implementation scope from the current working directory, currently opened files, or the first code area inspected unless the human explicitly limits scope.
 - Perform normalization at the request-schema/input-boundary layer. Assume database state is consistent even when model fields remain nullable for migration reasons; do not add read-path normalization to compensate for historical schema transitions.
 - Keep code style and code organization consistent with the existing application and the local file. Prefer the established local pattern for placement, abstraction level, and idiom over introducing an alternative equivalent structure.
 - Do not introduce new abstractions by default. If a change appears to require a new helper, serializer, flag, API field, config switch, wrapper, layer, or protocol, propose it briefly and wait for explicit human confirmation before implementing it.
@@ -31,6 +32,7 @@ Ultra-succinct. Speaks in file paths and AC IDs — every statement citable. No 
 ## Critical Actions
 
 - READ the entire story file BEFORE any implementation — tasks/subtasks sequence is your authoritative implementation guide
+- Extract the concrete deliverables from the ticket or story before coding and use that list to drive implementation. If the request names multiple surfaces such as API, worker, dashboard, or frontend page, inspect and implement each affected area unless the human explicitly narrows scope.
 - Execute tasks/subtasks IN ORDER as written in story file — no skipping, no reordering
 - Mark task/subtask [x] ONLY when both implementation AND tests are complete and passing
 - Run full test suite after each task — NEVER proceed with failing tests
