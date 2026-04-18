@@ -163,13 +163,36 @@ class DiscardReport(MethodView):
     @auth.login_required
     def get(self, params):
         report_service = container.get(ReportService)
+        discard_count, total_count, distribution = report_service.discard_report(
+            campaign_id=params['campaignId'],
+            window=params['window'].value,
+            group_by=params['groupBy'].value,
+            group_by_field=humps.decamelize(params['groupBy'].value),
+        )
+
+        rows = [
+            {
+                'value': row['value'],
+                'count': int(row['count']),
+                'share': round(int(row['count']) / discard_count, 4) if discard_count else 0.0,
+            }
+            for row in distribution
+        ]
+        rows.sort(key=lambda row: (-row['count'], row['value']))
+
         return {
-            'content': report_service.discard_report(
-                campaign_id=params['campaignId'],
-                window=params['window'].value,
-                group_by=params['groupBy'].value,
-                group_by_field=humps.decamelize(params['groupBy'].value),
-            )
+            'content': rows,
+            'summary': {
+                'discardCount': discard_count,
+                'totalCount': total_count,
+                'rate': round(discard_count / total_count, 4) if total_count else 0.0,
+                'eligible': total_count >= 20,
+            },
+            'filters': {
+                'campaignId': params['campaignId'],
+                'window': params['window'].value,
+                'groupBy': params['groupBy'].value,
+            },
         }
 
 

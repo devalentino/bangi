@@ -139,12 +139,13 @@ class DiscardReportRowSchema(Schema):
     share = fields.Float(required=True)
 
 
-class DiscardReportContentSchema(Schema):
+class DiscardReportFilterSchema(Schema):
+    campaignId = fields.Integer(required=True)
     window = fields.String(required=True)
     groupBy = fields.String(required=True)
-    totals = fields.Nested(DiscardReportTotalsSchema(), required=True)
-    rows = fields.Nested(DiscardReportRowSchema(many=True), required=True)
 
 
 class DiscardReportResponseSchema(Schema):
-    content = fields.Nested(DiscardReportContentSchema(), required=True)
+    content = fields.Nested(DiscardReportRowSchema(many=True), required=True)
+    summary = fields.Nested(DiscardReportTotalsSchema(), required=True)
+    filters = fields.Nested(DiscardReportFilterSchema(), required=True)

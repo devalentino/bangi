@@ -366,26 +366,15 @@ class ReportService:
             )
             or 0
         )
-        totals = ReportHelperService.build_discard_metric(discard_count, total_count)
+        distribution = list(
+            self.statistics_report_repository.campaign_discard_distribution(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+                group_by=group_by_field,
+            )
+        )
 
-        rows = []
-        for row in self.statistics_report_repository.campaign_discard_distribution(
-            campaign_id=campaign_id,
-            start_timestamp=start_timestamp,
-            group_by=group_by_field,
-        ):
-            count = int(row['count'])
-            share = round(count / discard_count, 4) if discard_count else 0.0
-            rows.append({'value': row['value'], 'count': count, 'share': share})
-
-        rows.sort(key=lambda row: (-row['count'], row['value']))
-
-        return {
-            'window': window,
-            'groupBy': group_by,
-            'totals': totals,
-            'rows': rows,
-        }
+        return discard_count, total_count, distribution
 
 
 @injectable

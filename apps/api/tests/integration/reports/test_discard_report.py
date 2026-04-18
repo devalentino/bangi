@@ -148,15 +148,12 @@ class TestDiscardReport:
         assert response.status_code == 200, response.text
         # Older discard rows are outside the selected 1h window and must not affect totals or grouped rows.
         assert response.json == {
-            'content': {
-                'window': '1h',
-                'groupBy': 'country',
-                'totals': {'discardCount': 3, 'totalCount': 50, 'rate': 0.06, 'eligible': True},
-                'rows': [
-                    {'value': 'UA', 'count': 2, 'share': 0.6667},
-                    {'value': 'MD', 'count': 1, 'share': 0.3333},
-                ],
-            }
+            'content': [
+                {'value': 'UA', 'count': 2, 'share': 0.6667},
+                {'value': 'MD', 'count': 1, 'share': 0.3333},
+            ],
+            'summary': {'discardCount': 3, 'totalCount': 50, 'rate': 0.06, 'eligible': True},
+            'filters': {'campaignId': campaign['id'], 'window': '1h', 'groupBy': 'country'},
         }
 
     @pytest.mark.usefixtures('discard_country_report_with_null_group_preconditions')
@@ -169,15 +166,12 @@ class TestDiscardReport:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'content': {
-                'window': '1h',
-                'groupBy': 'country',
-                'totals': {'discardCount': 2, 'totalCount': 20, 'rate': 0.1, 'eligible': True},
-                'rows': [
-                    {'value': 'UA', 'count': 1, 'share': 0.5},
-                    {'value': None, 'count': 1, 'share': 0.5},
-                ],
-            }
+            'content': [
+                {'value': 'UA', 'count': 1, 'share': 0.5},
+                {'value': None, 'count': 1, 'share': 0.5},
+            ],
+            'summary': {'discardCount': 2, 'totalCount': 20, 'rate': 0.1, 'eligible': True},
+            'filters': {'campaignId': campaign['id'], 'window': '1h', 'groupBy': 'country'},
         }
 
     @pytest.mark.usefixtures('discard_mobile_report_preconditions')
@@ -191,15 +185,12 @@ class TestDiscardReport:
         assert response.status_code == 200, response.text
         # Older discard rows are outside the selected 5m window and must not affect totals or grouped rows.
         assert response.json == {
-            'content': {
-                'window': '5m',
-                'groupBy': 'isMobile',
-                'totals': {'discardCount': 3, 'totalCount': 25, 'rate': 0.12, 'eligible': True},
-                'rows': [
-                    {'value': True, 'count': 2, 'share': 0.6667},
-                    {'value': False, 'count': 1, 'share': 0.3333},
-                ],
-            }
+            'content': [
+                {'value': True, 'count': 2, 'share': 0.6667},
+                {'value': False, 'count': 1, 'share': 0.3333},
+            ],
+            'summary': {'discardCount': 3, 'totalCount': 25, 'rate': 0.12, 'eligible': True},
+            'filters': {'campaignId': campaign['id'], 'window': '5m', 'groupBy': 'isMobile'},
         }
 
     @pytest.mark.parametrize(
@@ -262,12 +253,9 @@ class TestDiscardReport:
         )
 
         assert response.status_code == 200, response.text
-        # All discard rows for this case are inside the selected 1d window, so the response should reflect the full setup.
+        # All discard rows for this case are inside the selected 1d window, the response should reflect the full setup.
         assert response.json == {
-            'content': {
-                'window': '1d',
-                'groupBy': group_by,
-                'totals': {'discardCount': 1, 'totalCount': 20, 'rate': 0.05, 'eligible': True},
-                'rows': [{'value': expected_value, 'count': 1, 'share': 1.0}],
-            }
+            'content': [{'value': expected_value, 'count': 1, 'share': 1.0}],
+            'summary': {'discardCount': 1, 'totalCount': 20, 'rate': 0.05, 'eligible': True},
+            'filters': {'campaignId': report_campaign['id'], 'window': '1d', 'groupBy': group_by},
         }
