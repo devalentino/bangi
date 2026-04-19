@@ -207,3 +207,29 @@ class StatisticsReportRepository:
             .group_by(TrackDiscard.campaign_id)
         )
         return list(query.dicts())
+
+    def campaign_total_count(self, *, campaign_id: int, start_timestamp: int):
+        return (
+            TrackClick.select(fn.COUNT(TrackClick.id))
+            .where((TrackClick.campaign_id == campaign_id) & (TrackClick.created_at >= start_timestamp))
+            .scalar()
+        )
+
+    def campaign_discard_count(self, *, campaign_id: int, start_timestamp: int):
+        return (
+            TrackDiscard.select(fn.COUNT(TrackDiscard.id))
+            .where((TrackDiscard.campaign_id == campaign_id) & (TrackDiscard.created_at >= start_timestamp))
+            .scalar()
+        )
+
+    def campaign_discard_distribution(self, *, campaign_id: int, start_timestamp: int, group_by: str):
+        group_by_field = getattr(TrackDiscard, group_by)
+        query = (
+            TrackDiscard.select(
+                group_by_field.alias('value'),
+                fn.COUNT(TrackDiscard.id).alias('count'),
+            )
+            .where((TrackDiscard.campaign_id == campaign_id) & (TrackDiscard.created_at >= start_timestamp))
+            .group_by(group_by_field)
+        )
+        return list(query.dicts())

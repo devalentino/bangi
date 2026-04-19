@@ -6,6 +6,7 @@ class Sidebar {
     let isFacebookPacsRoute = currentRoute.indexOf("/facebook/pacs") === 0;
     let isStatisticsRoute = currentRoute === "/statistics";
     let isExpensesReportRoute = currentRoute === "/reports/expenses";
+    let isDiscardReportRoute = currentRoute === "/reports/discard";
     let isReportsLeadsRoute = currentRoute.indexOf("/reports/leads") === 0;
     let isCoreCampaignsRoute = currentRoute.indexOf("/core/campaigns") === 0;
 
@@ -53,6 +54,13 @@ class Sidebar {
                 [
                   m("i.fa.fa-receipt.me-2"),
                   "Expenses",
+                ]),
+              m(
+                "a.nav-item.nav-link",
+                { href: "#!/reports/discard", class: linkClass(isDiscardReportRoute) },
+                [
+                  m("i.fa.fa-filter.me-2"),
+                  "Discards",
                 ]),
               m(".nav-item.dropdown", [
                 m(

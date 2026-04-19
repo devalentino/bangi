@@ -1,7 +1,9 @@
-from marshmallow import INCLUDE, fields
+from copy import deepcopy
+
+from marshmallow import INCLUDE, fields, pre_dump
 
 from src.core.schemas import ComaSeparatedStringsField, PaginationRequestSchema, PaginationResponseSchema, Schema
-from src.reports.enums import ExpenseSortBy
+from src.reports.enums import DiscardGroupBy, DiscardWindow, ExpenseSortBy
 
 
 class StatisticsReportRequest(Schema):
@@ -118,3 +120,56 @@ class LeadResponseSchema(Schema):
     createdAt = fields.Integer(required=True)
     leads = fields.Nested(LeadResponseLeadItem(many=True), required=True)
     postbacks = fields.Nested(LeadResponsePostbackItem(many=True), required=True)
+
+
+class DiscardReportRequestSchema(Schema):
+    campaignId = fields.Integer(required=True)
+    window = fields.Enum(DiscardWindow, by_value=True, required=True)
+    groupBy = fields.Enum(DiscardGroupBy, by_value=True, required=True)
+
+
+class DiscardReportTotalsSchema(Schema):
+    discardCount = fields.Integer(required=True)
+    totalCount = fields.Integer(required=True)
+    rate = fields.Float(required=True)
+    eligible = fields.Boolean(required=True)
+
+
+class DiscardReportRowSchema(Schema):
+    value = fields.Raw(required=True, allow_none=True)
+    count = fields.Integer(required=True)
+    share = fields.Float(required=True)
+
+
+class DiscardReportFilterSchema(Schema):
+    campaignId = fields.Integer(required=True)
+    window = fields.String(required=True)
+    groupBy = fields.String(required=True)
+
+
+class DiscardReportResponseSchema(Schema):
+    content = fields.Nested(DiscardReportRowSchema(many=True), required=True)
+    summary = fields.Nested(DiscardReportTotalsSchema(), required=True)
+    filters = fields.Nested(DiscardReportFilterSchema(), required=True)
+
+    @pre_dump
+    def format_group_values(self, data, **kwargs):
+        group_by = data['filters']['groupBy']
+        formatted = deepcopy(data)
+        formatted['content'] = [self._format_row(row, group_by) for row in data['content']]
+        return formatted
+
+    @staticmethod
+    def _format_row(row, group_by):
+        value = row['value']
+
+        if value is None:
+            display_value = 'unknown'
+        elif group_by == 'isMobile':
+            display_value = 'mobile' if value else 'non-mobile'
+        elif group_by == 'isBot':
+            display_value = 'bot' if value else 'human'
+        else:
+            display_value = value
+
+        return row | {'value': display_value}
