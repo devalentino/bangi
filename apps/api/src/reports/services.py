@@ -433,7 +433,7 @@ class ReportHelperService:
 def collect_discard_alerts(container):
     statistics_report_repository = container.get(StatisticsReportRepository)
 
-    now_timestamp = int(time.now())
+    now_timestamp = int(time_timestamp())
     window_starts = {window: now_timestamp - seconds for window, seconds in DISCARD_WINDOW_SECONDS.items()}
 
     totals_by_campaign = {

@@ -167,8 +167,8 @@ class TestDiscardReport:
         assert response.status_code == 200, response.text
         assert response.json == {
             'content': [
-                {'value': 'UA', 'count': 1, 'share': 0.5},
                 {'value': 'unknown', 'count': 1, 'share': 0.5},
+                {'value': 'UA', 'count': 1, 'share': 0.5},
             ],
             'summary': {'discardCount': 2, 'totalCount': 20, 'rate': 0.1, 'eligible': True},
             'filters': {'campaignId': campaign['id'], 'window': '1h', 'groupBy': 'country'},
