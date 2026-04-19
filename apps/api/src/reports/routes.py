@@ -166,8 +166,7 @@ class DiscardReport(MethodView):
         discard_count, total_count, distribution = report_service.discard_report(
             campaign_id=params['campaignId'],
             window=params['window'].value,
-            group_by=params['groupBy'].value,
-            group_by_field=humps.decamelize(params['groupBy'].value),
+            group_by=humps.decamelize(params['groupBy'].value),
         )
 
         rows = [

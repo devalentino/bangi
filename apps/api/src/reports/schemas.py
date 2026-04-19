@@ -124,8 +124,8 @@ class LeadResponseSchema(Schema):
 
 class DiscardReportRequestSchema(Schema):
     campaignId = fields.Integer(required=True)
-    window = fields.Enum(DiscardWindow, required=True)
-    groupBy = fields.Enum(DiscardGroupBy, required=True)
+    window = fields.Enum(DiscardWindow, by_value=True, required=True)
+    groupBy = fields.Enum(DiscardGroupBy, by_value=True, required=True)
 
 
 class DiscardReportTotalsSchema(Schema):
