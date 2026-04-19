@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, time, timedelta
 from decimal import ROUND_FLOOR, Decimal
+from time import time as time_timestamp
 
 from wireup import injectable
 
@@ -348,6 +349,34 @@ class ReportService:
 
         return click, leads, postbacks
 
+    def discard_report(self, *, campaign_id: int, window: str, group_by: str):
+        self.campaign_service.get(campaign_id)
+
+        start_timestamp = int(time_timestamp()) - DISCARD_WINDOW_SECONDS[window]
+        total_count = int(
+            self.statistics_report_repository.campaign_total_count(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+            )
+            or 0
+        )
+        discard_count = int(
+            self.statistics_report_repository.campaign_discard_count(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+            )
+            or 0
+        )
+        distribution = list(
+            self.statistics_report_repository.campaign_discard_distribution(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+                group_by=group_by,
+            )
+        )
+
+        return discard_count, total_count, distribution
+
 
 @injectable
 class ReportHelperService:
@@ -404,7 +433,7 @@ class ReportHelperService:
 def collect_discard_alerts(container):
     statistics_report_repository = container.get(StatisticsReportRepository)
 
-    now_timestamp = int(utcnow().timestamp())
+    now_timestamp = int(time_timestamp())
     window_starts = {window: now_timestamp - seconds for window, seconds in DISCARD_WINDOW_SECONDS.items()}
 
     totals_by_campaign = {

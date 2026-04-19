@@ -33,6 +33,8 @@ This uses **step-file architecture** for disciplined execution:
 - **NEVER** skip steps or optimize the sequence
 - **ALWAYS** follow the exact instructions in the step file
 - **ALWAYS** halt at checkpoints and wait for human input
+- **NEVER** run tests, linters, builds, app servers, or other runtime verification as part of this workflow unless the user explicitly asks for that verification
+- **ALWAYS** treat code review as static inspection by default; when verification evidence is missing, report the gap instead of executing checks
 
 
 ## INITIALIZATION SEQUENCE

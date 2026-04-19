@@ -7,6 +7,7 @@ var AuthenticatedPage = require("./src/components/authenticated_page");
 var authView = require("./src/views/auth");
 var statisticsView = require("./src/views/statistics");
 var expensesReportView = require("./src/views/expenses_report");
+var discardReportView = require("./src/views/discard_report");
 var reportsLeadView = require("./src/views/reports_lead");
 var reportsLeadsView = require("./src/views/reports_leads");
 var coreCampaignView = require("./src/views/core_campaign");
@@ -61,6 +62,16 @@ m.route(document.getElementById("content"), "/statistics", {
     },
     render: function () {
       return m(AuthenticatedPage, { page: expensesReportView, auth: auth, alerts: alerts });
+    },
+  },
+  "/reports/discard": {
+    onmatch: function () {
+      if (!auth.isAuthenticated) {
+        m.route.set("/sign-in");
+      }
+    },
+    render: function () {
+      return m(AuthenticatedPage, { page: discardReportView, auth: auth, alerts: alerts });
     },
   },
   "/reports/leads": {

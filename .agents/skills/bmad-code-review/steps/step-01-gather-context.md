@@ -3,6 +3,7 @@ diff_output: '' # set at runtime
 spec_file: '' # set at runtime (path or empty)
 review_mode: '' # set at runtime: "full" or "no-spec"
 story_key: '' # set at runtime when discovered from sprint status
+context_sources: '' # set at runtime: summary of PR/Jira/spec/story/context docs loaded
 ---
 
 # Step 1: Gather Context
@@ -20,6 +21,9 @@ story_key: '' # set at runtime when discovered from sprint status
    **Tier 1 — Explicit argument.**
    Did the user pass a PR, commit SHA, branch, spec file, or diff source this message?
    - PR reference → resolve to branch/commit via `gh pr view`. If resolution fails, ask for a SHA or branch.
+     - When a PR is resolved, PR metadata is mandatory context, not optional garnish. Read the PR title and full description/body before proceeding.
+     - Extract and record any Jira issue keys and any linked spec/story/docs from the PR body.
+     - If the PR body links Jira/Confluence/other planning docs, load them during this step. Do not ask the user for a spec until you have exhausted what the PR already gives you.
    - Commit or branch → use directly.
    - Spec file → set `{spec_file}` to the provided path. Check its frontmatter for `baseline_commit`. If found, use as diff baseline. If not found, continue the cascade (a spec alone does not identify a diff source).
    - Also scan the argument for diff-mode keywords that narrow the scope:
@@ -32,6 +36,7 @@ story_key: '' # set at runtime when discovered from sprint status
 
    **Tier 2 — Recent conversation.**
    Do the last few messages reveal what the user wants to be reviewed? Look for spec paths, commit refs, branches, PRs, or descriptions of a change. Apply the same diff-mode keyword scan and routing as Tier 1.
+   - If the recent conversation mentions a Jira key, ticket, PR description, renamed terminology, agreed scope change, or "see comments", treat that as a directive to load Jira issue details and comments before review.
 
    **Tier 3 — Sprint tracking.**
    Look for a sprint status file (`*sprint-status*`) in `{implementation_artifacts}` or `{planning_artifacts}`. If found, scan for stories with status `review`:
@@ -64,12 +69,27 @@ story_key: '' # set at runtime when discovered from sprint status
    - After constructing `{diff_output}`, verify it is non-empty regardless of source type. If empty, HALT and tell the user there is nothing to review.
 
 4. **Set the spec context.**
-   - If `{spec_file}` is already set (from Tier 1 or Tier 2): verify the file exists and is readable, then set `{review_mode}` = `"full"`.
-   - Otherwise, ask the user: **Is there a spec or story file that provides context for these changes?**
-     - If yes: set `{spec_file}` to the path provided, verify the file exists and is readable, then set `{review_mode}` = `"full"`.
+   - Full review context can come from any combination of:
+     - local spec/story file
+     - PR title/body/linked docs
+     - Jira issue fields
+     - Jira ticket comments/history that clarify scope, terminology, or accepted deviations
+   - If `{spec_file}` is already set (from Tier 1 or Tier 2): verify the file exists and is readable.
+   - If a PR was identified:
+     - load the PR title/body as context
+     - if the PR body contains a Jira key, fetch the Jira issue
+     - if the Jira issue or PR body contains linked Confluence/spec pages, fetch them
+     - if Jira comments are accessible, read them carefully before proceeding
+   - When Jira comments or ticket updates explicitly revise terminology, scope, or intended behavior, treat the newer Jira discussion as authoritative over older spec wording unless the user says otherwise.
+   - If any usable local or remote context was loaded, set `{review_mode}` = `"full"`.
+   - Otherwise, ask the user: **Is there a spec, ticket, or PR-linked doc that provides context for these changes?**
+     - If yes: load it, verify readability/access, then set `{review_mode}` = `"full"`.
      - If no: set `{review_mode}` = `"no-spec"`.
 
-5. If `{review_mode}` = `"full"` and the file at `{spec_file}` has a `context` field in its frontmatter listing additional docs, load each referenced document. Warn the user about any docs that cannot be found.
+5. If `{review_mode}` = `"full"`:
+   - If the file at `{spec_file}` has a `context` field in its frontmatter listing additional docs, load each referenced document. Warn the user about any docs that cannot be found.
+   - If Jira was loaded, inspect the ticket description and comments for terminology replacements, scope clarifications, accepted tradeoffs, or explicit follow-up/non-goals.
+   - If both specs and Jira comments exist, actively reconcile them. Call out important conflicts in the checkpoint summary instead of silently choosing one.
 
 6. Sanity check: if `{diff_output}` exceeds approximately 3000 lines, warn the user and offer to chunk the review by file group.
    - If the user opts to chunk: agree on the first group, narrow `{diff_output}` accordingly, and list the remaining groups for the user to note for follow-up runs.
@@ -77,7 +97,13 @@ story_key: '' # set at runtime when discovered from sprint status
 
 ### CHECKPOINT
 
-Present a summary before proceeding: diff stats (files changed, lines added/removed), `{review_mode}`, and loaded spec/context docs (if any). HALT and wait for user confirmation to proceed.
+Present a summary before proceeding: diff stats (files changed, lines added/removed), `{review_mode}`, and loaded context sources.
+- Include PR number/title if applicable.
+- Include Jira key/title/status if applicable.
+- Include whether Jira comments were reviewed.
+- Include any linked spec/story/context docs loaded.
+- Include any context conflicts or terminology updates you detected and how you resolved them.
+HALT and wait for user confirmation to proceed.
 
 
 ## NEXT
