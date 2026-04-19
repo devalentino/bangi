@@ -178,7 +178,7 @@ class DiscardReport(MethodView):
             }
             for row in distribution
         ]
-        rows.sort(key=lambda row: (-row['count'], row['value']))
+        rows.sort(key=lambda row: (-row['count'], str(row['value']).casefold()))
 
         return {
             'content': rows,

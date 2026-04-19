@@ -135,25 +135,25 @@ class DiscardReportView {
       m(
         ".col-sm-12.col-md-6.col-xl-3",
         m(".bg-light.rounded.d-flex.align-items-center.justify-content-between.p-4", [
-          m(".ms-3", [m("p.mb-2", "Discards"), m("h6.mb-0", content.totals.discardCount)]),
+          m(".ms-3", [m("p.mb-2", "Discards"), m("h6.mb-0", content.summary.discardCount)]),
         ]),
       ),
       m(
         ".col-sm-12.col-md-6.col-xl-3",
         m(".bg-light.rounded.d-flex.align-items-center.justify-content-between.p-4", [
-          m(".ms-3", [m("p.mb-2", "Total events"), m("h6.mb-0", content.totals.totalCount)]),
+          m(".ms-3", [m("p.mb-2", "Total events"), m("h6.mb-0", content.summary.totalCount)]),
         ]),
       ),
       m(
         ".col-sm-12.col-md-6.col-xl-3",
         m(".bg-light.rounded.d-flex.align-items-center.justify-content-between.p-4", [
-          m(".ms-3", [m("p.mb-2", "Discard rate"), m("h6.mb-0", this._formatPercent(content.totals.rate))]),
+          m(".ms-3", [m("p.mb-2", "Discard rate"), m("h6.mb-0", this._formatPercent(content.summary.rate))]),
         ]),
       ),
       m(
         ".col-sm-12.col-md-6.col-xl-3",
         m(".bg-light.rounded.d-flex.align-items-center.justify-content-between.p-4", [
-          m(".ms-3", [m("p.mb-2", "Eligible"), m("h6.mb-0", content.totals.eligible ? "Yes" : "No")]),
+          m(".ms-3", [m("p.mb-2", "Eligible"), m("h6.mb-0", content.summary.eligible ? "Yes" : "No")]),
         ]),
       ),
     ]);

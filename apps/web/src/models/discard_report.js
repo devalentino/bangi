@@ -23,6 +23,18 @@ class DiscardReportModel {
     this.content = null;
   }
 
+  _buildContent(payload) {
+    return {
+      rows: payload.content || [],
+      summary: payload.summary || {
+        discardCount: 0,
+        totalCount: 0,
+        rate: 0,
+        eligible: false,
+      },
+    };
+  }
+
   loadCampaigns() {
     return api
       .request({
@@ -74,7 +86,7 @@ class DiscardReportModel {
       })
       .then(
         function (payload) {
-          this.content = payload.content;
+          this.content = this._buildContent(payload);
           this.isLoading = false;
         }.bind(this),
       )

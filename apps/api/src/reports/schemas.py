@@ -1,4 +1,6 @@
-from marshmallow import INCLUDE, fields
+from copy import deepcopy
+
+from marshmallow import INCLUDE, fields, pre_dump
 
 from src.core.schemas import ComaSeparatedStringsField, PaginationRequestSchema, PaginationResponseSchema, Schema
 from src.reports.enums import DiscardGroupBy, DiscardWindow, ExpenseSortBy
@@ -149,3 +151,25 @@ class DiscardReportResponseSchema(Schema):
     content = fields.Nested(DiscardReportRowSchema(many=True), required=True)
     summary = fields.Nested(DiscardReportTotalsSchema(), required=True)
     filters = fields.Nested(DiscardReportFilterSchema(), required=True)
+
+    @pre_dump
+    def format_group_values(self, data, **kwargs):
+        group_by = data['filters']['groupBy']
+        formatted = deepcopy(data)
+        formatted['content'] = [self._format_row(row, group_by) for row in data['content']]
+        return formatted
+
+    @staticmethod
+    def _format_row(row, group_by):
+        value = row['value']
+
+        if value is None:
+            display_value = 'unknown'
+        elif group_by == 'isMobile':
+            display_value = 'mobile' if value else 'non-mobile'
+        elif group_by == 'isBot':
+            display_value = 'bot' if value else 'human'
+        else:
+            display_value = value
+
+        return row | {'value': display_value}

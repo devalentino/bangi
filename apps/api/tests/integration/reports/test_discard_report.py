@@ -157,7 +157,7 @@ class TestDiscardReport:
         }
 
     @pytest.mark.usefixtures('discard_country_report_with_null_group_preconditions')
-    def test_get_discard_report__returns_raw_null_when_group_value_is_null(self, client, authorization, campaign):
+    def test_get_discard_report__returns_unknown_when_group_value_is_null(self, client, authorization, campaign):
         response = client.get(
             '/api/v2/reports/discard',
             headers={'Authorization': authorization},
@@ -168,14 +168,14 @@ class TestDiscardReport:
         assert response.json == {
             'content': [
                 {'value': 'UA', 'count': 1, 'share': 0.5},
-                {'value': None, 'count': 1, 'share': 0.5},
+                {'value': 'unknown', 'count': 1, 'share': 0.5},
             ],
             'summary': {'discardCount': 2, 'totalCount': 20, 'rate': 0.1, 'eligible': True},
             'filters': {'campaignId': campaign['id'], 'window': '1h', 'groupBy': 'country'},
         }
 
     @pytest.mark.usefixtures('discard_mobile_report_preconditions')
-    def test_get_discard_report__returns_raw_boolean_grouping_values(self, client, authorization, campaign):
+    def test_get_discard_report__returns_display_safe_boolean_grouping_values(self, client, authorization, campaign):
         response = client.get(
             '/api/v2/reports/discard',
             headers={'Authorization': authorization},
@@ -186,8 +186,8 @@ class TestDiscardReport:
         # Older discard rows are outside the selected 5m window and must not affect totals or grouped rows.
         assert response.json == {
             'content': [
-                {'value': True, 'count': 2, 'share': 0.6667},
-                {'value': False, 'count': 1, 'share': 0.3333},
+                {'value': 'mobile', 'count': 2, 'share': 0.6667},
+                {'value': 'non-mobile', 'count': 1, 'share': 0.3333},
             ],
             'summary': {'discardCount': 3, 'totalCount': 25, 'rate': 0.12, 'eligible': True},
             'filters': {'campaignId': campaign['id'], 'window': '5m', 'groupBy': 'isMobile'},
@@ -199,7 +199,7 @@ class TestDiscardReport:
             ('browserFamily', {'browser_family': 'Mobile Safari'}, 'Mobile Safari'),
             ('osFamily', {'os_family': 'iOS'}, 'iOS'),
             ('deviceFamily', {'device_family': 'iPhone'}, 'iPhone'),
-            ('isBot', {'is_bot': True}, True),
+            ('isBot', {'is_bot': True}, 'bot'),
         ],
     )
     def test_get_discard_report__supports_each_dimension(
