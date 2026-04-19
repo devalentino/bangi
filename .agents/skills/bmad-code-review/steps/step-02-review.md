@@ -7,6 +7,7 @@ failed_layers: '' # set at runtime: comma-separated list of layers that failed o
 ## RULES
 
 - YOU MUST ALWAYS SPEAK OUTPUT in your Agent communication style with the config `{communication_language}`
+- This workflow is static review only. Do not run tests, linters, builds, app servers, or any other runtime verification unless the user explicitly requested it outside this workflow.
 - The Blind Hunter subagent receives NO project context — diff only.
 - The Edge Case Hunter subagent receives diff and project read access.
 - The Acceptance Auditor subagent receives diff plus the full accepted context bundle: PR description/metadata, Jira issue details, Jira comments, spec/story docs, and any additional context docs.
@@ -27,6 +28,7 @@ failed_layers: '' # set at runtime: comma-separated list of layers that failed o
 3. **Subagent failure handling**: If any subagent fails, times out, or returns empty results, append the layer name to `{failed_layers}` (comma-separated) and proceed with findings from the remaining layers.
 
 4. Collect all findings from the completed layers.
+5. If review confidence is limited by missing runtime evidence, state that limitation explicitly in the findings or residual-risk summary. Do not try to compensate by running tests.
 
 
 ## NEXT
