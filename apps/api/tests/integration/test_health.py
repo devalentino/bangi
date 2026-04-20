@@ -355,6 +355,10 @@ class TestDiskUtilizationAlerts:
 
 
 class TestCleanupDiskUtilizationWorker:
+    @pytest.fixture(autouse=True)
+    def mock_cleanup_worker_settings(self, monkeypatch):
+        monkeypatch.setattr('src.health.workers.DISK_UTILIZATION_HISTORY_CLEANUP_PERIOD_SECONDS', 0.1)
+
     @pytest.fixture
     def fresh_snapshot_timestamp(self, timestamp):
         return timestamp - 60
