@@ -43,7 +43,33 @@ class TestDiskUtilizationIngestionCommand:
         }
         assert row['created_at'] is not None
 
-    def test_returns_non_zero_and_does_not_persist_invalid_payload(self, capsys, read_from_db):
+    def test_returns_non_zero_and_does_not_persist_invalid_payload__used_percent_101(self, capsys, read_from_db):
+        from src.health.ingest.disk_utilization import main as ingest_disk_utilization
+
+        exit_code = ingest_disk_utilization(
+            [
+                '--filesystem',
+                '/dev/sda1',
+                '--mountpoint',
+                '/var/lib/docker',
+                '--total-bytes',
+                '100',
+                '--used-bytes',
+                '100',
+                '--available-bytes',
+                '0',
+                '--used-percent',
+                '101',
+            ]
+        )
+
+        captured = capsys.readouterr()
+
+        assert exit_code == 2
+        assert read_from_db('health_disk_utilization') is None
+        assert captured.err == '{"errors": {"used_percent": ["used_percent must be between 0 and 100."]}}\n'
+
+    def test_returns_non_zero_and_does_not_persist_payload_with_used_bytes_above_total(self, capsys, read_from_db):
         from src.health.ingest.disk_utilization import main as ingest_disk_utilization
 
         exit_code = ingest_disk_utilization(
@@ -59,7 +85,7 @@ class TestDiskUtilizationIngestionCommand:
                 '--available-bytes',
                 '0',
                 '--used-percent',
-                '101',
+                '100',
             ]
         )
 
@@ -67,4 +93,4 @@ class TestDiskUtilizationIngestionCommand:
 
         assert exit_code == 2
         assert read_from_db('health_disk_utilization') is None
-        assert captured.err == '{"errors": {"used_percent": ["used_percent must be between 0 and 100."]}}\n'
+        assert captured.err == '{"errors": {"used_bytes": ["used_bytes must be less than or equal to total_bytes."]}}\n'

@@ -40,7 +40,12 @@ def main(argv=None):
         print(json.dumps({'errors': exc.messages}, sort_keys=True), file=sys.stderr)
         return 2
 
-    container.get(HealthService).ingest_disk_utilization(**payload)
+    try:
+        container.get(HealthService).ingest_disk_utilization(**payload)
+    except Exception as exc:
+        print(f'Failed to ingest disk utilization: {exc}', file=sys.stderr)
+        return 1
+
     return 0
 
 
