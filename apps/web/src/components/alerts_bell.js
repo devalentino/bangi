@@ -28,6 +28,14 @@ function alertIconClass(code) {
   }
 
   if (
+      code === "system_health_disk_warning"
+      || code === "system_health_disk_critical"
+      || code === "system_health_telemetry_stale"
+  ) {
+    return "fa fa-hdd";
+  }
+
+  if (
       code === "facebook_pacs_business_portfolio_access_url_missing"
       || code === "facebook_pacs_business_portfolio_access_url_expiring_soon"
       || code === "facebook_pacs_business_portfolio_access_url_expired"
