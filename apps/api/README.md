@@ -105,6 +105,7 @@ docker push ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-matc
 ## Useful endpoints:
 
 - Health check: `/api/v2/health`
+- Disk utilization history: `/api/v2/health/disk-utilization/history?days=30`
 - OpenAPI docs: `/openapi/swagger-ui`
 
 ## Storage monitoring ingestion
