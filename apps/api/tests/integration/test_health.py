@@ -346,8 +346,8 @@ class TestDiskUtilizationAlerts:
                     'source': 'src.health.alerts',
                     'payload': {
                         'filesystem': disk_utilization_snapshot['filesystem'],
+                        'lastReceivedAt': disk_utilization_snapshot['created_at'],
                         'mountpoint': disk_utilization_snapshot['mountpoint'],
-                        'usedPercent': disk_utilization_snapshot['used_percent'],
                     },
                 }
             ]
