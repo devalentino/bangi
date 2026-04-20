@@ -106,3 +106,19 @@ docker push ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-matc
 
 - Health check: `/api/v2/health`
 - OpenAPI docs: `/openapi/swagger-ui`
+
+## Storage monitoring ingestion
+
+The internal disk telemetry command lives at:
+
+```bash
+python -m src.health.ingest.disk_utilization \
+  --filesystem "/dev/sda1" \
+  --mountpoint "/var/lib/docker" \
+  --total-bytes 21474836480 \
+  --used-bytes 15032385536 \
+  --available-bytes 6442450944 \
+  --used-percent 70.0
+```
+
+The host-side wrapper script and cron setup notes live in [`scripts/README.md`](../../scripts/README.md).
