@@ -1,24 +1,10 @@
-from dataclasses import dataclass
 from decimal import Decimal
 from time import time as time_timestamp
 from typing import Annotated
 
 from wireup import Inject, injectable
 
-from src.health.entities import DiskUtilization
-
-
-@dataclass(slots=True)
-class DiskUtilizationSummary:
-    stale: bool
-    severity: str | None
-    filesystem: str | None
-    mountpoint: str | None
-    total_bytes: int | None
-    used_bytes: int | None
-    available_bytes: int | None
-    used_percent: float | None
-    last_received_at: int | None
+from src.health.entities import DiskUtilization, DiskUtilizationSummary
 
 
 @injectable
