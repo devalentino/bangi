@@ -8,9 +8,6 @@ from src.health.services import HealthService
 def collect_disk_utilization_alerts(container):
     summary = container.get(HealthService).latest_disk_utilization_summary()
 
-    if not summary.has_telemetry:
-        return []
-
     if summary.stale:
         last_received_at = datetime.fromtimestamp(summary.last_received_at, tz=timezone.utc).isoformat()
         return [
