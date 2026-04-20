@@ -1,4 +1,4 @@
-from marshmallow import ValidationError, fields, validates, validates_schema
+from marshmallow import ValidationError, fields, validate, validates, validates_schema
 
 from src.core.schemas import Schema
 
@@ -47,3 +47,31 @@ class DiskUtilizationIngestRequestSchema(Schema):
                 'available_bytes must be less than or equal to total_bytes.',
                 field_name='available_bytes',
             )
+
+
+class DiskUtilizationHistoryRequestSchema(Schema):
+    days = fields.Integer(load_default=30, validate=validate.Range(min=1))
+
+
+class DiskUtilizationHistoryPointResponseSchema(Schema):
+    createdAt = fields.Integer(required=True)
+    usedPercent = fields.Float(required=True)
+    usedBytes = fields.Integer(required=True)
+    availableBytes = fields.Integer(required=True)
+
+
+class DiskUtilizationHistorySummaryResponseSchema(Schema):
+    stale = fields.Boolean(required=True)
+    severity = fields.String(allow_none=True)
+    filesystem = fields.String(allow_none=True)
+    mountpoint = fields.String(allow_none=True)
+    totalBytes = fields.Integer(allow_none=True)
+    usedBytes = fields.Integer(allow_none=True)
+    availableBytes = fields.Integer(allow_none=True)
+    usedPercent = fields.Float(allow_none=True)
+    lastReceivedAt = fields.Integer(allow_none=True)
+
+
+class DiskUtilizationHistoryResponseSchema(Schema):
+    summary = fields.Nested(DiskUtilizationHistorySummaryResponseSchema, required=True)
+    content = fields.Nested(DiskUtilizationHistoryPointResponseSchema(many=True), required=True)
