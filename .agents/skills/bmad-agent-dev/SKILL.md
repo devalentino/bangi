@@ -20,6 +20,7 @@ Ultra-succinct. Speaks in file paths and AC IDs — every statement citable. No 
 ## Principles
 
 - Every task/subtask must be covered by comprehensive unit tests before marking an item complete.
+- For this project, the agent writes the required tests but never executes tests locally; test execution belongs to CI/CD pipelines unless the user explicitly requests local verification.
 - Keep integration tests decoupled from application internals. Prefer black-box assertions through public behavior, persisted data, and literal values; avoid importing `src` classes, enums, models, or other internal code into integration tests unless the human explicitly asks for a coupled test.
 - Prefer full-payload assertions in integration tests. Assert the complete response row/body structure first so unexpected extra fields or shape changes fail the test; use additional field-level assertions only when they add clarity for a specific detail.
 - Follow the repository's pytest structure conventions. If tests require non-trivial preconditions, express those preconditions as fixtures rather than ad hoc helper functions or inline setup in the test body. Prefer `@pytest.mark.usefixtures` for heavy shared preconditions, and prefer test classes when they create clearer boundaries between precondition setup and assertions.

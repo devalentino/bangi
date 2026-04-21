@@ -11,9 +11,9 @@ from src.health.entities import DiskUtilization, DiskUtilizationSummary
 class HealthService:
     def __init__(
         self,
-        stale_after_seconds: Annotated[int, Inject(config='HEALTH_STALE_AFTER_SECONDS')],
-        warning_percent: Annotated[int, Inject(config='HEALTH_WARNING_PERCENT')],
-        critical_percent: Annotated[int, Inject(config='HEALTH_CRITICAL_PERCENT')],
+        stale_after_seconds: Annotated[int, Inject(config='DISK_UTILIZATION_STALE_AFTER_SECONDS')],
+        warning_percent: Annotated[int, Inject(config='DISK_UTILIZATION_WARNING_PERCENT')],
+        critical_percent: Annotated[int, Inject(config='DISK_UTILIZATION_CRITICAL_PERCENT')],
     ):
         self.stale_after_seconds = stale_after_seconds
         self.warning_percent = warning_percent
@@ -89,4 +89,44 @@ class HealthService:
                 last_received_at=latest_received_at,
             ),
             rows,
+        )
+
+    def latest_disk_utilization_summary(self) -> DiskUtilizationSummary:
+        latest_snapshot = (
+            DiskUtilization.select().order_by(DiskUtilization.created_at.desc(), DiskUtilization.id.desc()).first()
+        )
+        if latest_snapshot is None:
+            return DiskUtilizationSummary(
+                stale=False,
+                severity=None,
+                filesystem=None,
+                mountpoint=None,
+                total_bytes=None,
+                used_bytes=None,
+                available_bytes=None,
+                used_percent=None,
+                last_received_at=None,
+            )
+
+        now_timestamp = int(time_timestamp())
+        latest_received_at = int(latest_snapshot.created_at.timestamp())
+        stale = now_timestamp - latest_received_at >= self.stale_after_seconds
+
+        if latest_snapshot.used_percent >= self.critical_percent:
+            severity = 'critical'
+        elif latest_snapshot.used_percent >= self.warning_percent:
+            severity = 'warning'
+        else:
+            severity = 'normal'
+
+        return DiskUtilizationSummary(
+            stale=stale,
+            severity=severity,
+            filesystem=latest_snapshot.filesystem,
+            mountpoint=latest_snapshot.mountpoint,
+            total_bytes=latest_snapshot.total_bytes,
+            used_bytes=latest_snapshot.used_bytes,
+            available_bytes=latest_snapshot.available_bytes,
+            used_percent=float(latest_snapshot.used_percent),
+            last_received_at=latest_received_at,
         )
