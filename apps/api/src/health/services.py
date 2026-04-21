@@ -96,7 +96,7 @@ class HealthService:
             DiskUtilization.select().order_by(DiskUtilization.created_at.desc(), DiskUtilization.id.desc()).first()
         )
         if latest_snapshot is None:
-            DiskUtilizationSummary(
+            return DiskUtilizationSummary(
                 stale=False,
                 severity=None,
                 filesystem=None,
