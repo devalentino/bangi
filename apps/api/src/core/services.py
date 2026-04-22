@@ -1,4 +1,3 @@
-import dataclasses
 import logging
 import os
 import shutil
@@ -17,6 +16,7 @@ from src.core.entities import Campaign, Flow
 from src.core.enums import FlowActionType, SortOrder
 from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError, LandingPageUploadError
 from src.core.models import Client
+from src.core.repositories import CampaignRepository
 from src.core.utils import log_execution_time
 
 logger = logging.getLogger(__name__)
@@ -70,21 +70,25 @@ class ClientService:
 
 @injectable
 class CampaignService:
+    def __init__(self, campaign_repository: CampaignRepository):
+        self.campaign_repository = campaign_repository
+
     def get(self, id):
-        try:
-            return Campaign.get_by_id(id)
-        except Campaign.DoesNotExist as exc:
-            raise CampaignDoesNotExistError() from exc
+        campaign = self.campaign_repository.get(id)
+        if campaign is None:
+            raise CampaignDoesNotExistError()
+        self._attach_summary(campaign, self.campaign_repository.total_click_count())
+        return campaign
 
     def list(self, page, page_size, sort_by, sort_order):
-        order_by = getattr(Campaign, sort_by)
-        if sort_order == SortOrder.desc:
-            order_by = order_by.desc()
-
-        return [c for c in Campaign.select().order_by(order_by).limit(page_size).offset((page - 1) * page_size)]
+        campaigns = self.campaign_repository.list(page, page_size, sort_by, sort_order)
+        total_click_count = self.campaign_repository.total_click_count()
+        for campaign in campaigns:
+            self._attach_summary(campaign, total_click_count)
+        return campaigns
 
     def all(self):
-        return [c for c in Campaign.select()]
+        return self.campaign_repository.all()
 
     def create(self, name, cost_model, cost_value, currency, status_mapper=None):
         campaign = Campaign(
@@ -120,7 +124,15 @@ class CampaignService:
         return campaign
 
     def count(self):
-        return Campaign.select(fn.count(Campaign.id)).scalar()
+        return self.campaign_repository.count()
+
+    def _attach_summary(self, campaign, total_click_count):
+        click_count = campaign['click_count'] or 0
+        campaign['summary'] = {
+            'click_count': click_count,
+            'click_share': click_count / total_click_count if total_click_count else 0.0,
+            'last_activity_at': campaign['last_activity_at'],
+        }
 
 
 @injectable

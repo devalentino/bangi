@@ -97,6 +97,13 @@ class CampaignResponseSchema(Schema):
     statusMapper = fields.Dict(allow_none=True)
     internalProcessUrl = fields.String(allow_none=True)
     expensesDistributionParameter = fields.String(allow_none=True)
+    summary = fields.Nested(lambda: CampaignSummaryResponseSchema(), required=True)
+
+
+class CampaignSummaryResponseSchema(Schema):
+    clickCount = fields.Integer(required=True)
+    clickShare = fields.Float(required=True)
+    lastActivityAt = fields.Integer(allow_none=True)
 
 
 class CampaignListResponseSchema(Schema):

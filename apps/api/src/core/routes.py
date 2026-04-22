@@ -44,8 +44,11 @@ class Campaigns(MethodView):
         return {
             'content': [
                 humps.camelize(
-                    c.to_dict()
-                    | {'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{c.id}'}
+                    c
+                    | {
+                        'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{c["id"]}',
+                        'summary': c["summary"],
+                    }
                 )
                 for c in campaigns
             ],
@@ -75,7 +78,10 @@ class Campaign(MethodView):
         campaign = campaign_service.get(campaignId)
         return humps.camelize(
             campaign.to_dict()
-            | {'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{campaign.id}'}
+            | {
+                'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{campaign.id}',
+                'summary': campaign.summary,
+            }
         )
 
     @blueprint.arguments(CampaignUpdateRequestSchema)
