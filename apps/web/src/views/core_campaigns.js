@@ -45,6 +45,9 @@ class CoreCampaignsView {
                           m("th", { scope: "col" }, "Cost Model"),
                           m("th", { scope: "col" }, "Cost Value"),
                           m("th", { scope: "col" }, "Currency"),
+                          m("th", { scope: "col" }, "Clicks"),
+                          m("th", { scope: "col" }, "Click Share"),
+                          m("th", { scope: "col" }, "Last Activity"),
                         ]),
                       ),
                       m(
@@ -53,7 +56,7 @@ class CoreCampaignsView {
                           ? m("tr", [
                               m(
                                 "td.text-center",
-                                { colspan: 5 },
+                                { colspan: 8 },
                                 "No campaigns found.",
                               ),
                             ])
@@ -71,6 +74,14 @@ class CoreCampaignsView {
                                 m("td", campaign.costModel),
                                 m("td", campaign.costValue),
                                 m("td", campaign.currency),
+                                m("td", campaign.summary ? campaign.summary.clickCount : "-"),
+                                m("td", campaign.summary ? campaign.summary.clickShare : "-"),
+                                m(
+                                  "td",
+                                  campaign.summary
+                                    ? timestamp2LocalTime(campaign.summary.lastActivityAt)
+                                    : "-",
+                                ),
                               ]);
                             }),
                       ),
