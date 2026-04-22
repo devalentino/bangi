@@ -1,6 +1,7 @@
 let m = require("mithril");
 let CoreCampaignsModel = require("../models/core_campaigns");
 let Pagination = require("../components/pagination");
+let { timestamp2LocalTime } = require("../utils/date");
 
 class CoreCampaignsView {
   constructor(vnode) {
