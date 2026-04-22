@@ -233,7 +233,7 @@ class TestDiskUtilizationHistory:
             },
             'content': [
                 {
-                    'createdAt': stale_timestamp,
+                    'date': mock.ANY,
                     'usedPercent': 80.0,
                     'usedBytes': 800,
                     'availableBytes': 200,
