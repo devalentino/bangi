@@ -2,6 +2,7 @@ from decimal import Decimal
 from time import time as time_timestamp
 from typing import Annotated
 
+from peewee import fn
 from wireup import Inject, injectable
 
 from src.health.entities import DiskUtilization, DiskUtilizationSummary
@@ -43,12 +44,20 @@ class HealthService:
         now_timestamp = int(time_timestamp())
         history_start_timestamp = now_timestamp - days * 24 * 60 * 60
 
+        date = fn.date(fn.from_unixtime(DiskUtilization.created_at)).alias('date')
         rows = list(
-            DiskUtilization.select()
+            DiskUtilization.select(
+                date,
+                fn.max(DiskUtilization.total_bytes),
+                fn.avg(DiskUtilization.used_bytes),
+                fn.avg(DiskUtilization.available_bytes),
+            )
             .where(DiskUtilization.created_at >= history_start_timestamp)
+            .group_by(date)
             .order_by(DiskUtilization.created_at.asc())
+            .dicts()
         )
-        latest_snapshot = rows[-1] if rows else None
+        latest_snapshot = DiskUtilization.select().order_by(DiskUtilization.id.desc()).first()
 
         if latest_snapshot is None:
             return (

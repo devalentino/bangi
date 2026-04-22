@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from time import sleep
+from unittest import mock
 
 import pytest
 
@@ -181,13 +182,13 @@ class TestDiskUtilizationHistory:
             },
             'content': [
                 {
-                    'createdAt': first_history_row['created_at'],
+                    'date': mock.ANY,
                     'usedPercent': first_history_row['used_percent'],
                     'usedBytes': first_history_row['used_bytes'],
                     'availableBytes': first_history_row['available_bytes'],
                 },
                 {
-                    'createdAt': latest_row['created_at'],
+                    'date': mock.ANY,
                     'usedPercent': latest_row['used_percent'],
                     'usedBytes': latest_row['used_bytes'],
                     'availableBytes': latest_row['available_bytes'],
