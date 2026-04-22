@@ -13,3 +13,4 @@ apps/web/.cache
 node_modules
 bin
 npm-debug.log
+_dashmin-1.0.0

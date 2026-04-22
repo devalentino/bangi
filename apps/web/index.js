@@ -5,6 +5,7 @@ var api = require("./src/models/api");
 var session = require("./src/models/session");
 var AuthenticatedPage = require("./src/components/authenticated_page");
 var authView = require("./src/views/auth");
+var healthView = require("./src/views/health");
 var statisticsView = require("./src/views/statistics");
 var expensesReportView = require("./src/views/expenses_report");
 var discardReportView = require("./src/views/discard_report");
@@ -42,6 +43,16 @@ m.route(document.getElementById("content"), "/statistics", {
     },
     render: function () {
       return m(authView.SignIn, { auth: auth });
+    },
+  },
+  "/health": {
+    onmatch: function () {
+      if (!auth.isAuthenticated) {
+        m.route.set("/sign-in");
+      }
+    },
+    render: function () {
+      return m(AuthenticatedPage, { page: healthView, auth: auth, alerts: alerts });
     },
   },
   "/statistics": {
