@@ -3,6 +3,7 @@ var m = require("mithril");
 class Sidebar {
   view() {
     let currentRoute = m.route.get();
+    let isHealthRoute = currentRoute === "/health";
     let isFacebookPacsRoute = currentRoute.indexOf("/facebook/pacs") === 0;
     let isStatisticsRoute = currentRoute === "/statistics";
     let isExpensesReportRoute = currentRoute === "/reports/expenses";
@@ -137,6 +138,14 @@ class Sidebar {
                 ],
                 ),
               ]),
+              m(
+                "a.nav-item.nav-link",
+                { href: "#!/health", class: linkClass(isHealthRoute) },
+                [
+                    m("i.fa.fa-heartbeat.me-2"),
+                    "Health",
+                ],
+              ),
             ],
           ),
         ]),

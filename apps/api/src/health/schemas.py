@@ -54,7 +54,7 @@ class DiskUtilizationHistoryRequestSchema(Schema):
 
 
 class DiskUtilizationHistoryPointResponseSchema(Schema):
-    createdAt = fields.Integer(required=True)
+    date = fields.Date(required=True)
     usedPercent = fields.Float(required=True)
     usedBytes = fields.Integer(required=True)
     availableBytes = fields.Integer(required=True)

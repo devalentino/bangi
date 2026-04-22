@@ -44,10 +44,10 @@ class DiskUtilizationHistory(MethodView):
             },
             'content': [
                 {
-                    'createdAt': int(snapshot.created_at.timestamp()),
-                    'usedPercent': float(snapshot.used_percent),
-                    'usedBytes': snapshot.used_bytes,
-                    'availableBytes': snapshot.available_bytes,
+                    'date': snapshot['date'],
+                    'usedPercent': float(snapshot['used_bytes'] / snapshot['total_bytes'] * 100),
+                    'usedBytes': snapshot['used_bytes'],
+                    'availableBytes': snapshot['available_bytes'],
                 }
                 for snapshot in snapshots
             ],
