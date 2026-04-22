@@ -88,6 +88,12 @@ class CampaignUpdateRequestSchema(Schema):
         validate_status_mapper(data.get('statusMapper'))
 
 
+class CampaignSummaryResponseSchema(Schema):
+    clickCount = fields.Integer(required=True)
+    clickShare = fields.Float(required=True)
+    lastActivityAt = fields.Integer(allow_none=True)
+
+
 class CampaignResponseSchema(Schema):
     id = fields.Integer(required=True)
     name = fields.String(required=True)
@@ -97,6 +103,7 @@ class CampaignResponseSchema(Schema):
     statusMapper = fields.Dict(allow_none=True)
     internalProcessUrl = fields.String(allow_none=True)
     expensesDistributionParameter = fields.String(allow_none=True)
+    summary = fields.Nested(CampaignSummaryResponseSchema(), required=True)
 
 
 class CampaignListResponseSchema(Schema):

@@ -9,6 +9,7 @@ from src.alerts.services import AlertService
 from src.auth.services import AuthenticationService
 from src.core.db import database
 from src.core.entities import database_proxy
+from src.core.repositories import CampaignRepository
 from src.core.services import CampaignService, ClientService, FlowService, Ip2LocationLocator
 from src.core.supervisor import WorkerContext, WorkerSupervisor
 from src.facebook_pacs.services import AdCabinetService as FacebookPacsAdCabinetService
@@ -59,6 +60,7 @@ container = create_sync_container(
         StatisticsReportRepository,
         AlertService,
         AuthenticationService,
+        CampaignRepository,
         CampaignService,
         ClientService,
         FlowService,

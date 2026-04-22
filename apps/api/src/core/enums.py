@@ -4,6 +4,9 @@ from enum import Enum
 class SortBy(str, Enum):
     id = 'id'
     createdAt = 'createdAt'
+    clickCount = 'clickCount'
+    clickShare = 'clickShare'
+    lastActivityAt = 'lastActivityAt'
 
 
 class SortOrder(str, Enum):

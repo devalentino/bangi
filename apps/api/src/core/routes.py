@@ -26,6 +26,17 @@ from src.core.services import CampaignService, FlowService
 blueprint = Blueprint('core', __name__, description='Core')
 
 
+def _campaign_summary(campaign_id, click_stats, total_click_count):
+    stats = click_stats.get(campaign_id, {})
+    click_count = stats.get('click_count', 0)
+    last_activity_at = stats.get('last_activity_at')
+    return {
+        'click_count': click_count,
+        'click_share': click_count / total_click_count if total_click_count else 0.0,
+        'last_activity_at': int(last_activity_at.timestamp()) if last_activity_at else None,
+    }
+
+
 @blueprint.route('/campaigns')
 class Campaigns(MethodView):
     @blueprint.arguments(PaginationRequestSchema, location='query')
@@ -40,12 +51,17 @@ class Campaigns(MethodView):
             parameters_payload['sortOrder'],
         )
         count = campaign_service.count()
+        click_stats = campaign_service.get_click_stats([campaign.id for campaign in campaigns])
+        total_click_count = campaign_service.total_click_count()
 
         return {
             'content': [
                 humps.camelize(
                     c.to_dict()
-                    | {'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{c.id}'}
+                    | {
+                        'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{c.id}',
+                        'summary': _campaign_summary(c.id, click_stats, total_click_count),
+                    }
                 )
                 for c in campaigns
             ],
@@ -73,9 +89,14 @@ class Campaign(MethodView):
     def get(self, campaignId):
         campaign_service = container.get(CampaignService)
         campaign = campaign_service.get(campaignId)
+        click_stats = campaign_service.get_click_stats([campaign.id])
+        total_click_count = campaign_service.total_click_count()
         return humps.camelize(
             campaign.to_dict()
-            | {'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{campaign.id}'}
+            | {
+                'internal_process_url': f'{container.config.get("INTERNAL_PROCESS_BASE_URL")}/{campaign.id}',
+                'summary': _campaign_summary(campaign.id, click_stats, total_click_count),
+            }
         )
 
     @blueprint.arguments(CampaignUpdateRequestSchema)
