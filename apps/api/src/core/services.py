@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import os
 import shutil
@@ -74,21 +75,16 @@ class CampaignService:
         self.campaign_repository = campaign_repository
 
     def get(self, id):
-        campaign = self.campaign_repository.get(id)
-        if campaign is None:
-            raise CampaignDoesNotExistError()
-        self._attach_summary(campaign, self.campaign_repository.total_click_count())
-        return campaign
+        try:
+            return Campaign.get_by_id(id)
+        except Campaign.DoesNotExist as exc:
+            raise CampaignDoesNotExistError() from exc
 
     def list(self, page, page_size, sort_by, sort_order):
-        campaigns = self.campaign_repository.list(page, page_size, sort_by, sort_order)
-        total_click_count = self.campaign_repository.total_click_count()
-        for campaign in campaigns:
-            self._attach_summary(campaign, total_click_count)
-        return campaigns
+        return self.campaign_repository.list(page, page_size, sort_by, sort_order)
 
     def all(self):
-        return self.campaign_repository.all()
+        return [c for c in Campaign.select()]
 
     def create(self, name, cost_model, cost_value, currency, status_mapper=None):
         campaign = Campaign(
@@ -102,7 +98,10 @@ class CampaignService:
         return campaign
 
     def update(self, campaign_id, name=None, cost_model=None, cost_value=None, currency=None, status_mapper=None):
-        campaign = self.get(campaign_id)
+        try:
+            campaign = Campaign.get_by_id(campaign_id)
+        except Campaign.DoesNotExist as exc:
+            raise CampaignDoesNotExistError() from exc
 
         if name:
             campaign.name = name
@@ -126,13 +125,11 @@ class CampaignService:
     def count(self):
         return self.campaign_repository.count()
 
-    def _attach_summary(self, campaign, total_click_count):
-        click_count = campaign['click_count'] or 0
-        campaign['summary'] = {
-            'click_count': click_count,
-            'click_share': click_count / total_click_count if total_click_count else 0.0,
-            'last_activity_at': campaign['last_activity_at'],
-        }
+    def get_click_stats(self, campaign_ids):
+        return self.campaign_repository.get_click_stats(campaign_ids)
+
+    def total_click_count(self):
+        return self.campaign_repository.total_click_count()
 
 
 @injectable
