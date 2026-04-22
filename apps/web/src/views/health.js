@@ -45,7 +45,7 @@ class HealthView {
       type: "line",
       data: {
         labels: this.model.history.map(function (row) {
-          return timestamp2LocalTime(row.createdAt);
+          return row.date;
         }),
         datasets: [
           {
