@@ -8,7 +8,8 @@ BANGI_DEPLOYMENT_ASSETS=(
     "infra/installer/templates/compose.prod.yml|${BANGI_RELEASE_TEMPLATE_DIR}/compose.prod.yml|0644"
     "infra/installer/templates/nginx.default.conf|${BANGI_RELEASE_TEMPLATE_DIR}/nginx.default.conf|0644"
     "infra/mariadb/low-memory.cnf|${BANGI_RELEASE_MARIADB_DIR}/low-memory.cnf|0644"
-    "scripts/ingest_disk_utilization.sh|${BANGI_RELEASE_SCRIPTS_DIR}/ingest_disk_utilization.sh|0755"
+    "infra/scripts/ingest_disk_utilization.sh|${BANGI_RELEASE_SCRIPTS_DIR}/ingest_disk_utilization.sh|0755"
+    "infra/scripts/refresh_ip2location_db.sh|${BANGI_RELEASE_SCRIPTS_DIR}/refresh_ip2location_db.sh|0755"
 )
 
 bangi_raw_asset_url() {
