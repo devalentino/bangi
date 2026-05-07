@@ -104,9 +104,9 @@ main() {
     bangi_fetch_assets
     bangi_write_environment
     bangi_install_ip2location_database
+    bangi_install_ops_user
     bangi_install_compose
     bangi_install_nginx
-    bangi_install_ops_user
     bangi_install_cron
     bangi_start_compose
     bangi_verify_health
