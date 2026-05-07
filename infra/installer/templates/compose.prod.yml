@@ -2,6 +2,8 @@ services:
   web:
     image: ghcr.io/devalentino/bangi-web:0.0.1a10
     restart: always
+    env_file:
+      - /opt/bangi/shared/env/.env
     ports:
       - '127.0.0.1:8080:80'
     networks:
@@ -14,13 +16,12 @@ services:
       - /opt/bangi/shared/env/.env
     environment:
       MARIADB_HOST: mariadb
-      LANDING_PAGES_BASE_PATH: /app/landings
       INTERNAL_PROCESS_BASE_URL: http://localhost:8000/process
     ports:
       - '127.0.0.1:8000:5000'
     volumes:
-      - /opt/bangi/shared/landings:/app/landings
-      - /opt/bangi/shared/ip2location/IP2LOCATION-LITE-DB1.IPV6.BIN:/app/IP2LOCATION-LITE-DB1.IPV6.BIN:ro
+      - /opt/bangi/shared/landings:/opt/bangi/shared/landings
+      - /opt/bangi/shared/ip2location/IP2LOCATION-LITE-DB1.IPV6.BIN:/opt/bangi/shared/ip2location/IP2LOCATION-LITE-DB1.IPV6.BIN:ro
     depends_on:
       mariadb:
         condition: service_healthy
@@ -42,9 +43,9 @@ services:
       - /opt/bangi/shared/env/.env
     volumes:
       - /opt/bangi/shared/mariadb:/var/lib/mysql
-      - /opt/bangi/current/infra/mariadb/low-memory.cnf:/etc/mysql/conf.d/zzz-low-memory.cnf:ro
+      - ./infra/mariadb/low-memory.cnf:/etc/mysql/conf.d/zzz-low-memory.cnf:ro
     healthcheck:
-      test: [ 'CMD', 'mariadb', '-u', 'root', '-p$MARIADB_ROOT_PASSWORD', '-e', 'SHOW DATABASES' ]
+      test: [ 'CMD', 'mariadb', '-u', 'root', '-p$$MARIADB_ROOT_PASSWORD', '-e', 'SHOW DATABASES' ]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -55,6 +56,8 @@ services:
     image: php:8-apache
     mem_limit: 64m
     mem_reservation: 32m
+    env_file:
+      - /opt/bangi/shared/env/.env
     volumes:
       - /opt/bangi/shared/landings:/var/www/html/landings
     networks:
