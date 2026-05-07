@@ -1,0 +1,235 @@
+from datetime import datetime, time
+from typing import Annotated
+
+from peewee import JOIN, Case, MySQLDatabase, fn
+from pymysql.converters import escape_string
+from wireup import Inject, injectable
+
+from src.core.entities import Campaign
+from src.core.enums import LeadStatus
+from src.core.utils import log_execution_time
+from src.reports.entities import Expense, ReportLead
+from src.tracker.entities import TrackClick, TrackDiscard, TrackLead, TrackPostback
+
+
+@injectable
+class StatisticsReportRepository:
+    def __init__(self, database: MySQLDatabase, gap_seconds: Annotated[int, Inject(config='REPORT_GAP_SECONDS')]):
+        self.database = database
+        self.gap_seconds = gap_seconds
+
+    @staticmethod
+    def _period_timestamps(parameters):
+        period_start = parameters['period_start']
+        period_end = parameters.get('period_end')
+        period_start_timestamp = datetime.combine(period_start, time.min).timestamp()
+        period_end_timestamp = None
+        if period_end:
+            period_end_timestamp = datetime.combine(period_end, time.max).timestamp()
+
+        return period_start_timestamp, period_end_timestamp
+
+    @log_execution_time
+    def _leads_statistics(self, parameters):
+        period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
+        cost_value = Case(
+            None,
+            [
+                (
+                    (TrackPostback.status == LeadStatus.accept.value) | (TrackPostback.status == LeadStatus.expect),
+                    TrackPostback.cost_value,
+                )
+            ],
+            0,
+        )
+
+        leads_subquery = TrackPostback.select(
+            TrackPostback.click_id,
+            TrackPostback.status,
+            fn.row_number()
+            .over(partition_by=TrackPostback.click_id, order_by=TrackPostback.id.desc())
+            .alias('row_number'),
+            cost_value.alias('cost_value'),
+        ).where(TrackPostback.created_at >= period_start_timestamp - self.gap_seconds)
+
+        if period_end_timestamp:
+            leads_subquery = leads_subquery.where(TrackPostback.created_at < period_end_timestamp + self.gap_seconds)
+
+        date = fn.date(fn.from_unixtime(TrackClick.created_at)).alias('date')
+        lead_status = leads_subquery.c.status.alias('lead_status')
+
+        select = [
+            fn.COUNT(TrackClick.click_id).alias('clicks_count'),
+            fn.COUNT(leads_subquery.c.click_id).alias('leads_count'),
+            fn.SUM(leads_subquery.c.cost_value).alias('payouts'),
+            lead_status,
+            date,
+        ]
+
+        group_by = [date, lead_status]
+        if 'group_parameters' in parameters:
+            for group_parameter in parameters['group_parameters']:
+                path = f'$.{escape_string(group_parameter)}'
+                parameter = fn.json_value(TrackClick.parameters, path).alias(group_parameter)
+                select.append(parameter)
+                group_by.append(parameter)
+
+        query = (
+            TrackClick.select(*select)
+            .join(
+                leads_subquery,
+                JOIN.LEFT_OUTER,
+                on=((TrackClick.click_id == leads_subquery.c.click_id) & (leads_subquery.c.row_number == 1)),
+            )
+            .where(
+                (TrackClick.campaign_id == parameters['campaign_id'])
+                & (TrackClick.created_at >= period_start_timestamp - self.gap_seconds)
+            )
+        )
+
+        if period_end_timestamp:
+            query = query.where(TrackClick.created_at < period_end_timestamp + self.gap_seconds)
+
+        if parameters.get('skip_clicks_without_parameters'):
+            query = query.where(fn.json_length(TrackClick.parameters) > 0)
+
+        query = query.group_by(*group_by).order_by(date)
+
+        cursor = self.database.execute(query)
+        return cursor.fetchall()
+
+    def _expenses(self, parameters):
+        query = Expense.select(Expense.date, Expense.distribution).where(
+            (Expense.campaign_id == parameters['campaign_id']) & (Expense.date >= parameters['period_start'])
+        )
+
+        if parameters['period_end']:
+            query = query.where(Expense.date <= parameters['period_end'])
+
+        cursor = self.database.execute(query)
+        return cursor.fetchall()
+
+    @log_execution_time
+    def _available_parameters(self, parameters):
+        period_start_timestamp, period_end_timestamp = self._period_timestamps(parameters)
+        query = TrackClick.select(TrackClick.parameters).where(
+            (TrackClick.campaign_id == parameters['campaign_id']) & (TrackClick.created_at >= period_start_timestamp)
+        )
+
+        if period_end_timestamp:
+            query = query.where(TrackClick.created_at <= period_end_timestamp)
+
+        query = query.order_by(TrackClick.id.desc()).limit(1)
+
+        cursor = self.database.execute(query)
+        return cursor.fetchone()
+
+    def get(self, parameters):
+        leads_statistics = self._leads_statistics(parameters)
+        available_parameters = self._available_parameters(parameters)
+        expenses = self._expenses(parameters)
+        return leads_statistics, expenses, available_parameters
+
+    def get_distribution_values(self, parameters):
+        group_values = [fn.json_value(TrackClick.parameters, f'$.{p}').alias(p) for p in parameters['group_parameters']]
+        query = (
+            TrackClick.select(*group_values)
+            .where(TrackClick.campaign_id == parameters['campaign_id'])
+            .group_by(*group_values)
+        )
+        cursor = self.database.execute(query)
+        return cursor.fetchall()
+
+    @log_execution_time
+    def get_leads(self, page, page_size, sort_by, desc, campaign_id):
+        if sort_by == 'created_at':
+            order_by = ReportLead.click_created_at
+        else:
+            order_by = getattr(ReportLead, sort_by)
+
+        if desc:
+            order_by = order_by.desc()
+
+        query = (
+            ReportLead.select(
+                ReportLead.click_id,
+                ReportLead.click_created_at,
+                ReportLead.status,
+                ReportLead.cost_value,
+                ReportLead.currency,
+            )
+            .where(ReportLead.campaign_id == campaign_id)
+            .order_by(order_by)
+            .limit(page_size)
+            .offset((page - 1) * page_size)
+        )
+
+        total = ReportLead.select(fn.COUNT(ReportLead.id)).where(ReportLead.campaign_id == campaign_id).scalar()
+        return list(query), total
+
+    def get_lead(self, click_id):
+        click = TrackClick.get_or_none(TrackClick.click_id == click_id)
+        if click is None:
+            return None, [], []
+
+        leads_query = TrackLead.select().where(TrackLead.click_id == click_id).order_by(TrackLead.id.desc())
+
+        postbacks_query = (
+            TrackPostback.select().where(TrackPostback.click_id == click_id).order_by(TrackPostback.id.desc())
+        )
+
+        return click, list(leads_query), list(postbacks_query)
+
+    def campaign_window_totals(self, *, start_5m: int, start_1h: int, start_1d: int):
+        query = (
+            TrackClick.select(
+                TrackClick.campaign_id.alias('campaign_id'),
+                Campaign.name.alias('campaign_name'),
+                fn.SUM(TrackClick.created_at >= start_5m).alias('total_5m'),
+                fn.SUM(TrackClick.created_at >= start_1h).alias('total_1h'),
+                fn.SUM(TrackClick.created_at >= start_1d).alias('total_1d'),
+            )
+            .join(Campaign, JOIN.INNER, on=(TrackClick.campaign_id == Campaign.id))
+            .where(TrackClick.created_at >= start_1d)
+            .group_by(TrackClick.campaign_id, Campaign.name)
+        )
+        return list(query.dicts())
+
+    def campaign_window_discard_totals(self, *, start_5m: int, start_1h: int, start_1d: int):
+        query = (
+            TrackDiscard.select(
+                TrackDiscard.campaign_id.alias('campaign_id'),
+                fn.SUM(TrackDiscard.created_at >= start_5m).alias('discard_5m'),
+                fn.SUM(TrackDiscard.created_at >= start_1h).alias('discard_1h'),
+                fn.SUM(TrackDiscard.created_at >= start_1d).alias('discard_1d'),
+            )
+            .where(TrackDiscard.created_at >= start_1d)
+            .group_by(TrackDiscard.campaign_id)
+        )
+        return list(query.dicts())
+
+    def campaign_total_count(self, *, campaign_id: int, start_timestamp: int):
+        return (
+            TrackClick.select(fn.COUNT(TrackClick.id))
+            .where((TrackClick.campaign_id == campaign_id) & (TrackClick.created_at >= start_timestamp))
+            .scalar()
+        )
+
+    def campaign_discard_count(self, *, campaign_id: int, start_timestamp: int):
+        return (
+            TrackDiscard.select(fn.COUNT(TrackDiscard.id))
+            .where((TrackDiscard.campaign_id == campaign_id) & (TrackDiscard.created_at >= start_timestamp))
+            .scalar()
+        )
+
+    def campaign_discard_distribution(self, *, campaign_id: int, start_timestamp: int, group_by: str):
+        group_by_field = getattr(TrackDiscard, group_by)
+        query = (
+            TrackDiscard.select(
+                group_by_field.alias('value'),
+                fn.COUNT(TrackDiscard.id).alias('count'),
+            )
+            .where((TrackDiscard.campaign_id == campaign_id) & (TrackDiscard.created_at >= start_timestamp))
+            .group_by(group_by_field)
+        )
+        return list(query.dicts())

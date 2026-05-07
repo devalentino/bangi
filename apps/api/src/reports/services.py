@@ -1,0 +1,492 @@
+import json
+from datetime import datetime, time, timedelta
+from decimal import ROUND_FLOOR, Decimal
+from time import time as time_timestamp
+
+from wireup import injectable
+
+from src.alerts import Alert, AlertCode, AlertSeverity, register_alert_callback
+from src.core.entities import Campaign
+from src.core.enums import LeadStatus, SortOrder
+from src.core.services import CampaignService
+from src.core.utils import utcnow
+from src.reports.entities import Expense
+from src.reports.exceptions import ClickDoesNotExistError, ExpensesDistributionParameterError
+from src.reports.repositories import StatisticsReportRepository
+from src.tracker.entities import TrackClick
+from src.tracker.services import TrackService
+
+DISCARD_WINDOW_SECONDS = {
+    '5m': 5 * 60,
+    '1h': 60 * 60,
+    '1d': 24 * 60 * 60,
+}
+DISCARD_MIN_TOTAL = 20
+
+
+@injectable
+class ReportService:
+    def __init__(
+        self,
+        campaign_service: CampaignService,
+        track_service: TrackService,
+        statistics_report_repository: StatisticsReportRepository,
+    ):
+        self.campaign_service = campaign_service
+        self.track_service = track_service
+        self.statistics_report_repository = statistics_report_repository
+
+    def _calculate_sum_of_clicks(self, stats):
+        print(stats)
+        return 0
+
+    def _get_payouts(self, statistics_container, group_parameters):
+        if len(group_parameters) > 0:
+            payouts_accepted_sum = 0
+            payouts_expected_sum = 0
+
+            for stats in statistics_container.values():
+                if not isinstance(stats, dict):
+                    continue
+
+                payouts_accepted, payouts_expected = self._get_payouts(stats, group_parameters[1:])
+                payouts_accepted_sum += payouts_accepted
+                payouts_expected_sum += payouts_expected
+
+            return payouts_accepted_sum, payouts_expected_sum
+
+        payouts_accepted = sum(
+            stats['payouts']
+            for status, stats in statistics_container['statuses'].items()
+            if status == LeadStatus.accept
+        )
+        payouts_expected = sum(
+            stats['payouts']
+            for status, stats in statistics_container['statuses'].items()
+            if status in {LeadStatus.accept, LeadStatus.expect}
+        )
+
+        return payouts_accepted, payouts_expected
+
+    def _fill_clicks(self, statistics_container, group_values, clicks_count, leads_count, payouts, lead_status):
+        if len(group_values) == 0:
+            statistics_container['clicks'] += clicks_count
+            if lead_status:
+                statistics_container['statuses'][lead_status]['leads'] = leads_count
+                statistics_container['statuses'][lead_status]['payouts'] = payouts or 0
+
+            return
+
+        group_value = group_values[0]
+        self._fill_clicks(
+            statistics_container[group_value], group_values[1:], clicks_count, leads_count, payouts, lead_status
+        )
+
+    def _fill_clicks_empty(self, statistics_container, grouped_values, set_expenses):
+        if len(grouped_values) == 0:
+            statistics_container['statuses'] = {status.value: {'leads': 0, 'payouts': 0} for status in LeadStatus}
+
+            statistics_container['clicks'] = 0
+            return
+
+        grouped_value = grouped_values[0]
+        statistics_container.setdefault(grouped_value, {})
+
+        if set_expenses:
+            statistics_container[grouped_value]['expenses'] = 0
+            statistics_container[grouped_value]['roi_accepted'] = 0
+            statistics_container[grouped_value]['roi_expected'] = 0
+            statistics_container[grouped_value]['profit_accepted'] = 0
+            statistics_container[grouped_value]['profit_expected'] = 0
+
+            set_expenses = False
+
+        self._fill_clicks_empty(statistics_container[grouped_value], grouped_values[1:], set_expenses)
+
+    def _build_empty_statistics_report(self, parameters, match_expenses_distribution):
+        grouped_rows = [()]
+        if parameters['group_parameters']:
+            grouped_rows = self.statistics_report_repository.get_distribution_values(parameters)
+
+        report = {}
+
+        period_start_date = parameters['period_start']
+        period_end_date = utcnow().date()
+        if parameters['period_end']:
+            period_end_date = parameters['period_end']
+
+        days_delta = period_end_date - period_start_date
+        for day in range(days_delta.days + 1):
+            date = period_start_date + timedelta(days=day)
+
+            report[date] = {}
+
+            if not match_expenses_distribution:
+                report[date]['expenses'] = 0
+                report[date]['roi_accepted'] = 0
+                report[date]['roi_expected'] = 0
+                report[date]['profit_accepted'] = 0
+                report[date]['profit_expected'] = 0
+
+            for grouped_values in grouped_rows:
+                self._fill_clicks_empty(report[date], grouped_values, match_expenses_distribution)
+
+        return report
+
+    def _build_statistics_report(self, report_rows, expenses_rows, parameters, match_expenses_distribution):
+        report = self._build_empty_statistics_report(parameters, match_expenses_distribution)
+
+        for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
+            if date not in report:
+                continue
+
+            self._fill_clicks(report[date], parameters_values, clicks_count, leads_count, payouts, lead_status)
+
+        date2distribution = {date: json.loads(distribution) for date, distribution in expenses_rows}
+
+        for date in report:
+            # extend records with expenses
+            if match_expenses_distribution:
+                distribution = date2distribution.get(date)
+                if distribution:
+                    for distribution_value, expenses in distribution.items():
+                        payouts_accepted, payouts_expected = self._get_payouts(
+                            report[date][distribution_value], parameters['group_parameters'][1:]
+                        )
+
+                        expenses = Decimal.from_float(expenses)
+                        report[date][distribution_value]['expenses'] = expenses.quantize(
+                            Decimal('0.01'), rounding=ROUND_FLOOR
+                        )
+
+                        if expenses > 0:
+                            profit_accepted = payouts_accepted - expenses
+                            profit_expected = payouts_expected - expenses
+                            roi_accepted = profit_accepted / expenses * 100
+                            roi_expected = profit_expected / expenses * 100
+
+                            report[date][distribution_value]['profit_accepted'] = profit_accepted.quantize(
+                                Decimal('0.01'), rounding=ROUND_FLOOR
+                            )
+                            report[date][distribution_value]['profit_expected'] = profit_expected.quantize(
+                                Decimal('0.01'), rounding=ROUND_FLOOR
+                            )
+                            report[date][distribution_value]['roi_accepted'] = roi_accepted.quantize(
+                                Decimal('0.01'), rounding=ROUND_FLOOR
+                            )
+                            report[date][distribution_value]['roi_expected'] = roi_expected.quantize(
+                                Decimal('0.01'), rounding=ROUND_FLOOR
+                            )
+            else:
+                distribution = date2distribution.get(date)
+                if distribution:
+                    payouts_accepted, payouts_expected = self._get_payouts(report[date], parameters['group_parameters'])
+                    expenses = Decimal.from_float(sum(distribution.values()))
+
+                    report[date]['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                    if expenses > 0:
+                        profit_accepted = payouts_accepted - expenses
+                        profit_expected = payouts_expected - expenses
+                        roi_accepted = profit_accepted / expenses * 100
+                        roi_expected = profit_expected / expenses * 100
+
+                        report[date]['profit_accepted'] = profit_accepted.quantize(
+                            Decimal('0.01'), rounding=ROUND_FLOOR
+                        )
+                        report[date]['profit_expected'] = profit_expected.quantize(
+                            Decimal('0.01'), rounding=ROUND_FLOOR
+                        )
+                        report[date]['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+                        report[date]['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+
+        return report
+
+    def _build_total(self, report_rows, expenses_rows, start, end):
+        total = {
+            'clicks': 0,
+            'statuses': {s.value: {'leads': 0, 'payouts': 0} for s in LeadStatus},
+            'expenses': 0,
+            'profit_accepted': 0,
+            'profit_expected': 0,
+            'roi_accepted': 0,
+            'roi_expected': 0,
+        }
+
+        date2distribution = {
+            date: sum(json.loads(distribution).values())
+            for date, distribution in expenses_rows
+            if date > start or date < end
+        }
+
+        payouts_accepted = 0
+        payouts_expected = 0
+        for clicks_count, leads_count, payouts, lead_status, date, *parameters_values in report_rows:
+            if date < start or date > end:
+                continue
+
+            total['clicks'] += clicks_count
+
+            if lead_status:
+                total['statuses'][lead_status]['leads'] += leads_count
+                total['statuses'][lead_status]['payouts'] += payouts or 0
+
+                if date2distribution.get(date) and lead_status == LeadStatus.accept:
+                    payouts_accepted += payouts or 0
+                    payouts_expected += payouts or 0
+
+                if date2distribution.get(date) and lead_status == LeadStatus.expect:
+                    payouts_expected += payouts or 0
+
+        expenses = Decimal('0.00')
+        for date, daily_expenses in date2distribution.items():
+            expenses += Decimal.from_float(daily_expenses)
+
+        profit_accepted = payouts_accepted - expenses
+        profit_expected = payouts_expected - expenses
+        roi_accepted = profit_accepted / expenses * 100 if expenses else Decimal('0.00')
+        roi_expected = profit_expected / expenses * 100 if expenses else Decimal('0.00')
+
+        total['expenses'] = expenses.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['profit_accepted'] = profit_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['profit_expected'] = profit_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['roi_accepted'] = roi_accepted.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+        total['roi_expected'] = roi_expected.quantize(Decimal('0.01'), rounding=ROUND_FLOOR)
+
+        return total
+
+    def statistics_report(self, parameters):
+        campaign = self.campaign_service.get(parameters['campaign_id'])
+
+        # make expenses_distribution_parameter in group parameters, expenses will be attached to same level
+        group_parameters = [p for p in parameters['group_parameters'] if p != campaign.expenses_distribution_parameter]
+        if campaign.expenses_distribution_parameter in parameters['group_parameters']:
+            group_parameters.insert(0, campaign.expenses_distribution_parameter)
+        parameters['group_parameters'] = group_parameters
+
+        match_expenses_distribution = False
+        if (
+            len(parameters['group_parameters']) > 0
+            and parameters['group_parameters'][0] == campaign.expenses_distribution_parameter
+        ):
+            match_expenses_distribution = True
+
+        report_rows, expenses_rows, available_parameters_row = self.statistics_report_repository.get(parameters)
+        report = self._build_statistics_report(report_rows, expenses_rows, parameters, match_expenses_distribution)
+        total = self._build_total(report_rows, expenses_rows, parameters['period_start'], parameters['period_end'])
+
+        available_parameters = []
+        if available_parameters_row:
+            (available_parameters_row,) = available_parameters_row
+            available_parameters = list(json.loads(available_parameters_row).keys()) if available_parameters_row else []
+
+        return report, total, available_parameters, group_parameters
+
+    def submit_expenses(self, campaign_id, expenses_distribution_parameter, date_distributions):
+        campaign = self.campaign_service.get(campaign_id)
+        if campaign.expenses_distribution_parameter is None:
+            campaign.expenses_distribution_parameter = expenses_distribution_parameter
+            campaign.save()
+
+        if campaign.expenses_distribution_parameter != expenses_distribution_parameter:
+            raise ExpensesDistributionParameterError()
+
+        for date_distribution in date_distributions:
+            Expense.insert(
+                campaign=campaign,
+                date=date_distribution['date'],
+                distribution=date_distribution['distribution'],
+            ).on_conflict(
+                update={Expense.distribution: date_distribution['distribution']},
+            ).execute()
+
+    def list_expenses(self, page, page_size, sort_by, sort_order, campaign_id, period_start=None, period_end=None):
+        order_by = getattr(Expense, sort_by)
+        if sort_order == SortOrder.desc:
+            order_by = order_by.desc()
+
+        query = Expense.select(Expense, Campaign).join(Campaign).where(Expense.campaign == campaign_id)
+
+        if period_start is not None:
+            query = query.where(Expense.date >= period_start)
+
+        if period_end is not None:
+            query = query.where(Expense.date <= period_end)
+
+        total = query.count()
+
+        query = query.order_by(order_by).limit(page_size).offset((page - 1) * page_size)
+        expenses = [e for e in query]
+        if expenses:
+            return expenses, total
+
+        # cover case for no reports
+        campaign = self.campaign_service.get(campaign_id)
+
+        dates = self.track_service.get_click_dates(
+            campaign.id,
+            datetime.combine(period_start, time.min).timestamp(),
+            datetime.combine(period_end, time.max).timestamp(),
+        )
+        if len(dates) == 0:
+            dates = [datetime.today()]
+
+        expenses = [Expense(campaign=campaign, date=d, distribution={}) for d in dates]
+
+        return expenses, 0
+
+    def list_postbacks(self, page, page_size, sort_by, sort_order, campaign_id):
+        self.campaign_service.get(campaign_id)
+        postbacks, total = self.statistics_report_repository.get_leads(
+            page, page_size, sort_by, sort_order == SortOrder.desc, campaign_id
+        )
+
+        return postbacks, total
+
+    def get_lead(self, click_id):
+        click, leads, postbacks = self.statistics_report_repository.get_lead(click_id)
+        if click is None:
+            raise ClickDoesNotExistError()
+
+        return click, leads, postbacks
+
+    def discard_report(self, *, campaign_id: int, window: str, group_by: str):
+        self.campaign_service.get(campaign_id)
+
+        start_timestamp = int(time_timestamp()) - DISCARD_WINDOW_SECONDS[window]
+        total_count = int(
+            self.statistics_report_repository.campaign_total_count(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+            )
+            or 0
+        )
+        discard_count = int(
+            self.statistics_report_repository.campaign_discard_count(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+            )
+            or 0
+        )
+        distribution = list(
+            self.statistics_report_repository.campaign_discard_distribution(
+                campaign_id=campaign_id,
+                start_timestamp=start_timestamp,
+                group_by=group_by,
+            )
+        )
+
+        return discard_count, total_count, distribution
+
+
+@injectable
+class ReportHelperService:
+    @staticmethod
+    def build_discard_metric(discard_count: int, total_count: int) -> dict:
+        rate = round(discard_count / total_count, 4) if total_count else 0.0
+        return {
+            'discardCount': discard_count,
+            'totalCount': total_count,
+            'rate': rate,
+            'eligible': total_count >= DISCARD_MIN_TOTAL,
+        }
+
+    @staticmethod
+    def get_discard_severity(metric: dict) -> AlertSeverity | None:
+        if not metric['eligible'] or metric['rate'] <= 0:
+            return None
+        if metric['rate'] < 0.02:
+            return AlertSeverity.INFO
+        if metric['rate'] < 0.20:
+            return AlertSeverity.WARNING
+        return AlertSeverity.ERROR
+
+    @staticmethod
+    def format_discard_message(campaign_name: str, metrics: dict[str, dict]) -> str:
+        metrics_text = ', '.join(
+            f'{window}: {metric["discardCount"]}/{metric["totalCount"]} ({metric["rate"] * 100:.1f}%)'
+            for window, metric in metrics.items()
+        )
+        return f'Campaign "{campaign_name}" has discards. {metrics_text}. Review flow routing.'
+
+    def list_expenses_distribution_parameters(self, campaign_id):
+        parameters = set()
+        query = TrackClick.select(TrackClick.parameters).where(TrackClick.campaign_id == campaign_id)
+        for click in query:
+            if click.parameters:
+                parameters.update(click.parameters.keys())
+
+        return sorted(parameters)
+
+    def list_expenses_distribution_parameter_values(self, campaign_id, parameter):
+        values = set()
+        query = TrackClick.select(TrackClick.parameters).where(TrackClick.campaign_id == campaign_id)
+        for click in query:
+            if not click.parameters or parameter not in click.parameters:
+                continue
+            value = click.parameters.get(parameter)
+            values.add(value)
+
+        return sorted(values)
+
+
+@register_alert_callback
+def collect_discard_alerts(container):
+    statistics_report_repository = container.get(StatisticsReportRepository)
+
+    now_timestamp = int(time_timestamp())
+    window_starts = {window: now_timestamp - seconds for window, seconds in DISCARD_WINDOW_SECONDS.items()}
+
+    totals_by_campaign = {
+        row['campaign_id']: row
+        for row in statistics_report_repository.campaign_window_totals(
+            start_5m=window_starts['5m'],
+            start_1h=window_starts['1h'],
+            start_1d=window_starts['1d'],
+        )
+    }
+    discard_by_campaign = {
+        row['campaign_id']: row
+        for row in statistics_report_repository.campaign_window_discard_totals(
+            start_5m=window_starts['5m'],
+            start_1h=window_starts['1h'],
+            start_1d=window_starts['1d'],
+        )
+    }
+
+    alerts = []
+    for campaign_id, total_row in totals_by_campaign.items():
+        discard_row = discard_by_campaign.get(campaign_id, {})
+        metrics = {
+            '5m': ReportHelperService.build_discard_metric(
+                int(discard_row.get('discard_5m') or 0),
+                int(total_row.get('total_5m') or 0),
+            ),
+            '1h': ReportHelperService.build_discard_metric(
+                int(discard_row.get('discard_1h') or 0),
+                int(total_row.get('total_1h') or 0),
+            ),
+            '1d': ReportHelperService.build_discard_metric(
+                int(discard_row.get('discard_1d') or 0),
+                int(total_row.get('total_1d') or 0),
+            ),
+        }
+
+        severity = ReportHelperService.get_discard_severity(metrics['1h'])
+        if severity is None:
+            continue
+
+        alerts.append(
+            Alert(
+                code=AlertCode.CORE_CAMPAIGN_DISCARD,
+                message=ReportHelperService.format_discard_message(total_row['campaign_name'], metrics),
+                severity=severity,
+                payload={
+                    'campaignId': campaign_id,
+                    'campaignName': total_row['campaign_name'],
+                    'severityWindow': '1h',
+                    'metrics': metrics,
+                },
+            )
+        )
+
+    return alerts

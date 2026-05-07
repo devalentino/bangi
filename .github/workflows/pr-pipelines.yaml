@@ -2,7 +2,66 @@ name: PR Pipelines
 run-name: Tests check on
 on: [pull_request]
 jobs:
-  black:
+  release-version:
+    name: Release version check
+    if: github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag bump
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet "origin/${{ github.base_ref }}" -- infra/installer/install.sh; then
+            echo "infra/installer/install.sh was not changed; skipping release version check."
+            exit 0
+          fi
+
+          release_tag="$(sed -n 's/^BANGI_RELEASE_TAG="\([^"]*\)"$/\1/p' infra/installer/install.sh)"
+          base_release_tag="$(git show "origin/${{ github.base_ref }}:infra/installer/install.sh" | sed -n 's/^BANGI_RELEASE_TAG="\([^"]*\)"$/\1/p')"
+
+          if [[ -z "${release_tag}" ]]; then
+            echo "BANGI_RELEASE_TAG is missing from infra/installer/install.sh" >&2
+            exit 1
+          fi
+
+          if [[ ! "${release_tag}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([ab][0-9]+)?$ ]]; then
+            echo "BANGI_RELEASE_TAG must use X.Y.Z, X.Y.ZaN, or X.Y.ZbN format" >&2
+            exit 1
+          fi
+
+          if [[ "${release_tag}" == "${base_release_tag}" ]]; then
+            echo "BANGI_RELEASE_TAG must be bumped from ${base_release_tag}" >&2
+            exit 1
+          fi
+
+          backend_image_tag="$(sed -n 's/^[[:space:]]*image: ghcr.io\/devalentino\/bangi-backend:\([^[:space:]]*\)$/\1/p' infra/installer/templates/compose.prod.yml)"
+          ui_image_tag="$(sed -n 's/^[[:space:]]*image: ghcr.io\/devalentino\/bangi-ui:\([^[:space:]]*\)$/\1/p' infra/installer/templates/compose.prod.yml)"
+
+          if [[ -z "${backend_image_tag}" || -z "${ui_image_tag}" ]]; then
+            echo "Production compose must define backend and UI GHCR image tags" >&2
+            exit 1
+          fi
+
+          if [[ "${backend_image_tag}" != "${release_tag}" ]]; then
+            echo "Backend compose image tag ${backend_image_tag} must match BANGI_RELEASE_TAG ${release_tag}" >&2
+            exit 1
+          fi
+
+          if [[ "${ui_image_tag}" != "${release_tag}" ]]; then
+            echo "UI compose image tag ${ui_image_tag} must match BANGI_RELEASE_TAG ${release_tag}" >&2
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${release_tag}" >/dev/null 2>&1; then
+            echo "Release tag ${release_tag} already exists" >&2
+            exit 1
+          fi
+
+  api-black:
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
@@ -11,7 +70,8 @@ jobs:
       with:
         python-version: '3.12'
     - run: pip install -r requirements-dev.txt && cp env-ci .env && make check-black
-  isort:
+      working-directory: apps/api
+  api-isort:
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
@@ -20,16 +80,17 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt && cp env-ci .env && make check-isort
-  flake8:
+        working-directory: apps/api
+  api-flake8:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-      - run: pip install -r requirements-dev.txt
       - run: pip install -r requirements-dev.txt && cp env-ci .env && make check-flake8
-  pytest:
+        working-directory: apps/api
+  api-pytest:
     continue-on-error: true
     runs-on: ubuntu-latest
     services:
@@ -46,6 +107,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt && pip install -r requirements-dev.txt && cp env-ci .env && make pytest
+        working-directory: apps/api
     env:
       MARIADB_USER: root
       MARIADB_PASSWORD: test1234
