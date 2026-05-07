@@ -10,12 +10,32 @@ BANGI_SHARED_LANDINGS_DIR="${BANGI_SHARED_DIR}/landings"
 BANGI_SHARED_IP2LOCATION_DIR="${BANGI_SHARED_DIR}/ip2location"
 BANGI_OPS_BIN_DIR="${BANGI_ROOT_DIR}/ops/bin"
 BANGI_ETC_DIR="/etc/bangi"
+BANGI_NGINX_DIR="/etc/nginx/bangi"
 BANGI_NGINX_AVAILABLE_DIR="/etc/nginx/bangi/sites-available"
 BANGI_NGINX_ENABLED_DIR="/etc/nginx/bangi/sites-enabled"
 BANGI_LOG_DIR="/var/log/bangi"
 
 bangi_create_paths() {
-    bangi_log "Path creation phase pending implementation"
+    local path=""
+    local managed_dirs=(
+        "${BANGI_RELEASE_DIR}"
+        "${BANGI_SHARED_ENV_DIR}"
+        "${BANGI_SHARED_MARIADB_DIR}"
+        "${BANGI_SHARED_LANDINGS_DIR}"
+        "${BANGI_SHARED_IP2LOCATION_DIR}"
+        "${BANGI_OPS_BIN_DIR}"
+        "${BANGI_ETC_DIR}"
+        "${BANGI_NGINX_AVAILABLE_DIR}"
+        "${BANGI_NGINX_ENABLED_DIR}"
+        "${BANGI_LOG_DIR}"
+    )
+
+    bangi_log "Creating Bangi host directory layout"
+
+    for path in "${managed_dirs[@]}"; do
+        install -d -m 0755 -o root -g root "${path}" \
+            || bangi_fatal "Path creation failed for ${path}"
+    done
 }
 
 bangi_activate_release() {
