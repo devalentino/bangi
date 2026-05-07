@@ -1,7 +1,7 @@
 FROM python:3.12-slim AS base
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir /app
