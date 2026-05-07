@@ -17,11 +17,24 @@ services:
     environment:
       MARIADB_HOST: mariadb
       INTERNAL_PROCESS_BASE_URL: http://localhost:8000/process
+      BANGI_HOST_OPS_SSH_USER: bangi-ops
+      BANGI_HOST_OPS_SSH_HOST: host.docker.internal
+      BANGI_HOST_OPS_SSH_KEY_PATH: /run/secrets/bangi_ops_ssh_key
+      BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH: /run/secrets/bangi_ops_known_hosts
     ports:
       - '127.0.0.1:8000:5000'
     volumes:
       - /opt/bangi/shared/landings:/opt/bangi/shared/landings
       - /opt/bangi/shared/ip2location:/opt/bangi/shared/ip2location:ro
+    secrets:
+      - source: bangi_ops_ssh_key
+        target: bangi_ops_ssh_key
+        mode: 0400
+      - source: bangi_ops_known_hosts
+        target: bangi_ops_known_hosts
+        mode: 0444
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     depends_on:
       mariadb:
         condition: service_healthy
@@ -66,3 +79,9 @@ services:
 networks:
   bangi:
     driver: bridge
+
+secrets:
+  bangi_ops_ssh_key:
+    file: /etc/bangi/ops/ssh/id_ed25519
+  bangi_ops_known_hosts:
+    file: /etc/bangi/ops/ssh/known_hosts
