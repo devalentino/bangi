@@ -6,6 +6,7 @@ BANGI_RAW_BASE_URL="https://raw.githubusercontent.com/${BANGI_GITHUB_OWNER}/${BA
 BANGI_DEPLOYMENT_ASSETS=(
     "infra/installer/templates/compose.prod.yml|${BANGI_RELEASE_DIR}/compose.yml|0644"
     "infra/installer/templates/compose.prod.yml|${BANGI_RELEASE_TEMPLATE_DIR}/compose.prod.yml|0644"
+    "infra/installer/templates/nginx.default.conf|${BANGI_RELEASE_TEMPLATE_DIR}/nginx.default.conf|0644"
     "infra/mariadb/low-memory.cnf|${BANGI_RELEASE_MARIADB_DIR}/low-memory.cnf|0644"
     "scripts/ingest_disk_utilization.sh|${BANGI_RELEASE_SCRIPTS_DIR}/ingest_disk_utilization.sh|0755"
 )
