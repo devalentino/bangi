@@ -16,12 +16,15 @@ class Navbar {
               "a.nav-link.dropdown-toggle",
               { href: "#", "data-bs-toggle": "dropdown" },
               [
-                m("img.rounded-circle.me-lg-2", {
-                  src: "img/user.jpg",
-                  alt: "",
-                  style: "width: 40px; height: 40px;",
-                }),
-                m("span.d-none.d-lg-inline-flex", "Ileana Cosânzeana"),
+                m(
+                  "span.rounded-circle.bg-primary.text-white.d-inline-flex.align-items-center.justify-content-center.me-lg-2",
+                  {
+                    "aria-hidden": "true",
+                    style: "width: 40px; height: 40px; font-weight: 600;",
+                  },
+                  "A",
+                ),
+                m("span.d-none.d-lg-inline-flex", "Admin"),
               ],
             ),
             m(
