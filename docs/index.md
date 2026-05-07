@@ -37,6 +37,7 @@ Bangi is a monorepo for a CPA tracking product. The backend exposes a Flask API 
 - [Source Tree Analysis](./source-tree-analysis.md) - Directory map and critical folders
 - [Project Parts Metadata](./project-parts.json) - Machine-readable monorepo structure
 - [Project Scan State](./project-scan-report.json) - Workflow state for future refreshes
+- [Host Provisioning](./host-provisioning.md) - Installer command and host provisioning entry point
 
 ## Existing Documentation
 
