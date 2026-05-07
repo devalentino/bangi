@@ -81,12 +81,12 @@ make lint
 Build the latest development image on the `develop` branch
 
 ```bash
-docker build -f Dockerfile -t ghcr.io/devalentino/bangi-backend:dev-$(git rev-parse --short HEAD) .
+docker build -f Dockerfile -t ghcr.io/devalentino/bangi-api:dev-$(git rev-parse --short HEAD) .
 ```
 
 ## Deploy Image
 ```bash
-docker push ghcr.io/devalentino/bangi-backend:dev-$(git rev-parse --short HEAD)
+docker push ghcr.io/devalentino/bangi-api:dev-$(git rev-parse --short HEAD)
 ```
 
 ### Release
@@ -94,12 +94,12 @@ docker push ghcr.io/devalentino/bangi-backend:dev-$(git rev-parse --short HEAD)
 For release please merge code to the `master` and create tag. Then build image with the tag
 
 ```bash
-docker build -f Dockerfile -t ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-match) .
+docker build -f Dockerfile -t ghcr.io/devalentino/bangi-api:$(git describe --tags --exact-match) .
 ```
 
 ## Deploy Image
 ```bash
-docker push ghcr.io/devalentino/bangi-backend:$(git describe --tags --exact-match)
+docker push ghcr.io/devalentino/bangi-api:$(git describe --tags --exact-match)
 ```
 
 ## Useful endpoints:
