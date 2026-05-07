@@ -9,6 +9,7 @@ BANGI_APT_BASE_PACKAGES=(
     sudo
     nginx
     cron
+    unzip
 )
 
 BANGI_DOCKER_PACKAGES=(

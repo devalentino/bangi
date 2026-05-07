@@ -122,4 +122,4 @@ python -m src.health.ingest.disk_utilization \
   --used-percent 70.0
 ```
 
-The host-side wrapper script and cron setup notes live in [`scripts/README.md`](../../scripts/README.md).
+The host-side wrapper script and cron setup notes live in [`infra/scripts/README.md`](../../infra/scripts/README.md).
