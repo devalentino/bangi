@@ -1,0 +1,354 @@
+import dataclasses
+import logging
+import os
+import shutil
+import tempfile
+import zipfile
+from typing import Annotated, Protocol
+
+import httpx
+import IP2Location
+import rule_engine
+import user_agents
+from peewee import fn
+from wireup import Inject, injectable
+
+from src.core.entities import Campaign, Flow
+from src.core.enums import FlowActionType, SortOrder
+from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError, LandingPageUploadError
+from src.core.models import Client
+from src.core.repositories import CampaignRepository
+from src.core.utils import log_execution_time
+
+logger = logging.getLogger(__name__)
+
+
+@injectable
+class IpLocator(Protocol):
+    def get_country(self, address):
+        pass
+
+
+@injectable(as_type=IpLocator)
+class Ip2LocationLocator:
+    def __init__(self, ip2location_db_path: Annotated[str, Inject(config='IP2LOCATION_DB_PATH')]):
+        self.ip2location = None
+        try:
+            self.ip2location = IP2Location.IP2Location(ip2location_db_path)
+        except ValueError:
+            logger.warning('IP2Location database is not valid')
+
+    def get_country(self, address):
+        try:
+            country = self.ip2location.get_country_short(address)
+        except Exception:
+            logger.warning('Failed to get country by ip', extra={'address': address})
+            return None
+
+        if len(country) != 2:
+            logger.warning('Failed to get country by ip', extra={'address': address})
+            return None
+
+        return country
+
+
+@injectable
+class ClientService:
+    def __init__(self, ip_locator: IpLocator):
+        self.ip_locator = ip_locator
+
+    def client_info(self, user_agent, ip_address) -> Client:
+        user_agent = user_agents.parse(user_agent)
+        return Client(
+            browser_family=user_agent.browser.family,
+            device_family=user_agent.device.family,
+            os_family=user_agent.os.family,
+            country=self.ip_locator.get_country(ip_address),
+            is_bot=user_agent.is_bot,
+            is_mobile=user_agent.is_mobile,
+        )
+
+
+@injectable
+class CampaignService:
+    def __init__(self, campaign_repository: CampaignRepository):
+        self.campaign_repository = campaign_repository
+
+    def get(self, id):
+        try:
+            return Campaign.get_by_id(id)
+        except Campaign.DoesNotExist as exc:
+            raise CampaignDoesNotExistError() from exc
+
+    def list(self, page, page_size, sort_by, sort_order):
+        return self.campaign_repository.list(page, page_size, sort_by, sort_order)
+
+    def all(self):
+        return [c for c in Campaign.select()]
+
+    def create(self, name, cost_model, cost_value, currency, status_mapper=None):
+        campaign = Campaign(
+            name=name,
+            cost_model=cost_model,
+            cost_value=cost_value,
+            currency=currency,
+            status_mapper=status_mapper,
+        )
+        campaign.save()
+        return campaign
+
+    def update(self, campaign_id, name=None, cost_model=None, cost_value=None, currency=None, status_mapper=None):
+        try:
+            campaign = Campaign.get_by_id(campaign_id)
+        except Campaign.DoesNotExist as exc:
+            raise CampaignDoesNotExistError() from exc
+
+        if name:
+            campaign.name = name
+
+        if cost_model:
+            campaign.cost_model = cost_model
+
+        if cost_value:
+            campaign.cost_value = cost_value
+
+        if currency:
+            campaign.currency = currency
+
+        if status_mapper is not None:
+            campaign.status_mapper = status_mapper
+
+        campaign.save()
+
+        return campaign
+
+    def count(self):
+        return self.campaign_repository.count()
+
+    def get_click_stats(self, campaign_ids):
+        return self.campaign_repository.get_click_stats(campaign_ids)
+
+    def total_click_count(self):
+        return self.campaign_repository.total_click_count()
+
+
+@injectable
+class FlowService:
+    def __init__(
+        self,
+        landing_pages_base_path: Annotated[str, Inject(config='LANDING_PAGES_BASE_PATH')],
+        landing_renderer_base_url: Annotated[str, Inject(config='LANDING_PAGE_RENDERER_BASE_URL')],
+    ):
+        self.landing_pages_base_path = landing_pages_base_path
+        self.landing_renderer_base_url = landing_renderer_base_url
+
+    def _has_index_file(self, path):
+        return any(os.path.isfile(os.path.join(path, name)) for name in ('index.html', 'index.php'))
+
+    def _cleanup_landing_dir(self, base_path):
+        dirs_to_remove = {'__MACOSX', '.DS_Store', '.git', '.svn', '.hg'}
+        files_to_remove = {'.DS_Store', 'Desktop.ini', 'Thumbs.db'}
+
+        for root, dirs, files in os.walk(base_path, topdown=True):
+            for name in list(dirs):
+                if name in dirs_to_remove:
+                    shutil.rmtree(os.path.join(root, name), ignore_errors=True)
+                    dirs.remove(name)
+            for name in files:
+                if name in files_to_remove:
+                    try:
+                        os.remove(os.path.join(root, name))
+                    except FileNotFoundError:
+                        continue
+
+    def _folders_tree(self, base_path):
+        entries = []
+        for root, dirs, files in os.walk(base_path):
+            rel_root = os.path.relpath(root, base_path)
+            if rel_root != '.':
+                entries.append(rel_root)
+            for name in sorted(dirs):
+                dir_path = os.path.join(rel_root, name) if rel_root != '.' else name
+                entries.append(dir_path)
+            for name in sorted(files):
+                file_path = os.path.join(rel_root, name) if rel_root != '.' else name
+                entries.append(file_path)
+            dirs.sort()
+        return sorted(set(entries))
+
+    def _store_landing_archive(self, flow_id, landing_archive):
+        if not self.landing_pages_base_path:
+            logger.error('Landing archives base path is not configured')
+            raise LandingPageUploadError()
+
+        landing_dir = os.path.join(self.landing_pages_base_path, str(flow_id))
+        if os.path.exists(landing_dir):
+            shutil.rmtree(landing_dir)
+        os.makedirs(landing_dir, exist_ok=True)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_file:
+            landing_archive.save(temp_file.name)
+            temp_path = temp_file.name
+
+        try:
+            with zipfile.ZipFile(temp_path) as archive:
+                archive.extractall(landing_dir)
+        finally:
+            os.remove(temp_path)
+
+        self._cleanup_landing_dir(landing_dir)
+
+        if not self._has_index_file(landing_dir):
+            entries = os.listdir(landing_dir)
+            if len(entries) == 1:
+                container_path = os.path.join(landing_dir, entries[0])
+                if os.path.isdir(container_path) and self._has_index_file(container_path):
+                    for name in os.listdir(container_path):
+                        shutil.move(os.path.join(container_path, name), landing_dir)
+                    shutil.rmtree(container_path)
+
+            if not self._has_index_file(landing_dir):
+                logger.error(
+                    'Landing archive is missing index.html or index.php',
+                    extra={'folders_tree': self._folders_tree(landing_dir)},
+                )
+                raise LandingPageUploadError()
+
+        return landing_dir
+
+    @log_execution_time
+    def _render_landing_page(self, flow_id):
+        response = httpx.get(f'{self.landing_renderer_base_url}/{flow_id}/')
+        return response.text
+
+    def get(self, id, campaign_id):
+        try:
+            flow = Flow.get_by_id(id)
+        except Flow.DoesNotExist as exc:
+            raise DoesNotExistError() from exc
+
+        if flow.campaign.id != campaign_id or flow.is_deleted:
+            raise DoesNotExistError()
+
+        return flow
+
+    def list(self, page, page_size, sort_by, sort_order, campaign_id):
+        order_by = getattr(Flow, sort_by)
+        if sort_order == SortOrder.desc:
+            order_by = order_by.desc()
+
+        return [
+            f
+            for f in Flow.select()
+            .where((Flow.is_deleted == False) & (Flow.campaign == campaign_id))
+            .order_by(order_by)
+            .limit(page_size)
+            .offset((page - 1) * page_size)
+        ]
+
+    def create(
+        self,
+        name,
+        campaign_id,
+        rule,
+        action_type,
+        redirect_url=None,
+        is_enabled=True,
+        landing_archive=None,
+    ):
+        flow = Flow(
+            name=name,
+            campaign_id=campaign_id,
+            rule=rule,
+            order_value=-1,
+            action_type=action_type,
+            redirect_url=redirect_url,
+            is_enabled=is_enabled,
+        )
+        flow.save()
+
+        if action_type == FlowActionType.render:
+            self._store_landing_archive(flow.id, landing_archive)
+
+        return flow
+
+    def update(
+        self,
+        flow_id,
+        campaign_id,
+        name=None,
+        rule=None,
+        action_type=None,
+        redirect_url=None,
+        is_enabled=None,
+        landing_archive=None,
+    ):
+        flow = self.get(flow_id, campaign_id)
+        if name:
+            flow.name = name
+
+        flow.rule = rule
+
+        if action_type is not None:
+            flow.action_type = action_type
+            flow.redirect_url = redirect_url
+
+            if action_type == FlowActionType.render:
+                self._store_landing_archive(flow.id, landing_archive)
+
+        if is_enabled is not None:
+            flow.is_enabled = is_enabled
+
+        flow.save()
+        return flow
+
+    def delete(self, flow_id, campaign_id):
+        flow = self.get(flow_id, campaign_id)
+        flow.is_deleted = True
+        flow.save()
+
+    def bulk_update_order(self, campaign_id, order):
+        # TODO: move to repo
+        with Flow._meta.database.atomic():
+            Flow.update(order_value=-1).where(Flow.campaign_id == campaign_id).execute()
+
+            for flow_id, order_value in order.items():
+                Flow.update(order_value=order_value).where(
+                    (Flow.campaign_id == campaign_id) & (Flow.id == flow_id)
+                ).execute()
+
+    def count(self, campaign_id):
+        return (
+            Flow.select(fn.count(Flow.id)).where((Flow.is_deleted == False) & (Flow.campaign == campaign_id)).scalar()
+        )
+
+    def process_flows(self, campaign_id: int, client: Client):
+        flows = (
+            Flow.select()
+            .where((Flow.campaign_id == campaign_id) & (Flow.is_enabled == True) & (Flow.is_deleted == False))
+            .order_by(Flow.order_value.desc(), Flow.id.asc())
+        )
+
+        matched_flow = None
+        for flow in flows:
+            if flow.rule is None:
+                matched_flow = flow
+                break
+
+            rule = rule_engine.Rule(flow.rule, context=Client.rule_engine_context())
+            if rule.matches(dataclasses.asdict(client)):
+                matched_flow = flow
+                break
+
+        if matched_flow is None:
+            logger.warning(
+                'Failed to process flows', extra={'campaign_id': campaign_id, 'flows': [f.to_dict() for f in flows]}
+            )
+            return None, None
+
+        if matched_flow.action_type == FlowActionType.redirect:
+            return matched_flow.action_type, matched_flow.redirect_url
+        elif matched_flow.action_type == FlowActionType.render:
+            return matched_flow.action_type, self._render_landing_page(matched_flow.id)
+
+        return None, None
