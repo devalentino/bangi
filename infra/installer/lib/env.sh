@@ -2,7 +2,7 @@
 
 BANGI_RUNTIME_ENV_FILE="${BANGI_SHARED_ENV_DIR}/.env"
 BANGI_OPS_ENV_FILE="${BANGI_ETC_DIR}/ops.env"
-BANGI_IP2LOCATION_DOWNLOAD_FILE="DB1LITEBINIPV6"
+BANGI_IP2LOCATION_DATABASE_FILE="IP2LOCATION-LITE-DB1.IPV6.BIN"
 
 bangi_env_secret() {
     od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
@@ -94,28 +94,6 @@ bangi_env_prompt_secret() {
     printf '%s\n' "${value}"
 }
 
-bangi_env_validate_ip2location_token() {
-    local token="$1"
-    local temporary_path=""
-    local zip_signature=""
-    local download_url="https://www.ip2location.com/download?token=${token}&file=${BANGI_IP2LOCATION_DOWNLOAD_FILE}"
-
-    [[ -n "${token}" ]] || return 1
-
-    temporary_path="$(mktemp)" \
-        || bangi_fatal "Cannot create temporary file for IP2Location token validation"
-
-    if ! curl -fsSL --max-time 45 "${download_url}" -o "${temporary_path}"; then
-        rm -f "${temporary_path}"
-        return 1
-    fi
-
-    zip_signature="$(head -c 4 "${temporary_path}" | od -An -tx1 | tr -d ' \n')"
-    rm -f "${temporary_path}"
-
-    [[ "${zip_signature}" == "504b0304" || "${zip_signature}" == "504b0506" || "${zip_signature}" == "504b0708" ]]
-}
-
 bangi_env_read_ip2location_token() {
     local token="${IP2LOCATION_DOWNLOAD_TOKEN:-}"
 
@@ -130,18 +108,8 @@ bangi_env_read_ip2location_token() {
             return 0
         fi
 
-        bangi_log "Validating IP2Location download token" >&2
-        if bangi_env_validate_ip2location_token "${token}"; then
-            printf '%s\n' "${token}"
-            return 0
-        fi
-
-        if [[ ! -t 0 ]]; then
-            bangi_fatal "IP2Location download token validation failed"
-        fi
-
-        bangi_log "IP2Location download token validation failed. Enter another token, or leave blank to skip." >&2
-        token=""
+        printf '%s\n' "${token}"
+        return 0
     done
 }
 

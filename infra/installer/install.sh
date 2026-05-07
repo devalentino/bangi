@@ -18,6 +18,7 @@ BANGI_INSTALLER_MODULES=(
     packages.sh
     assets.sh
     env.sh
+    ip2location.sh
     compose.sh
     nginx.sh
     cron.sh
@@ -78,6 +79,8 @@ source "${INSTALLER_LIB_DIR}/packages.sh"
 source "${INSTALLER_LIB_DIR}/assets.sh"
 # shellcheck source=infra/installer/lib/env.sh
 source "${INSTALLER_LIB_DIR}/env.sh"
+# shellcheck source=infra/installer/lib/ip2location.sh
+source "${INSTALLER_LIB_DIR}/ip2location.sh"
 # shellcheck source=infra/installer/lib/compose.sh
 source "${INSTALLER_LIB_DIR}/compose.sh"
 # shellcheck source=infra/installer/lib/nginx.sh
@@ -100,6 +103,7 @@ main() {
     bangi_create_paths
     bangi_fetch_assets
     bangi_write_environment
+    bangi_install_ip2location_database
     bangi_install_compose
     bangi_install_nginx
     bangi_install_ops_user
