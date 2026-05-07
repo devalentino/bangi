@@ -26,3 +26,10 @@ For the installer skeleton, verify:
 - running without root privileges fails before host changes
 - running on a non-Ubuntu 24.04 host fails before package installation
 - running on Ubuntu 24.04 as root reaches the installer phase orchestration
+
+For managed cron installation, verify:
+
+- `/etc/cron.d/bangi` exists after installer completion and contains a single Bangi-managed file body
+- disk telemetry runs hourly from `/opt/bangi/current` through `scripts/ingest_disk_utilization.sh` and logs under `/var/log/bangi`
+- with an empty `IP2LOCATION_DOWNLOAD_TOKEN` in `/etc/bangi/ops.env`, no IP2Location refresh cron entry is present
+- with a non-empty `IP2LOCATION_DOWNLOAD_TOKEN`, the IP2Location refresh cron entry is `0 3 1,15 * *`, sources `/etc/bangi/ops.env`, and does not include the token value in the cron command
