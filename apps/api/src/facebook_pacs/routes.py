@@ -1,0 +1,397 @@
+from datetime import date
+
+import humps
+from flask.views import MethodView
+
+from src.auth import auth
+from src.container import container
+from src.core.blueprint import Blueprint
+from src.core.schemas import PaginationRequestSchema
+from src.facebook_pacs.schemas import (
+    FacebookPacsAdCabinetListResponseSchema,
+    FacebookPacsAdCabinetRequestSchema,
+    FacebookPacsAdCabinetResponseSchema,
+    FacebookPacsBusinessPageListResponseSchema,
+    FacebookPacsBusinessPageRequestSchema,
+    FacebookPacsBusinessPageResponseSchema,
+    FacebookPacsBusinessPortfolioAccessUrlListResponseSchema,
+    FacebookPacsBusinessPortfolioAccessUrlRequestSchema,
+    FacebookPacsBusinessPortfolioAccessUrlResponseSchema,
+    FacebookPacsBusinessPortfolioListResponseSchema,
+    FacebookPacsBusinessPortfolioRequestSchema,
+    FacebookPacsBusinessPortfolioResponseSchema,
+    FacebookPacsCampaignListResponseSchema,
+    FacebookPacsCampaignRequestSchema,
+    FacebookPacsCampaignResponseSchema,
+    FacebookPacsExecutorListResponseSchema,
+    FacebookPacsExecutorRequestSchema,
+    FacebookPacsExecutorResponseSchema,
+    FacebookPacsNameFilterRequestSchema,
+)
+from src.facebook_pacs.services import (
+    AdCabinetService,
+    BusinessPageService,
+    BusinessPortfolioService,
+    CampaignService,
+    ExecutorService,
+)
+
+blueprint = Blueprint('facebook_pacs', __name__, description='Facebook PACs (Personal Ad Account)')
+
+
+@blueprint.route('/executors')
+class Executors(MethodView):
+    @blueprint.arguments(FacebookPacsNameFilterRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsExecutorListResponseSchema)
+    @auth.login_required
+    def get(self, parameters_payload):
+        executor_service = container.get(ExecutorService)
+        partial_name = parameters_payload.get('partialName')
+        if not partial_name or len(partial_name) <= 2:
+            partial_name = None
+        executors = executor_service.list(
+            parameters_payload['page'],
+            parameters_payload['pageSize'],
+            humps.decamelize(parameters_payload['sortBy'].value),
+            parameters_payload['sortOrder'],
+            partial_name=partial_name,
+        )
+        count = executor_service.count(partial_name=partial_name)
+
+        return {
+            'content': [humps.camelize(e.to_dict()) for e in executors],
+            'pagination': parameters_payload | {'total': count},
+            'filters': {'partialName': partial_name},
+        }
+
+    @blueprint.arguments(FacebookPacsExecutorRequestSchema)
+    @blueprint.response(201, FacebookPacsExecutorResponseSchema)
+    @auth.login_required
+    def post(self, executor_payload):
+        executor_service = container.get(ExecutorService)
+        executor = executor_service.create(executor_payload['name'], executor_payload['isBanned'])
+        return humps.camelize(executor.to_dict())
+
+
+@blueprint.route('/executors/<int:executorId>')
+class Executor(MethodView):
+    @blueprint.response(200, FacebookPacsExecutorResponseSchema)
+    @auth.login_required
+    def get(self, executorId):
+        executor_service = container.get(ExecutorService)
+        executor = executor_service.get(executorId)
+        return humps.camelize(executor.to_dict())
+
+    @blueprint.arguments(FacebookPacsExecutorRequestSchema)
+    @blueprint.response(200, FacebookPacsExecutorResponseSchema)
+    @auth.login_required
+    def patch(self, executor_payload, executorId):
+        executor_service = container.get(ExecutorService)
+        executor = executor_service.update(executorId, executor_payload.get('name'), executor_payload.get('isBanned'))
+        return humps.camelize(executor.to_dict())
+
+
+@blueprint.route('/business-portfolios')
+class BusinessPosrfolios(MethodView):
+    @blueprint.arguments(FacebookPacsNameFilterRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsBusinessPortfolioListResponseSchema)
+    @auth.login_required
+    def get(self, parameters_payload):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        partial_name = parameters_payload.get('partialName')
+        if not partial_name or len(partial_name) <= 2:
+            partial_name = None
+        business_portfolios = business_portfolio_service.list(
+            parameters_payload['page'],
+            parameters_payload['pageSize'],
+            humps.decamelize(parameters_payload['sortBy'].value),
+            parameters_payload['sortOrder'],
+            partial_name=partial_name,
+        )
+        count = business_portfolio_service.count(partial_name=partial_name)
+
+        return {
+            'content': [humps.camelize(b.to_dict()) for b in business_portfolios],
+            'pagination': parameters_payload | {'total': count},
+            'filters': {'partialName': partial_name},
+        }
+
+    @blueprint.arguments(FacebookPacsBusinessPortfolioRequestSchema)
+    @blueprint.response(201, FacebookPacsBusinessPortfolioResponseSchema)
+    @auth.login_required
+    def post(self, business_portfolio_payload):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        business_portfolio = business_portfolio_service.create(
+            business_portfolio_payload['name'], business_portfolio_payload['isBanned']
+        )
+        return humps.camelize(business_portfolio.to_dict())
+
+
+@blueprint.route('/business-portfolios/<int:businessPortfolioId>')
+class BusinessPortfolio(MethodView):
+    @blueprint.response(200, FacebookPacsBusinessPortfolioResponseSchema)
+    @auth.login_required
+    def get(self, businessPortfolioId):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        business_portfolio = business_portfolio_service.get(businessPortfolioId)
+        return humps.camelize(business_portfolio.to_dict())
+
+    @blueprint.arguments(FacebookPacsBusinessPortfolioRequestSchema)
+    @blueprint.response(200, FacebookPacsBusinessPortfolioResponseSchema)
+    @auth.login_required
+    def patch(self, business_portfolio_payload, businessPortfolioId):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        business_portfolio = business_portfolio_service.update(
+            businessPortfolioId, business_portfolio_payload.get('name'), business_portfolio_payload.get('isBanned')
+        )
+        return humps.camelize(business_portfolio.to_dict())
+
+
+@blueprint.route('/business-portfolios/<int:businessPortfolioId>/executors/<int:executorId>')
+class BusinessPortfolioAssignExecutor(MethodView):
+    @blueprint.response(201, FacebookPacsBusinessPortfolioResponseSchema)
+    @auth.login_required
+    def post(self, businessPortfolioId, executorId):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        business_portfolio = business_portfolio_service.bind_executor(businessPortfolioId, executorId)
+        return humps.camelize(business_portfolio.to_dict())
+
+    @blueprint.response(204, FacebookPacsBusinessPortfolioResponseSchema)
+    @auth.login_required
+    def delete(self, businessPortfolioId, executorId):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        business_portfolio_service.unbind_executor(businessPortfolioId, executorId)
+
+
+@blueprint.route('/business-portfolios/<int:businessPortfolioId>/access-urls')
+class BusinessPortfolioAccessUrls(MethodView):
+    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsBusinessPortfolioAccessUrlListResponseSchema)
+    @auth.login_required
+    def get(self, parameters_payload, businessPortfolioId):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        access_urls = business_portfolio_service.list_access_urls(
+            parameters_payload['page'],
+            parameters_payload['pageSize'],
+            humps.decamelize(parameters_payload['sortBy'].value),
+            parameters_payload['sortOrder'],
+            businessPortfolioId,
+        )
+        count = business_portfolio_service.count_access_urls()
+
+        return {
+            'content': [humps.camelize(a.to_dict()) for a in access_urls],
+            'pagination': parameters_payload | {'total': count},
+        }
+
+    @blueprint.arguments(FacebookPacsBusinessPortfolioAccessUrlRequestSchema)
+    @blueprint.response(201, FacebookPacsBusinessPortfolioAccessUrlResponseSchema)
+    @auth.login_required
+    def post(self, access_url_payload, businessPortfolioId):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        access_url = business_portfolio_service.create_access_url(
+            businessPortfolioId,
+            access_url_payload['url'],
+            access_url_payload['expiresAt'],
+            access_url_payload.get('email'),
+        )
+        return humps.camelize(access_url.to_dict() | {'expiresAt': date.fromtimestamp(access_url.expires_at)})
+
+
+@blueprint.route('/business-portfolios/<int:businessPortfolioId>/access-urls/<int:accessUrlId>')
+class BusinessPortfolioAccessUrl(MethodView):
+    @blueprint.response(204)
+    @auth.login_required
+    def delete(self, businessPortfolioId, accessUrlId):
+        business_portfolio_service = container.get(BusinessPortfolioService)
+        business_portfolio_service.delete_access_url(businessPortfolioId, accessUrlId)
+
+
+@blueprint.route('/ad-cabinets')
+class AdCabinets(MethodView):
+    @blueprint.arguments(FacebookPacsNameFilterRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsAdCabinetListResponseSchema)
+    @auth.login_required
+    def get(self, parameters_payload):
+        ad_cabinet_service = container.get(AdCabinetService)
+        partial_name = parameters_payload.get('partialName')
+        if not partial_name or len(partial_name) <= 2:
+            partial_name = None
+        ad_cabinets = ad_cabinet_service.list(
+            parameters_payload['page'],
+            parameters_payload['pageSize'],
+            humps.decamelize(parameters_payload['sortBy'].value),
+            parameters_payload['sortOrder'],
+            partial_name=partial_name,
+        )
+        count = ad_cabinet_service.count(partial_name=partial_name)
+
+        return {
+            'content': [humps.camelize(ac.to_dict()) for ac in ad_cabinets],
+            'pagination': parameters_payload | {'total': count},
+            'filters': {'partialName': partial_name},
+        }
+
+    @blueprint.arguments(FacebookPacsAdCabinetRequestSchema)
+    @blueprint.response(201, FacebookPacsAdCabinetResponseSchema)
+    @auth.login_required
+    def post(self, ad_cabinet_payload):
+        ad_cabinet_service = container.get(AdCabinetService)
+        ad_cabinet = ad_cabinet_service.create(ad_cabinet_payload['name'], ad_cabinet_payload['isBanned'])
+        return humps.camelize(ad_cabinet.to_dict())
+
+
+@blueprint.route('/ad-cabinets/<int:adCabinetId>')
+class AdCabinet(MethodView):
+    @blueprint.response(200, FacebookPacsAdCabinetResponseSchema)
+    @auth.login_required
+    def get(self, adCabinetId):
+        ad_cabinet_service = container.get(AdCabinetService)
+        ad_cabinet = ad_cabinet_service.get(adCabinetId)
+        return humps.camelize(ad_cabinet.to_dict())
+
+    @blueprint.arguments(FacebookPacsAdCabinetRequestSchema)
+    @blueprint.response(200, FacebookPacsAdCabinetResponseSchema)
+    @auth.login_required
+    def patch(self, ad_cabinet_payload, adCabinetId):
+        ad_cabinet_service = container.get(AdCabinetService)
+        ad_cabinet = ad_cabinet_service.update(
+            adCabinetId, ad_cabinet_payload.get('name'), ad_cabinet_payload['isBanned']
+        )
+        return humps.camelize(ad_cabinet.to_dict())
+
+
+@blueprint.route('/ad-cabinets/<int:adCabinetId>/business-portfolio/<int:businessPortfolioId>')
+class AdCabinetAssignBusinessPortfolio(MethodView):
+    @blueprint.response(201, FacebookPacsAdCabinetResponseSchema)
+    @auth.login_required
+    def post(self, adCabinetId, businessPortfolioId):
+        ad_cabinet_service = container.get(AdCabinetService)
+        ad_cabinet = ad_cabinet_service.bind_business_portfolio(adCabinetId, businessPortfolioId)
+        return humps.camelize(ad_cabinet.to_dict())
+
+    @blueprint.response(204)
+    @auth.login_required
+    def delete(self, adCabinetId, businessPortfolioId):
+        ad_cabinet_service = container.get(AdCabinetService)
+        ad_cabinet_service.unbind_business_portfolio(adCabinetId, businessPortfolioId)
+
+
+@blueprint.route('/campaigns')
+class Campaigns(MethodView):
+    @blueprint.arguments(PaginationRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsCampaignListResponseSchema)
+    @auth.login_required
+    def get(self, parameters_payload):
+        campaign_service = container.get(CampaignService)
+        campaigns = campaign_service.list(
+            parameters_payload['page'],
+            parameters_payload['pageSize'],
+            humps.decamelize(parameters_payload['sortBy'].value),
+            parameters_payload['sortOrder'],
+        )
+        count = campaign_service.count()
+
+        return {
+            'content': [humps.camelize(c.to_dict() | {'name': c.core_campaign.name}) for c in campaigns],
+            'pagination': parameters_payload | {'total': count},
+        }
+
+    @blueprint.arguments(FacebookPacsCampaignRequestSchema)
+    @blueprint.response(201)
+    @auth.login_required
+    def post(self, campaign_payload):
+        campaign_service = container.get(CampaignService)
+        campaign_service.create(
+            campaign_payload['name'],
+            campaign_payload['adCabinetId'],
+            campaign_payload['executorId'],
+            campaign_payload['businessPageId'],
+            cost_model=campaign_payload['costModel'],
+            cost_value=campaign_payload['costValue'],
+            currency=campaign_payload['currency'],
+            status_mapper=campaign_payload.get('statusMapper'),
+        )
+
+
+@blueprint.route('/campaigns/<int:campaignId>')
+class Campaign(MethodView):
+    @blueprint.response(200, FacebookPacsCampaignResponseSchema)
+    @auth.login_required
+    def get(self, campaignId):
+        campaign_service = container.get(CampaignService)
+        campaign = campaign_service.get(campaignId)
+        return humps.camelize(campaign.to_dict() | {'name': campaign.core_campaign.name})
+
+    @blueprint.arguments(FacebookPacsCampaignRequestSchema)
+    @blueprint.response(200)
+    @auth.login_required
+    def patch(self, campaign_payload, campaignId):
+        campaign_service = container.get(CampaignService)
+        cost_model = campaign_payload['costModel']
+        currency = campaign_payload['currency']
+        campaign_service.update(
+            campaignId,
+            name=campaign_payload.get('name'),
+            cost_model=cost_model.value if hasattr(cost_model, 'value') else cost_model,
+            cost_value=campaign_payload.get('costValue'),
+            currency=currency.value if hasattr(currency, 'value') else currency,
+            status_mapper=campaign_payload.get('statusMapper'),
+            ad_cabinet_id=campaign_payload.get('adCabinetId'),
+            executor_id=campaign_payload.get('executorId'),
+            business_page_id=campaign_payload.get('businessPageId'),
+        )
+
+
+@blueprint.route('/business-pages')
+class BusinessPages(MethodView):
+    @blueprint.arguments(FacebookPacsNameFilterRequestSchema, location='query')
+    @blueprint.response(200, FacebookPacsBusinessPageListResponseSchema)
+    @auth.login_required
+    def get(self, parameters_payload):
+        business_page_service = container.get(BusinessPageService)
+        partial_name = parameters_payload.get('partialName')
+        if not partial_name or len(partial_name) <= 2:
+            partial_name = None
+        business_pages = business_page_service.list(
+            parameters_payload['page'],
+            parameters_payload['pageSize'],
+            humps.decamelize(parameters_payload['sortBy'].value),
+            parameters_payload['sortOrder'],
+            partial_name=partial_name,
+        )
+        count = business_page_service.count(partial_name=partial_name)
+
+        return {
+            'content': [humps.camelize(bp.to_dict()) for bp in business_pages],
+            'pagination': parameters_payload | {'total': count},
+            'filters': {'partialName': partial_name},
+        }
+
+    @blueprint.arguments(FacebookPacsBusinessPageRequestSchema)
+    @blueprint.response(201, FacebookPacsBusinessPageResponseSchema)
+    @auth.login_required
+    def post(self, business_page_payload):
+        business_page_service = container.get(BusinessPageService)
+        business_page = business_page_service.create(business_page_payload['name'], business_page_payload['isBanned'])
+        return humps.camelize(business_page.to_dict())
+
+
+@blueprint.route('/business-pages/<int:businessPageId>')
+class BusinessPage(MethodView):
+    @blueprint.response(200, FacebookPacsBusinessPageResponseSchema)
+    @auth.login_required
+    def get(self, businessPageId):
+        business_page_service = container.get(BusinessPageService)
+        business_page = business_page_service.get(businessPageId)
+        return humps.camelize(business_page.to_dict())
+
+    @blueprint.arguments(FacebookPacsBusinessPageRequestSchema)
+    @blueprint.response(200, FacebookPacsBusinessPageResponseSchema)
+    @auth.login_required
+    def patch(self, business_page_payload, businessPageId):
+        business_page_service = container.get(BusinessPageService)
+        business_page = business_page_service.update(
+            businessPageId, business_page_payload.get('name'), business_page_payload.get('isBanned')
+        )
+        return humps.camelize(business_page.to_dict())
