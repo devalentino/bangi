@@ -73,13 +73,13 @@ The repo includes a multi-stage Docker build:
 From the monorepo root:
 
 ```bash
-docker build -f apps/web/Dockerfile -t ghcr.io/devalentino/bangi-ui:dev-$(git rev-parse --short HEAD) .
+docker build -f apps/web/Dockerfile -t ghcr.io/devalentino/bangi-web:dev-$(git rev-parse --short HEAD) .
 ```
 
 Deploy Image
 
 ```bash
-docker push ghcr.io/devalentino/bangi-ui:dev-$(git rev-parse --short HEAD)
+docker push ghcr.io/devalentino/bangi-web:dev-$(git rev-parse --short HEAD)
 ```
 
 #### Release
@@ -87,13 +87,13 @@ docker push ghcr.io/devalentino/bangi-ui:dev-$(git rev-parse --short HEAD)
 From the monorepo root:
 
 ```bash
-docker build -f apps/web/Dockerfile -t ghcr.io/devalentino/bangi-ui:$(git describe --tags --exact-match) .
+docker build -f apps/web/Dockerfile -t ghcr.io/devalentino/bangi-web:$(git describe --tags --exact-match) .
 ```
 
 Deploy Image
 
 ```bash
-docker push ghcr.io/devalentino/bangi-ui:$(git describe --tags --exact-match)
+docker push ghcr.io/devalentino/bangi-web:$(git describe --tags --exact-match)
 ```
 
 ## Deploy Notes
