@@ -7,7 +7,7 @@ The Bangi host provisioner installs a pinned Bangi release onto a fresh Ubuntu 2
 Download the pinned installer to `/tmp` and run it with root privileges:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/devalentino/bangi/vX.Y.Z/infra/installer/install.sh -o /tmp/bangi-install.sh
+curl -fsSL https://raw.githubusercontent.com/devalentino/bangi/X.Y.Z/infra/installer/install.sh -o /tmp/bangi-install.sh
 sudo bash /tmp/bangi-install.sh
 ```
 
