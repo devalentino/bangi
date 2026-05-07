@@ -21,7 +21,7 @@ services:
       - '127.0.0.1:8000:5000'
     volumes:
       - /opt/bangi/shared/landings:/opt/bangi/shared/landings
-      - /opt/bangi/shared/ip2location/IP2LOCATION-LITE-DB1.IPV6.BIN:/opt/bangi/shared/ip2location/IP2LOCATION-LITE-DB1.IPV6.BIN:ro
+      - /opt/bangi/shared/ip2location:/opt/bangi/shared/ip2location:ro
     depends_on:
       mariadb:
         condition: service_healthy
