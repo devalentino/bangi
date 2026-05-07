@@ -32,3 +32,9 @@ Operational notes:
 - run the script on the Docker host, not inside the container
 - a non-zero exit code means ingestion failed and cron should treat it as an error
 - override `MONITOR_PATH` if Bangi data lives on a different host mount
+
+## IP2Location refresh
+
+`refresh_ip2location_db.sh` downloads the IP2Location LITE DB1 IPv6 archive, validates it, atomically replaces the managed database file, and restarts the API service after a successful replacement.
+
+The installer schedules it only when `/etc/bangi/ops.env` contains `IP2LOCATION_DOWNLOAD_TOKEN`. Cron sources `/etc/bangi/ops.env`; the token is not written into `/etc/cron.d/bangi`.
