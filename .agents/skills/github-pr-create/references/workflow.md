@@ -44,6 +44,7 @@ This workflow prepares and opens a GitHub pull request from the current branch b
    - Ensure the PR title matches either `<jira_ticket>: <prefix>: <pr_title>` or `<prefix>: <pr_title>`.
    - When `jira_ticket` is present, ensure it is a concrete ticket ID such as `KAN-11`, not `TBD`.
    - Ensure `prefix` is exactly one of: `feat`, `fix`, `migration`, `refactor`, `chore`, `test`, `docs`, `perf`.
+   - Ensure `pr_title` names the affected area when the task wording is generic, so it is clear without Jira or branch context.
    - If essential context is missing and cannot be inferred safely, stop and ask the user for the missing item instead of opening a weak PR.
 
 5. Create the PR.
@@ -60,6 +61,7 @@ This workflow prepares and opens a GitHub pull request from the current branch b
      - `docs`: Documentation-only changes.
      - `perf`: A code change that improves performance.
    - Write `pr_title` as a concise reviewer-oriented summary of the actual change, without repeating the ticket or prefix.
+   - Derive area wording from changed paths when useful, e.g. `infra/installer/**` -> `provisioner installer fetches pinned deployment assets`.
    - If the workflow cannot determine a valid `prefix` confidently, stop and ask the user instead of guessing.
    - Open the PR with `gh pr create`.
    - Always pass the resolved default branch explicitly via `--base`.
