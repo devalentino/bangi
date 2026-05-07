@@ -70,6 +70,7 @@ jobs:
           context: ./apps/api
           push: true
           tags: ghcr.io/devalentino/bangi-backend:${{ needs.release-tag.outputs.release_tag }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
   publish-web:
     name: Publish web image
@@ -92,3 +93,4 @@ jobs:
           file: ./apps/web/Dockerfile
           push: true
           tags: ghcr.io/devalentino/bangi-ui:${{ needs.release-tag.outputs.release_tag }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
