@@ -1,0 +1,28 @@
+{
+  "name": "bangi-ui",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "node scripts/esbuild.js",
+    "start": "node scripts/esbuild.js --watch",
+    "openapi:download": "node scripts/openapi.js download",
+    "openapi:check": "node scripts/openapi.js check",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@trevoreyre/autocomplete-js": "^3.0.3",
+    "chart.js": "^4.5.0",
+    "dotenv": "^17.2.3",
+    "mithril": "^2.3.3",
+    "sortablejs": "^1.15.6",
+    "tabulator-tables": "^6.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.8",
+    "prettier": "^3.6.2"
+  }
+}

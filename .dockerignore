@@ -1,0 +1,16 @@
+.git
+.idea
+.venv
+.pytest_cache
+__pycache__
+.DS_Store
+_bmad-output
+apps/web/node_modules
+apps/web/.cache
+.env
+.env.*
+
+node_modules
+bin
+npm-debug.log
+_dashmin-1.0.0
