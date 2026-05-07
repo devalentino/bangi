@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-BANGI_RELEASE_TAG="vX.Y.Z"
+BANGI_RELEASE_TAG="0.0.1a7"
 
 INSTALLER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
