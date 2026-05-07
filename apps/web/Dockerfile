@@ -18,6 +18,5 @@ COPY --from=builder /app/index.html /usr/share/nginx/html/index.html
 COPY --from=builder /app/bin /usr/share/nginx/html/bin
 COPY --from=builder /app/css /usr/share/nginx/html/css
 COPY --from=builder /app/lib /usr/share/nginx/html/lib
-COPY --from=builder /app/img /usr/share/nginx/html/img
 
 EXPOSE 80

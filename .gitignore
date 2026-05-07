@@ -180,9 +180,6 @@ node_modules/
 .cache/
 _bmad-output/
 apps/web/bin/
-apps/web/css/
-apps/web/img/
-apps/web/lib/
 apps/web/.env.local
 
 # Abstra
