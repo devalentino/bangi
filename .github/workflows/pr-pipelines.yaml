@@ -38,21 +38,21 @@ jobs:
             exit 1
           fi
 
-          backend_image_tag="$(sed -n 's/^[[:space:]]*image: ghcr.io\/devalentino\/bangi-backend:\([^[:space:]]*\)$/\1/p' infra/installer/templates/compose.prod.yml)"
-          ui_image_tag="$(sed -n 's/^[[:space:]]*image: ghcr.io\/devalentino\/bangi-ui:\([^[:space:]]*\)$/\1/p' infra/installer/templates/compose.prod.yml)"
+          api_image_tag="$(sed -n 's/^[[:space:]]*image: ghcr.io\/devalentino\/bangi-api:\([^[:space:]]*\)$/\1/p' infra/installer/templates/compose.prod.yml)"
+          web_image_tag="$(sed -n 's/^[[:space:]]*image: ghcr.io\/devalentino\/bangi-web:\([^[:space:]]*\)$/\1/p' infra/installer/templates/compose.prod.yml)"
 
-          if [[ -z "${backend_image_tag}" || -z "${ui_image_tag}" ]]; then
-            echo "Production compose must define backend and UI GHCR image tags" >&2
+          if [[ -z "${api_image_tag}" || -z "${web_image_tag}" ]]; then
+            echo "Production compose must define API and web GHCR image tags" >&2
             exit 1
           fi
 
-          if [[ "${backend_image_tag}" != "${release_tag}" ]]; then
-            echo "Backend compose image tag ${backend_image_tag} must match BANGI_RELEASE_TAG ${release_tag}" >&2
+          if [[ "${api_image_tag}" != "${release_tag}" ]]; then
+            echo "API compose image tag ${api_image_tag} must match BANGI_RELEASE_TAG ${release_tag}" >&2
             exit 1
           fi
 
-          if [[ "${ui_image_tag}" != "${release_tag}" ]]; then
-            echo "UI compose image tag ${ui_image_tag} must match BANGI_RELEASE_TAG ${release_tag}" >&2
+          if [[ "${web_image_tag}" != "${release_tag}" ]]; then
+            echo "Web compose image tag ${web_image_tag} must match BANGI_RELEASE_TAG ${release_tag}" >&2
             exit 1
           fi
 
