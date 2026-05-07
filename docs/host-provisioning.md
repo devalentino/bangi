@@ -11,6 +11,10 @@ curl -fsSL https://raw.githubusercontent.com/devalentino/bangi/X.Y.Z/infra/insta
 sudo bash /tmp/bangi-install.sh
 ```
 
+During installation, the wizard asks for the optional IP2Location download token. Leave it blank to skip automated refresh credentials. If a token is entered, the installer validates it against IP2Location and asks again when validation fails.
+
+The installer writes the token to `/etc/bangi/ops.env`, not to the application runtime `.env`. On rerun, an existing value in `/etc/bangi/ops.env` is preserved.
+
 The installer must run as root and validates Ubuntu 24.04 LTS before any package installation phase starts.
 
 ## Manual Verification
