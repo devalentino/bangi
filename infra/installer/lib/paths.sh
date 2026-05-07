@@ -47,5 +47,17 @@ bangi_create_paths() {
 }
 
 bangi_activate_release() {
-    bangi_log "Release activation phase pending implementation"
+    local temporary_link="${BANGI_CURRENT_LINK}.tmp"
+
+    bangi_log "Activating Bangi release ${BANGI_RELEASE_TAG}"
+
+    [[ -d "${BANGI_RELEASE_DIR}" ]] \
+        || bangi_fatal "Cannot activate missing release directory: ${BANGI_RELEASE_DIR}"
+
+    rm -f "${temporary_link}" \
+        || bangi_fatal "Cannot remove stale activation symlink: ${temporary_link}"
+    ln -sfn "${BANGI_RELEASE_DIR}" "${temporary_link}" \
+        || bangi_fatal "Cannot prepare active release symlink: ${temporary_link}"
+    mv -Tf "${temporary_link}" "${BANGI_CURRENT_LINK}" \
+        || bangi_fatal "Cannot activate release symlink: ${BANGI_CURRENT_LINK}"
 }
