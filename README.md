@@ -47,3 +47,8 @@ Or work directly inside `apps/web`.
 - Shared runtime/service configuration lives under `infra/`
 - BMAD/spec/process assets live at the repository root
 - Cross-stack feature PRs are allowed, but the app boundaries stay explicit
+
+## Host Provisioning
+
+Fresh Ubuntu 24.04 LTS host installation starts from the pinned installer documented in
+[docs/host-provisioning.md](docs/host-provisioning.md).
