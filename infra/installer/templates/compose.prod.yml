@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/devalentino/bangi-web:0.0.1a15
+    image: ghcr.io/devalentino/bangi-web:0.0.1a16
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
@@ -10,7 +10,7 @@ services:
       - bangi
 
   api:
-    image: ghcr.io/devalentino/bangi-api:0.0.1a15
+    image: ghcr.io/devalentino/bangi-api:0.0.1a16
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
@@ -61,7 +61,8 @@ services:
       test: [ 'CMD-SHELL', 'mariadb -u root -p"$$MARIADB_ROOT_PASSWORD" -e "SHOW DATABASES"' ]
       interval: 5s
       timeout: 5s
-      retries: 3
+      retries: 12
+      start_period: 90s
     networks:
       - bangi
 
