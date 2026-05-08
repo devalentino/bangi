@@ -2,7 +2,7 @@ var m = require("mithril");
 var config = require("../config");
 
 var STORAGE_KEY = "bangi.auth";
-var PERSISTENT_AUTH = process.env.DEBUG_PERSIST_AUTH === "true";
+var PERSISTENT_AUTH = config.debugPersistentAuth;
 
 function loadStoredCredentials() {
   if (!PERSISTENT_AUTH) {
