@@ -7,6 +7,28 @@ BANGI_HEALTH_REQUIRED_SERVICES=(
     landing-renderer
 )
 
+bangi_retry_healthcheck() {
+    local description="$1"
+    local failure_message="$2"
+    shift 2
+
+    local attempt=1
+    local max_attempts=30
+
+    while (( attempt <= max_attempts )); do
+        if "$@"; then
+            return 0
+        fi
+
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+
+    bangi_log "${description} did not pass after $((max_attempts * 2)) seconds"
+    bangi_compose logs --tail=80 api mariadb >&2 || true
+    bangi_fatal "${failure_message}"
+}
+
 bangi_verify_compose_services_running() {
     local service=""
     local running_services=""
@@ -35,8 +57,10 @@ bangi_verify_mariadb_health() {
 bangi_verify_backend_health() {
     bangi_log "Checking backend health through local compose port"
 
-    curl -fsS --max-time 10 http://127.0.0.1:8000/api/v2/health >/dev/null \
-        || bangi_fatal "Backend health check failed through local compose port"
+    bangi_retry_healthcheck \
+        "Backend health check through local compose port" \
+        "Backend health check failed through local compose port" \
+        curl -fsS --max-time 10 http://127.0.0.1:8000/api/v2/health >/dev/null
 }
 
 bangi_verify_nginx_health() {
@@ -45,11 +69,15 @@ bangi_verify_nginx_health() {
     nginx -t \
         || bangi_fatal "Nginx configuration check failed during health verification"
 
-    curl -fsS --max-time 10 http://127.0.0.1/ >/dev/null \
-        || bangi_fatal "Frontend HTTP check failed through Nginx"
+    bangi_retry_healthcheck \
+        "Frontend HTTP check through Nginx" \
+        "Frontend HTTP check failed through Nginx" \
+        curl -fsS --max-time 10 http://127.0.0.1/ >/dev/null
 
-    curl -fsS --max-time 10 http://127.0.0.1/api/v2/health >/dev/null \
-        || bangi_fatal "Backend health check failed through Nginx"
+    bangi_retry_healthcheck \
+        "Backend health check through Nginx" \
+        "Backend health check failed through Nginx" \
+        curl -fsS --max-time 10 http://127.0.0.1/api/v2/health >/dev/null
 }
 
 bangi_verify_cron_health() {
