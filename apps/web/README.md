@@ -49,12 +49,14 @@ npm run start
 The app uses `/api/v2` by default. For custom deployments, override it with:
 
 - `window.APP_CONFIG.BACKEND_API_BASE_URL` from `app-config.js`
+- `window.APP_CONFIG.DEBUG_PERSIST_AUTH` from `app-config.js`
 
 Example:
 
 ```js
 window.APP_CONFIG = window.APP_CONFIG || {
   BACKEND_API_BASE_URL: "http://localhost:8080",
+  DEBUG_PERSIST_AUTH: false,
 };
 ```
 
