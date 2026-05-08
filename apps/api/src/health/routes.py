@@ -1,5 +1,5 @@
 from flask.views import MethodView
-from peewee import MySQLDatabase
+from peewee import DatabaseError, MySQLDatabase
 
 from src.auth import auth
 from src.container import container
@@ -17,10 +17,16 @@ class Health(MethodView):
     def get(self):
         db_connection = container.get(MySQLDatabase)
 
-        if db_connection.is_connection_usable():
-            return {'healthy': True}
-        else:
-            return {'healthy': False}, 503
+        try:
+            if db_connection.is_closed():
+                db_connection.connect(reuse_if_open=True)
+
+            if db_connection.is_connection_usable():
+                return {'healthy': True}
+        except DatabaseError:
+            pass
+
+        return {'healthy': False}, 503
 
 
 @blueprint.route('/disk-utilization/history')
