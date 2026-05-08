@@ -4,7 +4,6 @@ on: [pull_request]
 jobs:
   release-version:
     name: Release version check
-    if: github.base_ref == 'master'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,11 +13,6 @@ jobs:
       - name: Validate release tag bump
         run: |
           set -euo pipefail
-
-          if git diff --quiet "origin/${{ github.base_ref }}" -- infra/installer/install.sh; then
-            echo "infra/installer/install.sh was not changed; skipping release version check."
-            exit 0
-          fi
 
           release_tag="$(sed -n 's/^BANGI_RELEASE_TAG="\([^"]*\)"$/\1/p' infra/installer/install.sh)"
           base_release_tag="$(git show "origin/${{ github.base_ref }}:infra/installer/install.sh" | sed -n 's/^BANGI_RELEASE_TAG="\([^"]*\)"$/\1/p')"
