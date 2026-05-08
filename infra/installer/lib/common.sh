@@ -1,11 +1,28 @@
 #!/usr/bin/env bash
 
+bangi_color_enabled() {
+    [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]
+}
+
+bangi_error_color_enabled() {
+    [[ -t 2 && -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]
+}
+
 bangi_log() {
+    if bangi_color_enabled; then
+        printf '\033[32m[bangi]\033[0m %s\n' "$*"
+        return 0
+    fi
+
     printf '[bangi] %s\n' "$*"
 }
 
 bangi_fatal() {
-    printf '[bangi] ERROR: %s\n' "$*" >&2
+    if bangi_error_color_enabled; then
+        printf '\033[31m[bangi] ERROR:\033[0m %s\n' "$*" >&2
+    else
+        printf '[bangi] ERROR: %s\n' "$*" >&2
+    fi
     exit 1
 }
 
