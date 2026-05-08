@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-BANGI_RELEASE_TAG="0.0.1a14"
+BANGI_RELEASE_TAG="0.0.1a15"
 BANGI_GITHUB_OWNER="devalentino"
 BANGI_GITHUB_REPO="bangi"
 BANGI_RAW_BASE_URL="https://raw.githubusercontent.com/${BANGI_GITHUB_OWNER}/${BANGI_GITHUB_REPO}/${BANGI_RELEASE_TAG}"
@@ -36,6 +36,19 @@ bangi_bootstrap_module_url() {
     printf '%s/infra/installer/lib/%s\n' "${BANGI_RAW_BASE_URL}" "${module_name}"
 }
 
+bangi_bootstrap_common_module() {
+    local common_module_path="${INSTALLER_LIB_DIR}/common.sh"
+
+    if [[ -r "${common_module_path}" ]]; then
+        return 0
+    fi
+
+    mkdir -p "${INSTALLER_LIB_DIR}" \
+        || bangi_bootstrap_fatal "Cannot create installer module directory: ${INSTALLER_LIB_DIR}"
+    curl -fsSL "$(bangi_bootstrap_module_url common.sh)" -o "${common_module_path}" \
+        || bangi_bootstrap_fatal "Cannot fetch required installer module common.sh for ${BANGI_RELEASE_TAG}"
+}
+
 bangi_bootstrap_installer_modules() {
     local module_name=""
     local module_path=""
@@ -53,22 +66,23 @@ bangi_bootstrap_installer_modules() {
         return 0
     fi
 
-    printf '[bangi] Fetching installer modules for %s\n' "${BANGI_RELEASE_TAG}"
+    bangi_log "Fetching installer modules for ${BANGI_RELEASE_TAG}"
 
     mkdir -p "${INSTALLER_LIB_DIR}" \
-        || bangi_bootstrap_fatal "Cannot create installer module directory: ${INSTALLER_LIB_DIR}"
+        || bangi_fatal "Cannot create installer module directory: ${INSTALLER_LIB_DIR}"
 
     for module_name in "${BANGI_INSTALLER_MODULES[@]}"; do
         module_path="${INSTALLER_LIB_DIR}/${module_name}"
         curl -fsSL "$(bangi_bootstrap_module_url "${module_name}")" -o "${module_path}" \
-            || bangi_bootstrap_fatal "Cannot fetch required installer module ${module_name} for ${BANGI_RELEASE_TAG}"
+            || bangi_fatal "Cannot fetch required installer module ${module_name} for ${BANGI_RELEASE_TAG}"
     done
 }
 
-bangi_bootstrap_installer_modules
-
+bangi_bootstrap_common_module
 # shellcheck source=infra/installer/lib/common.sh
 source "${INSTALLER_LIB_DIR}/common.sh"
+bangi_bootstrap_installer_modules
+
 # shellcheck source=infra/installer/lib/os.sh
 source "${INSTALLER_LIB_DIR}/os.sh"
 # shellcheck source=infra/installer/lib/paths.sh
