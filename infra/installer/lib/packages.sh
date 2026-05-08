@@ -4,8 +4,6 @@ BANGI_APT_BASE_PACKAGES=(
     ca-certificates
     curl
     gnupg
-    openssh-client
-    openssh-server
     sudo
     nginx
     cron
