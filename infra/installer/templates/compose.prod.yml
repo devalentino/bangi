@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/devalentino/bangi-web:0.0.1a12
+    image: ghcr.io/devalentino/bangi-web:0.0.1a13
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
@@ -10,7 +10,7 @@ services:
       - bangi
 
   api:
-    image: ghcr.io/devalentino/bangi-api:0.0.1a12
+    image: ghcr.io/devalentino/bangi-api:0.0.1a13
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
@@ -58,7 +58,7 @@ services:
       - /opt/bangi/shared/mariadb:/var/lib/mysql
       - ./infra/mariadb/low-memory.cnf:/etc/mysql/conf.d/zzz-low-memory.cnf:ro
     healthcheck:
-      test: [ 'CMD', 'mariadb', '-u', 'root', '-p$$MARIADB_ROOT_PASSWORD', '-e', 'SHOW DATABASES' ]
+      test: [ 'CMD-SHELL', 'mariadb -u root -p"$$MARIADB_ROOT_PASSWORD" -e "SHOW DATABASES"' ]
       interval: 5s
       timeout: 5s
       retries: 3
