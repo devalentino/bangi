@@ -14,7 +14,8 @@ services:
       test: [ 'CMD-SHELL', 'mariadb -u root -p"$$MARIADB_ROOT_PASSWORD" -e "SHOW DATABASES"' ]
       interval: 5s
       timeout: 5s
-      retries: 3
+      retries: 12
+      start_period: 90s
   landing-renderer:
     image: php:8-apache
     mem_limit: 64m
