@@ -5,8 +5,8 @@ from peewee import fn
 from wireup import Inject, injectable
 
 from src.core.entities import Campaign
-from src.core.exceptions import CampaignDoesNotExistError
 from src.core.enums import SortOrder
+from src.core.exceptions import CampaignDoesNotExistError
 from src.domains.entities import Domain
 from src.domains.enums import DomainPurpose
 from src.domains.exceptions import (
@@ -35,7 +35,10 @@ class DomainService:
 
         return [
             domain
-            for domain in Domain.select().order_by(order_by, Domain.id.asc()).limit(page_size).offset((page - 1) * page_size)
+            for domain in Domain.select()
+            .order_by(order_by, Domain.id.asc())
+            .limit(page_size)
+            .offset((page - 1) * page_size)
         ]
 
     def count(self):
@@ -65,7 +68,11 @@ class DomainService:
         domain = self.get(domain_id)
 
         if hostname is not None and hostname != domain.hostname:
-            if Domain.select(fn.count(Domain.id)).where((Domain.hostname == hostname) & (Domain.id != domain.id)).scalar():
+            if (
+                Domain.select(fn.count(Domain.id))
+                .where((Domain.hostname == hostname) & (Domain.id != domain.id))
+                .scalar()
+            ):
                 raise DomainAlreadyExistsError()
             domain.hostname = hostname
             domain.is_a_record_set = None

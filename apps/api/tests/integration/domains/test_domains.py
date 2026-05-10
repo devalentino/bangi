@@ -40,9 +40,7 @@ class TestDomains:
             'is_disabled': False,
         }
 
-    def test_list_domains_returns_campaign_and_dashboard_domains(
-        self, client, authorization, campaign, write_to_db
-    ):
+    def test_list_domains_returns_campaign_and_dashboard_domains(self, client, authorization, campaign, write_to_db):
         for index in range(19):
             write_to_db(
                 'domain',
@@ -269,8 +267,7 @@ class TestDomains:
                     'isDisabled': dashboard_domain['is_disabled'],
                     'cookieName': None,
                 },
-            ]
-            ,
+            ],
             'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 21},
         }
 
@@ -366,9 +363,7 @@ class TestDomains:
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Domain does not exist'}
 
-    def test_update_domain_resets_dns_when_hostname_changes(
-        self, client, authorization, write_to_db, read_from_db
-    ):
+    def test_update_domain_resets_dns_when_hostname_changes(self, client, authorization, write_to_db, read_from_db):
         domain = write_to_db(
             'domain',
             {
@@ -410,9 +405,7 @@ class TestDomains:
             'is_disabled': False,
         }
 
-    def test_update_domain_attaches_campaign(
-        self, client, authorization, campaign, write_to_db, read_from_db
-    ):
+    def test_update_domain_attaches_campaign(self, client, authorization, campaign, write_to_db, read_from_db):
         domain = write_to_db(
             'domain',
             {
@@ -477,9 +470,7 @@ class TestDomains:
         assert update_response.status_code == 400, update_response.text
         assert update_response.json == {'message': 'Dashboard domains cannot be attached to campaigns'}
 
-    def test_update_domain_rejects_duplicate_campaign_binding(
-        self, client, authorization, campaign, write_to_db
-    ):
+    def test_update_domain_rejects_duplicate_campaign_binding(self, client, authorization, campaign, write_to_db):
         first_domain = write_to_db(
             'domain',
             {
@@ -530,9 +521,7 @@ class TestDomains:
             'status': 'Unprocessable Entity',
         }
 
-    def test_create_domain_rejects_duplicate_normalized_hostname(
-        self, client, authorization, write_to_db
-    ):
+    def test_create_domain_rejects_duplicate_normalized_hostname(self, client, authorization, write_to_db):
         write_to_db(
             'domain',
             {
@@ -622,9 +611,7 @@ class TestDomains:
         assert response.status_code == 400, response.text
         assert response.json == {'message': 'Dashboard domains cannot be attached to campaigns'}
 
-    def test_update_domain_switches_purpose_to_dashboard(
-        self, client, authorization, write_to_db, read_from_db
-    ):
+    def test_update_domain_switches_purpose_to_dashboard(self, client, authorization, write_to_db, read_from_db):
         domain = write_to_db(
             'domain',
             {
