@@ -83,7 +83,7 @@ class DomainService:
         if campaign_id is None:
             domain.campaign = None
         else:
-            if domain.campaign_id is not None and campaign_id != domain.campaign_id:
+            if domain.campaign_id != campaign_id:
                 self._ensure_campaign_is_available(campaign_id, domain.id)
 
             if purpose == DomainPurpose.dashboard:
