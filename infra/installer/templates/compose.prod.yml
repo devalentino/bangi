@@ -26,6 +26,7 @@ services:
     volumes:
       - /opt/bangi/shared/landings:/opt/bangi/shared/landings
       - /opt/bangi/shared/ip2location:/opt/bangi/shared/ip2location:ro
+      - /etc/nginx/bangi:/etc/nginx/bangi
     secrets:
       - source: bangi_ops_ssh_key
         target: bangi_ops_ssh_key

@@ -23,14 +23,30 @@ def landing_pages_base_path(tmpdir_factory):
 
 
 @pytest.fixture(autouse=True)
-def mock_environment(mysql, landing_pages_base_path):
+def nginx_workspace_base_dir(tmpdir_factory):
+    return str(tmpdir_factory.mktemp('nginx-workspace'))
+
+
+@pytest.fixture(autouse=True)
+def mock_environment(mysql, landing_pages_base_path, nginx_workspace_base_dir):
     environ = os.environ | {
         'MARIADB_HOST': mysql.host,
         'MARIADB_PORT': str(mysql.port),
         'MARIADB_DATABASE': 'test',
         'LANDING_PAGES_BASE_PATH': landing_pages_base_path,
+        'NGINX_WORKSPACE_BASE_DIR': nginx_workspace_base_dir,
+        'BANGI_HOST_OPS_SSH_USER': 'bangi-ops',
+        'BANGI_HOST_OPS_SSH_HOST': 'host.docker.internal',
+        'BANGI_HOST_OPS_SSH_KEY_PATH': '/tmp/bangi-ops-id_ed25519',
+        'BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH': '/tmp/bangi-ops-known_hosts',
     }
     with mock.patch.dict(os.environ, environ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def mock_nginx_host_ops():
+    with mock.patch('src.domains.services.NginxService._run_host_ops_command', lambda self, command: None):
         yield
 
 

@@ -196,7 +196,11 @@ class TestDomains:
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Domain does not exist'}
 
-    def test_update_domain_resets_dns_when_hostname_changes(self, client, authorization, write_to_db, read_from_db):
+    def test_update_domain_resets_dns_when_hostname_changes(
+        self, client, authorization, write_to_db, read_from_db, nginx_workspace_base_dir
+    ):
+        from pathlib import Path
+
         domain = write_to_db(
             'domain',
             {
@@ -237,6 +241,12 @@ class TestDomains:
             'is_a_record_set': None,
             'is_disabled': False,
         }
+
+        old_enabled_link = Path(nginx_workspace_base_dir) / 'sites-enabled' / 'old.example.com.conf'
+        new_enabled_link = Path(nginx_workspace_base_dir) / 'sites-enabled' / 'new.example.com.conf'
+
+        assert old_enabled_link.exists() is False
+        assert new_enabled_link.is_symlink()
 
     def test_update_domain_attaches_campaign(self, client, authorization, campaign, write_to_db, read_from_db):
         domain = write_to_db(
@@ -488,3 +498,176 @@ class TestDomains:
             'is_a_record_set': True,
             'is_disabled': False,
         }
+
+
+class TestDomainNginxPublication:
+    def test_create_domain_publishes_versioned_config_and_records_success_snapshot(
+        self, client, authorization, nginx_workspace_base_dir
+    ):
+        from pathlib import Path
+
+        from src.domains.services import NginxService
+
+        def _allow_host_ops(self, command):
+            return None
+
+        request_payload = {
+            'hostname': 'Example.COM.',
+            'purpose': 'campaign',
+            'isDisabled': False,
+        }
+
+        with mock.patch.object(NginxService, '_run_host_ops_command', _allow_host_ops):
+            response = client.post('/api/v2/domains', headers={'Authorization': authorization}, json=request_payload)
+
+        assert response.status_code == 201, response.text
+        assert response.json['hostname'] == 'example.com'
+
+        available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / 'example.com'
+        enabled_link = Path(nginx_workspace_base_dir) / 'sites-enabled' / 'example.com.conf'
+        versioned_configs = sorted(available_dir.glob('*.conf'))
+        available_files = [
+            path.relative_to(Path(nginx_workspace_base_dir)).as_posix()
+            for path in sorted((Path(nginx_workspace_base_dir) / 'sites-available').rglob('*.conf'))
+        ]
+
+        assert len(versioned_configs) == 1
+        assert versioned_configs[0].read_text(encoding='utf-8') == (
+            '# Managed by Bangi. Disabled or unroutable domain.\n'
+            'server {\n'
+            '    listen 80;\n'
+            '    listen [::]:80;\n'
+            '    server_name example.com;\n'
+            '    return 503;\n'
+            '}\n'
+        )
+        assert enabled_link.is_symlink()
+        assert enabled_link.readlink().as_posix() == f'../sites-available/example.com/{versioned_configs[0].name}'
+
+        snapshot_response = client.get('/api/v2/health/nginx', headers={'Authorization': authorization})
+
+        assert snapshot_response.status_code == 200, snapshot_response.text
+        assert snapshot_response.json == {
+            'content': {
+                'domainId': response.json['id'],
+                'validationStatus': 'success',
+                'validationError': None,
+                'validationTimestamp': mock.ANY,
+                'sitesAvailableFiles': available_files,
+                'sitesEnabledRefs': [
+                    f'sites-enabled/example.com.conf -> ../sites-available/example.com/{versioned_configs[0].name}'
+                ],
+            }
+        }
+
+    def test_failed_publish_keeps_previous_active_version_and_records_failure_snapshot(
+        self, client, authorization, campaign, nginx_workspace_base_dir
+    ):
+        from pathlib import Path
+
+        from src.domains.services import NginxHostOpsError, NginxService
+
+        def _fail_validation(self, command):
+            if command == 'nginx-validate':
+                raise NginxHostOpsError('nginx: [emerg] invalid configuration')
+            return None
+
+        with mock.patch.object(NginxService, '_run_host_ops_command', lambda self, command: None):
+            response = client.post(
+                '/api/v2/domains',
+                headers={'Authorization': authorization},
+                json={
+                    'hostname': 'campaign.example.com',
+                    'purpose': 'campaign',
+                    'isDisabled': False,
+                },
+            )
+
+        assert response.status_code == 201, response.text
+
+        domain_id = response.json['id']
+        with mock.patch.object(NginxService, '_run_host_ops_command', lambda self, command: None):
+            response = client.patch(
+                f'/api/v2/domains/{domain_id}',
+                headers={'Authorization': authorization},
+                json={'campaignId': campaign['id']},
+            )
+
+        assert response.status_code == 200, response.text
+
+        available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / 'campaign.example.com'
+        enabled_link = Path(nginx_workspace_base_dir) / 'sites-enabled' / 'campaign.example.com.conf'
+        first_version, second_version = sorted(available_dir.glob('*.conf'))
+        second_target = enabled_link.readlink().as_posix()
+        assert second_target == f'../sites-available/campaign.example.com/{second_version.name}'
+
+        with mock.patch.object(NginxService, '_run_host_ops_command', _fail_validation):
+            response = client.patch(
+                f'/api/v2/domains/{domain_id}',
+                headers={'Authorization': authorization},
+                json={'purpose': 'dashboard', 'campaignId': None},
+            )
+
+        assert response.status_code == 200, response.text
+        assert enabled_link.is_symlink()
+        assert enabled_link.readlink().as_posix() == second_target
+        assert len(sorted(available_dir.glob('*.conf'))) == 3
+        assert first_version.exists()
+        assert second_version.exists()
+
+        snapshot_response = client.get('/api/v2/health/nginx', headers={'Authorization': authorization})
+
+        assert snapshot_response.status_code == 200, snapshot_response.text
+        assert snapshot_response.json == {
+            'content': {
+                'domainId': domain_id,
+                'validationStatus': 'failed',
+                'validationError': 'nginx: [emerg] invalid configuration',
+                'validationTimestamp': mock.ANY,
+                'sitesAvailableFiles': [
+                    path.relative_to(Path(nginx_workspace_base_dir)).as_posix()
+                    for path in sorted((Path(nginx_workspace_base_dir) / 'sites-available').rglob('*.conf'))
+                ],
+                'sitesEnabledRefs': [f'sites-enabled/campaign.example.com.conf -> {second_target}'],
+            }
+        }
+
+    def test_multiple_successful_publishes_keep_previous_versions_available(
+        self, client, authorization, nginx_workspace_base_dir
+    ):
+        from pathlib import Path
+
+        from src.domains.services import NginxService
+
+        def _allow_host_ops(self, command):
+            return None
+
+        request_payload = {
+            'hostname': 'dashboard.example.com',
+            'purpose': 'dashboard',
+            'isDisabled': False,
+        }
+
+        with mock.patch.object(NginxService, '_run_host_ops_command', _allow_host_ops):
+            response = client.post('/api/v2/domains', headers={'Authorization': authorization}, json=request_payload)
+
+        assert response.status_code == 201, response.text
+
+        with mock.patch.object(NginxService, '_run_host_ops_command', _allow_host_ops):
+            response = client.patch(
+                f'/api/v2/domains/{response.json["id"]}',
+                headers={'Authorization': authorization},
+                json={'isDisabled': True},
+            )
+
+        assert response.status_code == 200, response.text
+
+        available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / 'dashboard.example.com'
+        enabled_link = Path(nginx_workspace_base_dir) / 'sites-enabled' / 'dashboard.example.com.conf'
+        versioned_configs = sorted(available_dir.glob('*.conf'))
+
+        assert len(versioned_configs) == 2
+        assert enabled_link.is_symlink()
+        assert enabled_link.readlink().as_posix() == f'../sites-available/dashboard.example.com/{versioned_configs[-1].name}'
+        assert versioned_configs[0].exists()
+        assert versioned_configs[1].exists()

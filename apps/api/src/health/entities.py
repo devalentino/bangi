@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
-from peewee import BigIntegerField, CharField, DecimalField
+from peewee import BigIntegerField, CharField, DecimalField, IntegerField, TextField
 
 from src.core.entities import Entity
+from src.core.peewee import JSONField
 
 
 @dataclass(slots=True)
@@ -29,3 +30,14 @@ class DiskUtilization(Entity):
     class Meta:
         table_name = 'health_disk_utilization'
         table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')
+
+
+class NginxValidationSnapshot(Entity):
+    domain_id = IntegerField(null=True)
+    validation_status = CharField(max_length=16)
+    validation_error = TextField(null=True)
+    sites_available_files = JSONField()
+    sites_enabled_refs = JSONField()
+
+    class Meta:
+        table_name = 'health_nginx_validation_snapshot'

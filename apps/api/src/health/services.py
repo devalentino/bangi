@@ -1,11 +1,16 @@
 from decimal import Decimal
+from datetime import datetime, timezone
 from time import time as time_timestamp
 from typing import Annotated
 
 from peewee import fn
 from wireup import Inject, injectable
 
-from src.health.entities import DiskUtilization, DiskUtilizationSummary
+from src.health.entities import (
+    DiskUtilization,
+    DiskUtilizationSummary,
+    NginxValidationSnapshot,
+)
 
 
 @injectable
@@ -139,3 +144,34 @@ class HealthService:
             used_percent=float(latest_snapshot.used_percent),
             last_received_at=latest_received_at,
         )
+
+    def record_nginx_validation_snapshot(
+        self,
+        *,
+        domain_id: int | None,
+        validation_status: str,
+        validation_error: str | None,
+        sites_available_files: list[str],
+        sites_enabled_refs: list[str],
+    ) -> NginxValidationSnapshot:
+        snapshot = NginxValidationSnapshot(
+            created_at=datetime.now(timezone.utc),
+            domain_id=domain_id,
+            validation_status=validation_status,
+            validation_error=validation_error,
+            sites_available_files=sites_available_files,
+            sites_enabled_refs=sites_enabled_refs,
+        )
+        snapshot.save()
+        return snapshot
+
+    def latest_nginx_validation_snapshot(self) -> NginxValidationSnapshot | None:
+        snapshot = (
+            NginxValidationSnapshot.select()
+            .order_by(NginxValidationSnapshot.created_at.desc(), NginxValidationSnapshot.id.desc())
+            .first()
+        )
+        if snapshot is None:
+            return None
+
+        return snapshot
