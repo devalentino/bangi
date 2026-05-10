@@ -1,0 +1,110 @@
+import humps
+from flask.views import MethodView
+
+from src.auth import auth
+from src.container import container
+from src.core.blueprint import Blueprint
+from src.domains.schemas import (
+    DomainCreateRequestSchema,
+    DomainListRequestSchema,
+    DomainListResponseSchema,
+    DomainResponseSchema,
+    DomainUpdateRequestSchema,
+)
+from src.domains.services import DomainService
+
+blueprint = Blueprint('domains', __name__, description='Domains')
+
+
+@blueprint.route('')
+class Domains(MethodView):
+    @blueprint.arguments(DomainListRequestSchema, location='query')
+    @blueprint.response(200, DomainListResponseSchema)
+    @auth.login_required
+    def get(self, parameters_payload):
+        domain_service = container.get(DomainService)
+        domains = domain_service.list(
+            parameters_payload['page'],
+            parameters_payload['pageSize'],
+            humps.decamelize(parameters_payload['sortBy'].value),
+            parameters_payload['sortOrder'],
+        )
+        return {
+            'content': [
+                humps.camelize(
+                    {
+                        'id': domain.id,
+                        'hostname': domain.hostname,
+                        'purpose': domain.purpose,
+                        'campaign_id': domain.campaign_id,
+                        'is_a_record_set': domain.is_a_record_set,
+                        'is_disabled': domain.is_disabled,
+                        'cookie_name': domain_service.cookie_name(domain.hostname, domain.purpose),
+                    }
+                )
+                for domain in domains
+            ],
+            'pagination': parameters_payload | {'total': domain_service.count()},
+        }
+
+    @blueprint.arguments(DomainCreateRequestSchema)
+    @blueprint.response(201, DomainResponseSchema)
+    @auth.login_required
+    def post(self, payload):
+        domain_service = container.get(DomainService)
+        domain = domain_service.create(payload['hostname'], payload['purpose'], payload.get('isDisabled', False))
+        return humps.camelize(
+            {
+                'id': domain.id,
+                'hostname': domain.hostname,
+                'purpose': domain.purpose,
+                'campaign_id': domain.campaign_id,
+                'is_a_record_set': domain.is_a_record_set,
+                'is_disabled': domain.is_disabled,
+                'cookie_name': domain_service.cookie_name(domain.hostname, domain.purpose),
+            }
+        )
+
+
+@blueprint.route('/<int:domainId>')
+class Domain(MethodView):
+    @blueprint.response(200, DomainResponseSchema)
+    @auth.login_required
+    def get(self, domainId):
+        domain_service = container.get(DomainService)
+        domain = domain_service.get(domainId)
+        return humps.camelize(
+            {
+                'id': domain.id,
+                'hostname': domain.hostname,
+                'purpose': domain.purpose,
+                'campaign_id': domain.campaign_id,
+                'is_a_record_set': domain.is_a_record_set,
+                'is_disabled': domain.is_disabled,
+                'cookie_name': domain_service.cookie_name(domain.hostname, domain.purpose),
+            }
+        )
+
+    @blueprint.arguments(DomainUpdateRequestSchema)
+    @blueprint.response(200, DomainResponseSchema)
+    @auth.login_required
+    def patch(self, payload, domainId):
+        domain_service = container.get(DomainService)
+        domain = domain_service.update(
+            domainId,
+            hostname=payload.get('hostname'),
+            purpose=payload.get('purpose'),
+            campaign_id=payload.get('campaignId'),
+            is_disabled=payload.get('isDisabled'),
+        )
+        return humps.camelize(
+            {
+                'id': domain.id,
+                'hostname': domain.hostname,
+                'purpose': domain.purpose,
+                'campaign_id': domain.campaign_id,
+                'is_a_record_set': domain.is_a_record_set,
+                'is_disabled': domain.is_disabled,
+                'cookie_name': domain_service.cookie_name(domain.hostname, domain.purpose),
+            }
+        )

@@ -11,6 +11,7 @@ from src.core.exceptions import ApplicationError
 from src.core.logging import configure_logging
 from src.core.routes import blueprint as core_blueprint
 from src.core.supervisor import WorkerSupervisor
+from src.domains.routes import blueprint as domains_blueprint
 from src.facebook_pacs.routes import blueprint as facebook_pacs_blueprint
 from src.health.routes import blueprint as health_blueprint
 from src.reports.routes import blueprint as reports_blueprint
@@ -45,6 +46,7 @@ api = Api(app)
 api.register_blueprint(alerts_blueprint, url_prefix='/api/v2/alerts')
 api.register_blueprint(auth_blueprint, url_prefix='/api/v2/auth')
 api.register_blueprint(core_blueprint, url_prefix='/api/v2/core')
+api.register_blueprint(domains_blueprint, url_prefix='/api/v2/domains')
 api.register_blueprint(facebook_pacs_blueprint, url_prefix='/api/v2/facebook/pacs')
 api.register_blueprint(reports_blueprint, url_prefix='/api/v2/reports')
 api.register_blueprint(track_blueprint, url_prefix='/api/v2/track')
