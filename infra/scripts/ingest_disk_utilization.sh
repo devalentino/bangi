@@ -9,6 +9,7 @@ MONITOR_PATH="${MONITOR_PATH:-/var/lib/docker}"
 COMPOSE_SERVICE="${COMPOSE_SERVICE:-api}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 DOCKER_COMPOSE_BIN="${DOCKER_COMPOSE_BIN:-docker compose}"
+DOCKER_COMPOSE_PROJECT_NAME="${DOCKER_COMPOSE_PROJECT_NAME:-bangi}"
 
 if [[ ! -d "${MONITOR_PATH}" && ! -e "${MONITOR_PATH}" ]]; then
   echo "MONITOR_PATH does not exist: ${MONITOR_PATH}" >&2
@@ -30,7 +31,11 @@ MOUNTPOINT="${DF_VALUES[4]}"
 USED_PERCENT="$(awk -v used="${USED_BYTES}" -v total="${TOTAL_BYTES}" 'BEGIN { if (total == 0) { print "0.00"; exit } printf "%.2f", (used / total) * 100 }')"
 
 cd "${REPO_ROOT}"
-${DOCKER_COMPOSE_BIN} exec -T "${COMPOSE_SERVICE}" "${PYTHON_BIN}" -m src.health.ingest.disk_utilization \
+${DOCKER_COMPOSE_BIN} \
+  --project-name "${DOCKER_COMPOSE_PROJECT_NAME}" \
+  --project-directory "${REPO_ROOT}" \
+  -f "${REPO_ROOT}/compose.yml" \
+  exec -T "${COMPOSE_SERVICE}" "${PYTHON_BIN}" -m src.health.ingest.disk_utilization \
   --filesystem "${FILESYSTEM}" \
   --mountpoint "${MOUNTPOINT}" \
   --total-bytes "${TOTAL_BYTES}" \
