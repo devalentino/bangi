@@ -96,7 +96,13 @@ class TestDomains:
             'cookieName': _cookie_name(campaign_domain['hostname']),
         }
         assert dashboard_domain['hostname'] not in {item['hostname'] for item in response.json['content']}
-        assert response.json['pagination'] == {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 21}
+        assert response.json['pagination'] == {
+            'page': 1,
+            'pageSize': 20,
+            'sortBy': 'id',
+            'sortOrder': 'asc',
+            'total': 21,
+        }
 
     def test_list_domains_supports_sorting(self, client, authorization, write_to_db):
         first = write_to_db(
