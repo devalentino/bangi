@@ -331,10 +331,15 @@ class TestDomains:
         assert first_domain['campaign_id'] == campaign['id']
 
     @pytest.mark.parametrize(
-        'hostname',
-        ['https://example.com', 'example..com', 'foo_bar.example.com', 'example'],
+        'hostname, expected_message',
+        [
+            ('https://example.com', 'hostname is invalid.'),
+            ('example..com', 'hostname is invalid.'),
+            ('foo_bar.example.com', 'hostname is invalid.'),
+            ('example', 'hostname must contain a valid domain and top-level domain.'),
+        ],
     )
-    def test_create_domain_rejects_invalid_hostname(self, client, authorization, hostname):
+    def test_create_domain_rejects_invalid_hostname(self, client, authorization, hostname, expected_message):
         response = client.post(
             '/api/v2/domains',
             headers={'Authorization': authorization},
@@ -344,7 +349,7 @@ class TestDomains:
         assert response.status_code == 422, response.text
         assert response.json == {
             'code': 422,
-            'errors': {'json': {'hostname': ['hostname is invalid.']}},
+            'errors': {'json': {'hostname': [expected_message]}},
             'status': 'Unprocessable Entity',
         }
 
