@@ -12,6 +12,13 @@ from src.domains.schemas import (
     DomainUpdateRequestSchema,
 )
 from src.domains.services import DomainService
+from src.health.services import HealthService
+
+
+def _validation_failed(domain):
+    snapshot = container.get(HealthService).latest_nginx_validation_snapshot()
+    return bool(snapshot is not None and snapshot.validation_status == 'failed' and snapshot.domain_id == domain.id)
+
 
 blueprint = Blueprint('domains', __name__, description='Domains')
 
@@ -37,6 +44,8 @@ class Domains(MethodView):
                         'hostname': domain.hostname,
                         'purpose': domain.purpose,
                         'campaign_id': domain.campaign_id,
+                        'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
+                        'validation_failed': False,
                         'is_a_record_set': (None if domain.is_a_record_set is None else bool(domain.is_a_record_set)),
                         'is_disabled': bool(domain.is_disabled),
                     }
@@ -58,6 +67,8 @@ class Domains(MethodView):
                 'hostname': domain.hostname,
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
+                'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
+                'validation_failed': False,
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
             }
@@ -77,6 +88,8 @@ class Domain(MethodView):
                 'hostname': domain.hostname,
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
+                'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
+                'validation_failed': _validation_failed(domain),
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
             }
@@ -100,6 +113,8 @@ class Domain(MethodView):
                 'hostname': domain.hostname,
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
+                'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
+                'validation_failed': _validation_failed(domain),
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
             }

@@ -65,6 +65,8 @@ class DomainResponseSchema(Schema):
     hostname = fields.String(required=True)
     purpose = fields.String(required=True)
     campaignId = fields.Integer(allow_none=True)
+    campaignName = fields.String(allow_none=True)
+    validationFailed = fields.Boolean(required=True)
     isARecordSet = fields.Boolean(allow_none=True)
     isDisabled = fields.Boolean(required=True)
 
