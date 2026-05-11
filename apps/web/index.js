@@ -6,6 +6,8 @@ var session = require("./src/models/session");
 var AuthenticatedPage = require("./src/components/authenticated_page");
 var authView = require("./src/views/auth");
 var healthView = require("./src/views/health");
+var domainsView = require("./src/views/domains");
+var domainView = require("./src/views/domain");
 var statisticsView = require("./src/views/statistics");
 var expensesReportView = require("./src/views/expenses_report");
 var discardReportView = require("./src/views/discard_report");
@@ -53,6 +55,36 @@ m.route(document.getElementById("content"), "/statistics", {
     },
     render: function () {
       return m(AuthenticatedPage, { page: healthView, auth: auth, alerts: alerts });
+    },
+  },
+  "/domains/new": {
+    onmatch: function () {
+      if (!auth.isAuthenticated) {
+        m.route.set("/sign-in");
+      }
+    },
+    render: function () {
+      return m(AuthenticatedPage, { page: domainView, auth: auth, alerts: alerts });
+    },
+  },
+  "/domains": {
+    onmatch: function () {
+      if (!auth.isAuthenticated) {
+        m.route.set("/sign-in");
+      }
+    },
+    render: function () {
+      return m(AuthenticatedPage, { page: domainsView, auth: auth, alerts: alerts });
+    },
+  },
+  "/domains/:domainId": {
+    onmatch: function () {
+      if (!auth.isAuthenticated) {
+        m.route.set("/sign-in");
+      }
+    },
+    render: function () {
+      return m(AuthenticatedPage, { page: domainView, auth: auth, alerts: alerts });
     },
   },
   "/statistics": {

@@ -19,6 +19,7 @@ function formatBytes(size) {
 class HealthView {
   constructor() {
     this.model = new HealthModel();
+    this.showNginxFiles = false;
   }
 
   oninit() {
@@ -85,22 +86,55 @@ class HealthView {
     const snapshot = this.model.nginxSnapshot;
 
     return [
-      ["Validation status", snapshot ? snapshot.validationStatus : "-"],
+      ["Validation status", snapshot ? this._nginxStatus() : "-"],
       ["Validation timestamp (local)", snapshot ? timestamp2LocalTime(snapshot.validationTimestamp) : "-"],
       ["Validation timestamp (UTC)", snapshot ? timestamp2UtcTime(snapshot.validationTimestamp) : "-"],
-      [
-        "Available files",
-        snapshot && snapshot.sitesAvailableFiles && snapshot.sitesAvailableFiles.length
-          ? snapshot.sitesAvailableFiles.join(", ")
-          : "-",
-      ],
-      [
-        "Enabled refs",
-        snapshot && snapshot.sitesEnabledRefs && snapshot.sitesEnabledRefs.length
-          ? snapshot.sitesEnabledRefs.join(", ")
-          : "-",
-      ],
     ];
+  }
+
+  _nginxStatus() {
+    const snapshot = this.model.nginxSnapshot;
+
+    if (snapshot.validationStatus === "failed") {
+      return [
+        m("i.fa.fa-times.text-danger.me-2", { title: "Failed" }),
+        "failed",
+      ];
+    }
+
+    return [
+      m("i.fa.fa-check.text-success.me-2", { title: "Success" }),
+      "success",
+    ];
+  }
+
+  _nginxFileList(title, items) {
+    return m(".mb-3", [
+      m("h6.mb-3", title),
+      items && items.length
+        ? m(
+            "ul.mb-0",
+            items.map(function (item) {
+              return m("li", item);
+            }),
+          )
+        : m(".text-muted", "-"),
+    ]);
+  }
+
+  _nginxFilesPanel() {
+    const snapshot = this.model.nginxSnapshot;
+
+    return m(".mt-3", [
+      this._nginxFileList(
+        "Available files",
+        snapshot.sitesAvailableFiles,
+      ),
+      this._nginxFileList(
+        "Enabled refs",
+        snapshot.sitesEnabledRefs,
+      ),
+    ]);
   }
 
   _usagePanel() {
@@ -146,9 +180,6 @@ class HealthView {
               m(".text-muted", "No published Nginx validation snapshot is available yet."),
             ])
           : [
-              snapshot.validationStatus === "failed"
-                ? m(".alert.alert-danger.py-2.mb-4", snapshot.validationError || "Validation failed.")
-                : m(".alert.alert-success.py-2.mb-4", "Latest Nginx validation succeeded."),
               m(
                 "div.table-responsive",
                 m(
@@ -161,6 +192,29 @@ class HealthView {
                   ),
                 ),
               ),
+              m(
+                "button.btn.btn-link.nav-link mt-3 p-0",
+                {
+                  type: "button",
+                  onclick: function () {
+                    this.showNginxFiles = !this.showNginxFiles;
+                  }.bind(this),
+                },
+                [
+                  m("i.me-2", {
+                    class: this.showNginxFiles
+                      ? "fa fa-chevron-down"
+                      : "fa fa-chevron-right",
+                  }),
+                  "Nginx files",
+                ],
+              ),
+              this.showNginxFiles
+                ? this._nginxFilesPanel()
+                : null,
+              snapshot.validationStatus === "failed" && snapshot.validationError
+                ? m("pre.bg-white.border.rounded.p-3.mt-3.mb-0", snapshot.validationError)
+                : null,
             ],
       ]),
     ]);
