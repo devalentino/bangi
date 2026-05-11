@@ -1,8 +1,8 @@
 import logging
 import secrets
+import string
 import subprocess
 import time
-import string
 from pathlib import Path
 from typing import Annotated, Protocol
 from uuid import uuid4
@@ -25,13 +25,12 @@ from src.health.services import HealthService
 
 logger = logging.getLogger(__name__)
 
+
 @injectable
 class DomainCookieService:
     def get_or_create_opaque_name(self, domain_id: int, name: DomainCookieName) -> str:
         cookie_name = name.value
-        cookie = DomainCookie.get_or_none(
-            (DomainCookie.domain == domain_id) & (DomainCookie.name == cookie_name)
-        )
+        cookie = DomainCookie.get_or_none((DomainCookie.domain == domain_id) & (DomainCookie.name == cookie_name))
         if cookie is not None:
             return cookie.opaque_name
 
@@ -158,7 +157,9 @@ class DomainService:
 
     def get_by_campaign_id(self, campaign_id):
         domain = Domain.get_or_none(
-            (Domain.campaign == campaign_id) & (Domain.purpose == DomainPurpose.campaign) & (Domain.is_disabled == False)
+            (Domain.campaign == campaign_id)
+            & (Domain.purpose == DomainPurpose.campaign)
+            & (Domain.is_disabled == False)
         )
         if domain is None:
             raise DomainDoesNotExistError()

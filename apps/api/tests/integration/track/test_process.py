@@ -128,9 +128,7 @@ class TestTrackRedirect:
             'tid': request_payload['tid'],
         }
 
-    def test_track_redirect__matches_flow_without_rule(
-        self, client, campaign, domain, write_to_db, ip2location_mock
-    ):
+    def test_track_redirect__matches_flow_without_rule(self, client, campaign, domain, write_to_db, ip2location_mock):
         write_to_db(
             'flow',
             {
@@ -359,9 +357,7 @@ class TestTrackLanding:
             httpx.Response(status_code=200, text=landing_page_content)
         )
 
-    def test_track_landing(
-        self, client, campaign, domain, flow, read_from_db, ip2location_mock, landing_render_mock
-    ):
+    def test_track_landing(self, client, campaign, domain, flow, read_from_db, ip2location_mock, landing_render_mock):
         click_id = uuid4()
         request_payload = {
             'clickId': str(click_id),
