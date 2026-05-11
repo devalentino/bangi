@@ -19,6 +19,8 @@ class TestDomains:
             'hostname': 'example.com',
             'purpose': 'campaign',
             'campaignId': None,
+            'campaignName': None,
+            'validationFailed': False,
             'isARecordSet': None,
             'isDisabled': False,
         }
@@ -76,6 +78,8 @@ class TestDomains:
             'hostname': 'padding-0.example.com',
             'purpose': 'campaign',
             'campaignId': None,
+            'campaignName': None,
+            'validationFailed': False,
             'isARecordSet': None,
             'isDisabled': False,
         }
@@ -84,6 +88,8 @@ class TestDomains:
             'hostname': campaign_domain['hostname'],
             'purpose': campaign_domain['purpose'],
             'campaignId': campaign_domain['campaign_id'],
+            'campaignName': campaign['name'],
+            'validationFailed': False,
             'isARecordSet': campaign_domain['is_a_record_set'],
             'isDisabled': campaign_domain['is_disabled'],
         }
@@ -142,6 +148,8 @@ class TestDomains:
                     'hostname': third['hostname'],
                     'purpose': third['purpose'],
                     'campaignId': third['campaign_id'],
+                    'campaignName': None,
+                    'validationFailed': False,
                     'isARecordSet': third['is_a_record_set'],
                     'isDisabled': third['is_disabled'],
                 },
@@ -150,6 +158,8 @@ class TestDomains:
                     'hostname': first['hostname'],
                     'purpose': first['purpose'],
                     'campaignId': first['campaign_id'],
+                    'campaignName': None,
+                    'validationFailed': False,
                     'isARecordSet': first['is_a_record_set'],
                     'isDisabled': first['is_disabled'],
                 },
@@ -158,6 +168,8 @@ class TestDomains:
                     'hostname': second['hostname'],
                     'purpose': second['purpose'],
                     'campaignId': second['campaign_id'],
+                    'campaignName': None,
+                    'validationFailed': False,
                     'isARecordSet': second['is_a_record_set'],
                     'isDisabled': second['is_disabled'],
                 },
@@ -165,7 +177,7 @@ class TestDomains:
             'pagination': {'page': 1, 'pageSize': 3, 'sortBy': 'hostname', 'sortOrder': 'desc', 'total': 3},
         }
 
-    def test_get_domain_returns_full_payload(self, client, authorization, domain):
+    def test_get_domain_returns_full_payload(self, client, authorization, domain, campaign):
         response = client.get(f'/api/v2/domains/{domain["id"]}', headers={'Authorization': authorization})
 
         assert response.status_code == 200, response.text
@@ -174,6 +186,8 @@ class TestDomains:
             'hostname': domain['hostname'],
             'purpose': domain['purpose'],
             'campaignId': domain['campaign_id'],
+            'campaignName': campaign['name'],
+            'validationFailed': False,
             'isARecordSet': domain['is_a_record_set'],
             'isDisabled': domain['is_disabled'],
         }
@@ -214,6 +228,8 @@ class TestDomains:
             'hostname': 'new.example.com',
             'purpose': 'campaign',
             'campaignId': None,
+            'campaignName': None,
+            'validationFailed': False,
             'isARecordSet': None,
             'isDisabled': False,
         }
@@ -261,6 +277,8 @@ class TestDomains:
             'hostname': domain['hostname'],
             'purpose': 'campaign',
             'campaignId': campaign['id'],
+            'campaignName': campaign['name'],
+            'validationFailed': False,
             'isARecordSet': True,
             'isDisabled': False,
         }
@@ -406,6 +424,8 @@ class TestDomains:
             'hostname': domain['hostname'],
             'purpose': 'dashboard',
             'campaignId': None,
+            'campaignName': None,
+            'validationFailed': False,
             'isARecordSet': True,
             'isDisabled': False,
         }
@@ -468,6 +488,8 @@ class TestDomains:
             'hostname': domain['hostname'],
             'purpose': 'dashboard',
             'campaignId': None,
+            'campaignName': None,
+            'validationFailed': False,
             'isARecordSet': True,
             'isDisabled': False,
         }

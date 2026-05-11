@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Annotated, Protocol
 from uuid import uuid4
 
-from peewee import IntegrityError, fn
+from peewee import JOIN, IntegrityError, fn
 from wireup import Inject, injectable
 
 from src.core.entities import Campaign
@@ -83,7 +83,8 @@ class DomainService:
 
         return [
             domain
-            for domain in Domain.select()
+            for domain in Domain.select(Domain, Campaign)
+            .join(Campaign, JOIN.LEFT_OUTER)
             .order_by(order_by, Domain.id.asc())
             .limit(page_size)
             .offset((page - 1) * page_size)
