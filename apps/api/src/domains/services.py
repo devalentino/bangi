@@ -1,3 +1,4 @@
+import logging
 import hashlib
 import subprocess
 import time
@@ -20,6 +21,8 @@ from src.domains.exceptions import (
     DomainDoesNotExistError,
 )
 from src.health.services import HealthService
+
+logger = logging.getLogger(__name__)
 
 
 class WebserverService(Protocol):
@@ -169,6 +172,7 @@ class HostCommandExecutorService:
                 self.host_ops_ssh_known_hosts_path,
             ]
         ):
+            logger.error('Host operations SSH configuration is missing', extra={'command': command})
             raise HostCommandExecutionError('Host operations SSH configuration is missing')
 
         result = subprocess.run(
@@ -190,6 +194,15 @@ class HostCommandExecutorService:
 
         output = ''.join(part for part in [result.stdout, result.stderr] if part).strip()
         if result.returncode != 0:
+            logger.error(
+                'Failed to execute host command',
+                extra={
+                    'command': command,
+                    'returncode': result.returncode,
+                    'stdout': result.stdout,
+                    'stderr': result.stderr,
+                },
+            )
             raise HostCommandExecutionError(output or f'Host operation failed: {command}')
 
 
