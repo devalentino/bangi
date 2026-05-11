@@ -12,8 +12,7 @@ from src.core.entities import database_proxy
 from src.core.repositories import CampaignRepository
 from src.core.services import CampaignService, ClientService, FlowService, Ip2LocationLocator
 from src.core.supervisor import WorkerContext, WorkerSupervisor
-from src.domains.services import DomainService
-from src.domains.services import NginxService
+from src.domains.services import DomainService, HostCommandExecutorService, NginxService
 from src.facebook_pacs.services import AdCabinetService as FacebookPacsAdCabinetService
 from src.facebook_pacs.services import BusinessPageService as FacebookPacsBusinessPageService
 from src.facebook_pacs.services import BusinessPortfolioService as FacebookPacsBusinessPortfolioService
@@ -72,6 +71,7 @@ container = create_sync_container(
         CampaignService,
         ClientService,
         DomainService,
+        HostCommandExecutorService,
         NginxService,
         FlowService,
         FacebookPacsAdCabinetService,

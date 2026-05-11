@@ -12,6 +12,11 @@ def flow_name():
 
 
 @pytest.fixture
+def domain_hostname():
+    return 'example.com'
+
+
+@pytest.fixture
 def flow_is_deleted():
     return False
 

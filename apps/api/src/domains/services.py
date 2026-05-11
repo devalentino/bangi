@@ -1,8 +1,8 @@
 import hashlib
 import subprocess
-from datetime import datetime, timezone
+import time
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Protocol
 from uuid import uuid4
 
 from peewee import fn
@@ -22,12 +22,20 @@ from src.domains.exceptions import (
 from src.health.services import HealthService
 
 
+class WebserverService(Protocol):
+    def publish(self, hostname: str):
+        pass
+
+    def disable(self, hostname: str) -> None:
+        pass
+
+
 @injectable
 class DomainService:
     def __init__(
         self,
         flow_id_cookie_key_length: Annotated[int, Inject(config='FLOW_ID_COOKIE_KEY_LENGTH')],
-        webserver_service: 'NginxService',
+        webserver_service: WebserverService,
     ):
         self.flow_id_cookie_key_length = flow_id_cookie_key_length
         self.webserver_service = webserver_service
@@ -135,27 +143,68 @@ class DomainService:
             raise CampaignAlreadyBoundError()
 
 
-class NginxHostOpsError(RuntimeError):
+class HostCommandExecutionError(RuntimeError):
     pass
 
 
 @injectable
-class NginxService:
+class HostCommandExecutorService:
     def __init__(
         self,
-        health_service: HealthService,
-        nginx_workspace_base_dir: Annotated[str, Inject(config='NGINX_WORKSPACE_BASE_DIR')],
         host_ops_ssh_user: Annotated[str, Inject(config='BANGI_HOST_OPS_SSH_USER')],
         host_ops_ssh_host: Annotated[str, Inject(config='BANGI_HOST_OPS_SSH_HOST')],
         host_ops_ssh_key_path: Annotated[str, Inject(config='BANGI_HOST_OPS_SSH_KEY_PATH')],
         host_ops_ssh_known_hosts_path: Annotated[str, Inject(config='BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH')],
     ):
-        self.health_service = health_service
-        self.nginx_workspace_base_dir = Path(nginx_workspace_base_dir)
         self.host_ops_ssh_user = host_ops_ssh_user
         self.host_ops_ssh_host = host_ops_ssh_host
         self.host_ops_ssh_key_path = host_ops_ssh_key_path
         self.host_ops_ssh_known_hosts_path = host_ops_ssh_known_hosts_path
+
+    def run(self, command: str) -> None:
+        if not all(
+            [
+                self.host_ops_ssh_user,
+                self.host_ops_ssh_host,
+                self.host_ops_ssh_key_path,
+                self.host_ops_ssh_known_hosts_path,
+            ]
+        ):
+            raise HostCommandExecutionError('Host operations SSH configuration is missing')
+
+        result = subprocess.run(
+            [
+                'ssh',
+                '-i',
+                self.host_ops_ssh_key_path,
+                '-o',
+                f'UserKnownHostsFile={self.host_ops_ssh_known_hosts_path}',
+                '-o',
+                'StrictHostKeyChecking=yes',
+                f'{self.host_ops_ssh_user}@{self.host_ops_ssh_host}',
+                command,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        output = ''.join(part for part in [result.stdout, result.stderr] if part).strip()
+        if result.returncode != 0:
+            raise HostCommandExecutionError(output or f'Host operation failed: {command}')
+
+
+@injectable(as_type=WebserverService)
+class NginxService:
+    def __init__(
+        self,
+        health_service: HealthService,
+        host_command_executor_service: HostCommandExecutorService,
+        nginx_workspace_base_dir: Annotated[str, Inject(config='NGINX_WORKSPACE_BASE_DIR')],
+    ):
+        self.health_service = health_service
+        self.host_command_executor_service = host_command_executor_service
+        self.nginx_workspace_base_dir = Path(nginx_workspace_base_dir)
 
     def publish(self, hostname: str):
         domain = Domain.get(Domain.hostname == hostname)
@@ -180,7 +229,7 @@ class NginxService:
         return self._record_snapshot(domain, 'success', None)
 
     def _next_version(self) -> str:
-        timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+        timestamp = int(time.time())
         return f'{timestamp}-{uuid4().hex[:8]}'
 
     def _site_available_dir(self, hostname: str) -> Path:
@@ -257,49 +306,17 @@ class NginxService:
             '}\n'
         )
 
-    def _run_host_ops_command(self, command: str) -> None:
-        if not all(
-            [
-                self.host_ops_ssh_user,
-                self.host_ops_ssh_host,
-                self.host_ops_ssh_key_path,
-                self.host_ops_ssh_known_hosts_path,
-            ]
-        ):
-            raise NginxHostOpsError('Host operations SSH configuration is missing')
-
-        result = subprocess.run(
-            [
-                'ssh',
-                '-i',
-                self.host_ops_ssh_key_path,
-                '-o',
-                f'UserKnownHostsFile={self.host_ops_ssh_known_hosts_path}',
-                '-o',
-                'StrictHostKeyChecking=yes',
-                f'{self.host_ops_ssh_user}@{self.host_ops_ssh_host}',
-                command,
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-        output = ''.join(part for part in [result.stdout, result.stderr] if part).strip()
-        if result.returncode != 0:
-            raise NginxHostOpsError(output or f'Host operation failed: {command}')
-
     def _validate_host_nginx(self) -> str | None:
         try:
-            self._run_host_ops_command('nginx-validate')
-        except NginxHostOpsError as exc:
+            self.host_command_executor_service.run('nginx-validate')
+        except HostCommandExecutionError as exc:
             return str(exc)
         return None
 
     def _reload_host_nginx(self) -> str | None:
         try:
-            self._run_host_ops_command('nginx-reload')
-        except NginxHostOpsError as exc:
+            self.host_command_executor_service.run('nginx-reload')
+        except HostCommandExecutionError as exc:
             return str(exc)
         return None
 

@@ -45,9 +45,10 @@ def mock_environment(mysql, landing_pages_base_path, nginx_workspace_base_dir):
 
 
 @pytest.fixture(autouse=True)
-def mock_nginx_host_ops():
-    with mock.patch('src.domains.services.NginxService._run_host_ops_command', lambda self, command: None):
-        yield
+def mock_subprocess_run():
+    with mock.patch('src.domains.services.subprocess.run') as subprocess_run:
+        subprocess_run.return_value = mock.Mock(returncode=0, stdout='', stderr='')
+        yield subprocess_run
 
 
 @pytest.fixture(autouse=True)
