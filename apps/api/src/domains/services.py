@@ -25,6 +25,10 @@ from src.health.services import HealthService
 logger = logging.getLogger(__name__)
 
 
+def _cookie_name_for_hostname(hostname: str, length: int) -> str:
+    return hashlib.sha256(hostname.encode()).hexdigest()[:length]
+
+
 class WebserverService(Protocol):
     def publish(self, hostname: str):
         pass
@@ -131,7 +135,7 @@ class DomainService:
     def cookie_name(self, hostname, purpose):
         if purpose != DomainPurpose.campaign:
             return None
-        return hashlib.sha256(hostname.encode()).hexdigest()[: self.flow_id_cookie_key_length]
+        return _cookie_name_for_hostname(hostname, self.flow_id_cookie_key_length)
 
     def _get_campaign(self, campaign_id):
         try:
@@ -212,10 +216,12 @@ class NginxService:
         self,
         health_service: HealthService,
         host_command_executor_service: HostCommandExecutorService,
+        flow_id_cookie_key_length: Annotated[int, Inject(config='FLOW_ID_COOKIE_KEY_LENGTH')],
         nginx_workspace_base_dir: Annotated[str, Inject(config='NGINX_WORKSPACE_BASE_DIR')],
     ):
         self.health_service = health_service
         self.host_command_executor_service = host_command_executor_service
+        self.flow_id_cookie_key_length = flow_id_cookie_key_length
         self.nginx_workspace_base_dir = Path(nginx_workspace_base_dir)
 
     def publish(self, hostname: str):
@@ -303,8 +309,8 @@ class NginxService:
             '}\n'
         )
 
-    @staticmethod
-    def _render_campaign_domain_config(domain: Domain) -> str:
+    def _render_campaign_domain_config(self, domain: Domain) -> str:
+        cookie_name = _cookie_name_for_hostname(domain.hostname, self.flow_id_cookie_key_length)
         return (
             '# Managed by Bangi. Campaign domain.\n'
             'server {\n'
@@ -312,12 +318,21 @@ class NginxService:
             '    listen [::]:80;\n'
             f'    server_name {domain.hostname};\n'
             '\n'
+            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{domain.campaign_id}";\n'
+            f'    if ($cookie_{cookie_name} != "") {{\n'
+            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_name}/";\n'
+            '    }\n'
+            '\n'
             '    location = / {\n'
-            f'        proxy_pass http://127.0.0.1:8000/process/{domain.campaign_id};\n'
+            '        proxy_pass $bangi_campaign_upstream;\n'
             '    }\n'
             '\n'
             '    location / {\n'
-            '        return 404;\n'
+            f'        if ($cookie_{cookie_name} = "") {{\n'
+            '            return 404;\n'
+            '        }\n'
+            '\n'
+            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_name}/;\n'
             '    }\n'
             '}\n'
         )

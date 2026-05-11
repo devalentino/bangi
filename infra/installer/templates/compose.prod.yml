@@ -73,6 +73,8 @@ services:
     mem_reservation: 32m
     env_file:
       - /opt/bangi/shared/env/.env
+    ports:
+      - '127.0.0.1:8081:80'
     volumes:
       - /opt/bangi/shared/landings:/var/www/html/landings
     networks:

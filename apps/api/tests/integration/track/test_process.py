@@ -1,4 +1,5 @@
 import json
+import hashlib
 from unittest import mock
 from uuid import UUID, uuid4
 
@@ -9,6 +10,10 @@ MOBILE_SAFARI_USER_AGENT = (
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
     'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 )
+
+
+def _cookie_name(hostname, length=6):
+    return hashlib.sha256(hostname.encode()).hexdigest()[:length]
 
 
 @pytest.fixture
@@ -388,3 +393,46 @@ class TestTrackLanding:
             'status': request_payload['status'],
             'tid': request_payload['tid'],
         }
+
+    def test_track_landing__sets_domain_sticky_cookie_on_first_visit(
+        self, client, campaign, environment, write_to_db, ip2location_mock, respx_mock
+    ):
+        render_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Render flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 1,
+                'action_type': 'render',
+                'redirect_url': None,
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        hostname = 'campaign.example.com'
+        write_to_db(
+            'domain',
+            {
+                'hostname': hostname,
+                'purpose': 'campaign',
+                'campaign_id': campaign['id'],
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        respx_mock.get(f'{environment["LANDING_PAGE_RENDERER_BASE_URL"]}/{render_flow["id"]}/').mock(
+            httpx.Response(status_code=200, text='<html>Sticky landing</html>')
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 200, response.text
+        assert response.text == '<html>Sticky landing</html>'
+
+        cookie_header = response.headers['Set-Cookie']
+        assert _cookie_name(hostname) in cookie_header
+        assert f'={render_flow["id"]}' in cookie_header
+        assert 'HttpOnly' in cookie_header
+        assert 'Max-Age=31536000' in cookie_header
+        assert 'Path=/' in cookie_header

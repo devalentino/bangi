@@ -7,6 +7,9 @@ from src.container import container
 from src.core.blueprint import Blueprint
 from src.core.enums import FlowActionType
 from src.core.services import ClientService, FlowService
+from src.domains.entities import Domain
+from src.domains.enums import DomainPurpose
+from src.domains.services import DomainService
 from src.tracker.schemas import (
     TrackClickRequestSchema,
     TrackLeadRequestSchema,
@@ -83,12 +86,24 @@ class Process(MethodView):
         client = client_service.client_info(
             request.user_agent.string, request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
         )
-        action_type, subject = flow_service.process_flows(campaignId, client)
+        action_type, subject, matched_flow = flow_service.process_flows(campaignId, client)
 
         if action_type == FlowActionType.redirect:
             return redirect(subject)
         elif action_type == FlowActionType.render:
-            return make_response(subject)
+            response = make_response(subject)
+            if matched_flow is not None:
+                domain = Domain.get_or_none((Domain.campaign == campaignId) & (Domain.purpose == DomainPurpose.campaign))
+                if domain is not None:
+                    domain_service = container.get(DomainService)
+                    response.set_cookie(
+                        domain_service.cookie_name(domain.hostname, domain.purpose),
+                        str(matched_flow.id),
+                        httponly=True,
+                        path='/',
+                        max_age=60 * 60 * 24 * 365,
+                    )
+            return response
         else:
             track_click_service.track_discard(click_id, campaignId, client)
             return make_response('')
