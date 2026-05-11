@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/devalentino/bangi-web:0.0.1a22
+    image: ghcr.io/devalentino/bangi-web:0.0.1a23
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
@@ -10,7 +10,7 @@ services:
       - bangi
 
   api:
-    image: ghcr.io/devalentino/bangi-api:0.0.1a22
+    image: ghcr.io/devalentino/bangi-api:0.0.1a23
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
