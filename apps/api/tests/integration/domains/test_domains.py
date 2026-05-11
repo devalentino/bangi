@@ -177,7 +177,7 @@ class TestDomains:
             'pagination': {'page': 1, 'pageSize': 3, 'sortBy': 'hostname', 'sortOrder': 'desc', 'total': 3},
         }
 
-    def test_get_domain_returns_full_payload(self, client, authorization, domain):
+    def test_get_domain_returns_full_payload(self, client, authorization, domain, campaign):
         response = client.get(f'/api/v2/domains/{domain["id"]}', headers={'Authorization': authorization})
 
         assert response.status_code == 200, response.text
@@ -186,7 +186,7 @@ class TestDomains:
             'hostname': domain['hostname'],
             'purpose': domain['purpose'],
             'campaignId': domain['campaign_id'],
-            'campaignName': None,
+            'campaignName': campaign['name'],
             'validationFailed': False,
             'isARecordSet': domain['is_a_record_set'],
             'isDisabled': domain['is_disabled'],
