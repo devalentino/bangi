@@ -433,3 +433,28 @@ class TestTrackLanding:
         assert 'HttpOnly' in cookie_header
         assert 'Max-Age=31536000' in cookie_header
         assert 'Path=/' in cookie_header
+
+    def test_track_landing__returns_404_when_campaign_domain_is_missing(self, client, campaign):
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Domain does not exist'}
+
+    def test_track_landing__returns_404_when_campaign_domain_is_disabled(
+        self, client, campaign, write_to_db
+    ):
+        write_to_db(
+            'domain',
+            {
+                'hostname': 'campaign.example.com',
+                'purpose': 'campaign',
+                'campaign_id': campaign['id'],
+                'is_a_record_set': True,
+                'is_disabled': True,
+            },
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Domain does not exist'}
