@@ -248,7 +248,11 @@ class NginxService:
         temporary_path.replace(destination_path)
 
     def _render_domain_config(self, domain: Domain) -> str:
-        if domain.is_disabled or domain.is_a_record_set is False or (domain.purpose == 'campaign' and domain.campaign_id is None):
+        if (
+            domain.is_disabled
+            or domain.is_a_record_set is False
+            or (domain.purpose == 'campaign' and domain.campaign_id is None)
+        ):
             return self._render_disabled_domain_config(domain)
 
         if domain.purpose == 'dashboard':
@@ -322,7 +326,9 @@ class NginxService:
 
     def _activate_version(self, enabled_link: Path, versioned_config_path: Path) -> None:
         enabled_link.parent.mkdir(parents=True, exist_ok=True)
-        relative_target = Path('..') / 'sites-available' / versioned_config_path.parent.name / versioned_config_path.name
+        relative_target = (
+            Path('..') / 'sites-available' / versioned_config_path.parent.name / versioned_config_path.name
+        )
         temporary_link = enabled_link.with_name(f'{enabled_link.name}.tmp')
 
         if temporary_link.exists() or temporary_link.is_symlink():
@@ -381,7 +387,5 @@ class NginxService:
             if not enabled_link.is_symlink():
                 continue
             target = enabled_link.readlink()
-            refs.append(
-                f'{enabled_link.relative_to(self.nginx_workspace_base_dir).as_posix()} -> {target.as_posix()}'
-            )
+            refs.append(f'{enabled_link.relative_to(self.nginx_workspace_base_dir).as_posix()} -> {target.as_posix()}')
         return refs

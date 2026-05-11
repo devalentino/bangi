@@ -4,7 +4,6 @@ from flask.views import MethodView
 from src.auth import auth
 from src.container import container
 from src.core.blueprint import Blueprint
-from src.domains.services import DomainService
 from src.domains.schemas import (
     DomainCreateRequestSchema,
     DomainListRequestSchema,
@@ -12,6 +11,7 @@ from src.domains.schemas import (
     DomainResponseSchema,
     DomainUpdateRequestSchema,
 )
+from src.domains.services import DomainService
 
 blueprint = Blueprint('domains', __name__, description='Domains')
 

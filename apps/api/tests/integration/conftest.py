@@ -22,7 +22,7 @@ def landing_pages_base_path(tmpdir_factory):
     return str(tmpdir_factory.mktemp('landings'))
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope='session')
 def nginx_workspace_base_dir(tmpdir_factory):
     return str(tmpdir_factory.mktemp('nginx-workspace'))
 

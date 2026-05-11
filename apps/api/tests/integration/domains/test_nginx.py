@@ -1,5 +1,17 @@
+import json
+import os
+import shutil
 from pathlib import Path
 from unittest import mock
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def nginx_workspace_base_dir_cleanup(nginx_workspace_base_dir):
+    yield
+    shutil.rmtree(nginx_workspace_base_dir)
+    os.makedirs(nginx_workspace_base_dir)
 
 
 class TestDomainNginxPublication:
@@ -63,10 +75,10 @@ class TestDomainNginxPublication:
             'domain_id': domain_id,
             'validation_status': 'success',
             'validation_error': None,
-            'sites_available_files': [f'sites-available/example.com/{versioned_configs[0].name}'],
-            'sites_enabled_refs': [
-                f'sites-enabled/example.com.conf -> ../sites-available/example.com/{versioned_configs[0].name}'
-            ],
+            'sites_available_files': json.dumps([f'sites-available/example.com/{versioned_configs[0].name}']),
+            'sites_enabled_refs': json.dumps(
+                [f'sites-enabled/example.com.conf -> ../sites-available/example.com/{versioned_configs[0].name}']
+            ),
         }
 
     def test_failed_publish_keeps_previous_active_version(
@@ -111,7 +123,7 @@ class TestDomainNginxPublication:
 
         assert response.status_code == 200, response.text
         assert enabled_link.is_symlink()
-        assert enabled_link.readlink().as_posix() == second_target
+        assert enabled_link.readlink().as_posix() == second_target  # link still refers second_version
         assert len(sorted(available_dir.glob('*.conf'))) == 3
         assert first_version.exists()
         assert second_version.exists()
@@ -169,14 +181,14 @@ class TestDomainNginxPublication:
             'domain_id': domain['id'],
             'validation_status': 'failed',
             'validation_error': 'nginx: [emerg] invalid configuration',
-            'sites_available_files': available_files,
-            'sites_enabled_refs': [f'sites-enabled/campaign.example.com.conf -> {second_target}'],
+            'sites_available_files': json.dumps(available_files),
+            'sites_enabled_refs': json.dumps([f'sites-enabled/campaign.example.com.conf -> {second_target}']),
         }
         assert first_version.exists()
         assert second_version.exists()
 
     def test_multiple_successful_publishes_keep_previous_versions_available(
-        self, client, authorization, nginx_workspace_base_dir, mock_subprocess_run
+        self, client, authorization, nginx_workspace_base_dir, mock_subprocess_run, read_from_db
     ):
         mock_subprocess_run.return_value.returncode = 0
         mock_subprocess_run.return_value.stdout = ''
@@ -191,10 +203,10 @@ class TestDomainNginxPublication:
         response = client.post('/api/v2/domains', headers={'Authorization': authorization}, json=request_payload)
 
         assert response.status_code == 201, response.text
-        domain_id = read_from_db('domain', filters={'hostname': 'dashboard.example.com'})['id']
+        domain = read_from_db('domain', filters={'hostname': 'dashboard.example.com'})
 
         response = client.patch(
-            f'/api/v2/domains/{domain_id}',
+            f'/api/v2/domains/{domain["id"]}',
             headers={'Authorization': authorization},
             json={'isDisabled': True},
         )
@@ -207,6 +219,9 @@ class TestDomainNginxPublication:
 
         assert len(versioned_configs) == 2
         assert enabled_link.is_symlink()
-        assert enabled_link.readlink().as_posix() == f'../sites-available/dashboard.example.com/{versioned_configs[-1].name}'
+        assert (
+            enabled_link.readlink().as_posix()
+            == f'../sites-available/dashboard.example.com/{versioned_configs[-1].name}'
+        )
         assert versioned_configs[0].exists()
         assert versioned_configs[1].exists()
