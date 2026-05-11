@@ -97,12 +97,11 @@ class DomainService:
             domain.hostname = hostname
             domain.is_a_record_set = None
 
-        if domain.purpose == DomainPurpose.dashboard and campaign_id is not None:
-            raise DashboardDomainCannotAttachCampaignError()
-
         if campaign_id is None:
             domain.campaign = None
         else:
+            if domain.purpose == DomainPurpose.dashboard and purpose != DomainPurpose.campaign:
+                raise DashboardDomainCannotAttachCampaignError()
             if domain.campaign_id != campaign_id:
                 self._ensure_campaign_is_available(campaign_id, domain.id)
 
