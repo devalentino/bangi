@@ -137,6 +137,14 @@ class DomainService:
             return None
         return _cookie_name_for_hostname(hostname, self.flow_id_cookie_key_length)
 
+    def get_by_campaign_id(self, campaign_id):
+        domain = Domain.get_or_none(
+            (Domain.campaign == campaign_id) & (Domain.purpose == DomainPurpose.campaign) & (Domain.is_disabled == False)
+        )
+        if domain is None:
+            raise DomainDoesNotExistError()
+        return domain
+
     def _get_campaign(self, campaign_id):
         try:
             return Campaign.get_by_id(campaign_id)

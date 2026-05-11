@@ -1,11 +1,7 @@
-import hashlib
 from unittest import mock
 
 import pytest
-
-
-def _cookie_name(hostname, length=6):
-    return hashlib.sha256(hostname.encode()).hexdigest()[:length]
+from fixtures.utils import cookie_name
 
 
 class TestDomains:
@@ -26,7 +22,7 @@ class TestDomains:
             'campaignId': None,
             'isARecordSet': None,
             'isDisabled': False,
-            'cookieName': _cookie_name('example.com'),
+            'cookieName': cookie_name('example.com'),
         }
 
         domain = read_from_db('domain')
@@ -84,7 +80,7 @@ class TestDomains:
             'campaignId': None,
             'isARecordSet': None,
             'isDisabled': False,
-            'cookieName': _cookie_name('padding-0.example.com'),
+            'cookieName': cookie_name('padding-0.example.com'),
         }
         assert response.json['content'][-1] == {
             'id': mock.ANY,
@@ -93,7 +89,7 @@ class TestDomains:
             'campaignId': campaign_domain['campaign_id'],
             'isARecordSet': campaign_domain['is_a_record_set'],
             'isDisabled': campaign_domain['is_disabled'],
-            'cookieName': _cookie_name(campaign_domain['hostname']),
+            'cookieName': cookie_name(campaign_domain['hostname']),
         }
         assert dashboard_domain['hostname'] not in {item['hostname'] for item in response.json['content']}
         assert response.json['pagination'] == {
@@ -161,7 +157,7 @@ class TestDomains:
                     'campaignId': first['campaign_id'],
                     'isARecordSet': first['is_a_record_set'],
                     'isDisabled': first['is_disabled'],
-                    'cookieName': _cookie_name(first['hostname']),
+                    'cookieName': cookie_name(first['hostname']),
                 },
                 {
                     'id': second['id'],
@@ -170,7 +166,7 @@ class TestDomains:
                     'campaignId': second['campaign_id'],
                     'isARecordSet': second['is_a_record_set'],
                     'isDisabled': second['is_disabled'],
-                    'cookieName': _cookie_name(second['hostname']),
+                    'cookieName': cookie_name(second['hostname']),
                 },
             ],
             'pagination': {'page': 1, 'pageSize': 3, 'sortBy': 'hostname', 'sortOrder': 'desc', 'total': 3},
@@ -187,7 +183,7 @@ class TestDomains:
             'campaignId': domain['campaign_id'],
             'isARecordSet': domain['is_a_record_set'],
             'isDisabled': domain['is_disabled'],
-            'cookieName': _cookie_name(domain['hostname']),
+            'cookieName': cookie_name(domain['hostname']),
         }
 
     def test_get_domain__non_existent(self, client, authorization):
@@ -228,7 +224,7 @@ class TestDomains:
             'campaignId': None,
             'isARecordSet': None,
             'isDisabled': False,
-            'cookieName': _cookie_name('new.example.com'),
+            'cookieName': cookie_name('new.example.com'),
         }
 
         updated = read_from_db('domain', filters={'id': domain['id']})
@@ -276,7 +272,7 @@ class TestDomains:
             'campaignId': campaign['id'],
             'isARecordSet': True,
             'isDisabled': False,
-            'cookieName': _cookie_name(domain['hostname']),
+            'cookieName': cookie_name(domain['hostname']),
         }
 
         updated = read_from_db('domain', filters={'id': domain['id']})

@@ -322,7 +322,7 @@ class FlowService:
             Flow.select(fn.count(Flow.id)).where((Flow.is_deleted == False) & (Flow.campaign == campaign_id)).scalar()
         )
 
-    def process_flows(self, campaign_id: int, client: Client):
+    def process_flows(self, campaign_id: int, client: Client, cookie_value=None):
         flows = (
             Flow.select()
             .where((Flow.campaign_id == campaign_id) & (Flow.is_enabled == True) & (Flow.is_deleted == False))
@@ -347,8 +347,8 @@ class FlowService:
             return None, None, None
 
         if matched_flow.action_type == FlowActionType.redirect:
-            return matched_flow.action_type, matched_flow.redirect_url, matched_flow
+            return matched_flow.action_type, matched_flow.redirect_url, matched_flow.id
         elif matched_flow.action_type == FlowActionType.render:
-            return matched_flow.action_type, self._render_landing_page(matched_flow.id), matched_flow
+            return matched_flow.action_type, self._render_landing_page(matched_flow.id), matched_flow.id
 
-        return None, None, matched_flow
+        return None, None, matched_flow.id

@@ -1,19 +1,15 @@
 import json
-import hashlib
 from unittest import mock
 from uuid import UUID, uuid4
 
 import httpx
 import pytest
+from fixtures.utils import cookie_name
 
 MOBILE_SAFARI_USER_AGENT = (
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
     'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 )
-
-
-def _cookie_name(hostname, length=6):
-    return hashlib.sha256(hostname.encode()).hexdigest()[:length]
 
 
 @pytest.fixture
@@ -410,6 +406,15 @@ class TestTrackLanding:
                 'is_deleted': False,
             },
         )
+        respx_mock.get(f'{environment["LANDING_PAGE_RENDERER_BASE_URL"]}/{render_flow["id"]}/').mock(
+            httpx.Response(status_code=200, text='<html>Sticky landing</html>')
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 200, response.text
+        assert response.text == '<html>Sticky landing</html>'
+
         hostname = 'campaign.example.com'
         write_to_db(
             'domain',
@@ -421,17 +426,9 @@ class TestTrackLanding:
                 'is_disabled': False,
             },
         )
-        respx_mock.get(f'{environment["LANDING_PAGE_RENDERER_BASE_URL"]}/{render_flow["id"]}/').mock(
-            httpx.Response(status_code=200, text='<html>Sticky landing</html>')
-        )
-
-        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
-
-        assert response.status_code == 200, response.text
-        assert response.text == '<html>Sticky landing</html>'
 
         cookie_header = response.headers['Set-Cookie']
-        assert _cookie_name(hostname) in cookie_header
+        assert cookie_name(hostname) in cookie_header
         assert f'={render_flow["id"]}' in cookie_header
         assert 'HttpOnly' in cookie_header
         assert 'Max-Age=31536000' in cookie_header

@@ -1,15 +1,11 @@
 import json
-import hashlib
 import os
 import shutil
 from pathlib import Path
 from unittest import mock
 
 import pytest
-
-
-def _cookie_name(hostname, length=6):
-    return hashlib.sha256(hostname.encode()).hexdigest()[:length]
+from fixtures.utils import cookie_name
 
 
 @pytest.fixture
@@ -302,8 +298,8 @@ class TestDomainNginxConfigurations:
             f'    server_name {hostname};\n'
             '\n'
             f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign["id"]}";\n'
-            f'    if ($cookie_{_cookie_name(hostname)} != "") {{\n'
-            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{_cookie_name(hostname)}/";\n'
+            f'    if ($cookie_{cookie_name(hostname)} != "") {{\n'
+            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_name(hostname)}/";\n'
             '    }\n'
             '\n'
             '    location = / {\n'
@@ -311,11 +307,11 @@ class TestDomainNginxConfigurations:
             '    }\n'
             '\n'
             '    location / {\n'
-            f'        if ($cookie_{_cookie_name(hostname)} = "") {{\n'
+            f'        if ($cookie_{cookie_name(hostname)} = "") {{\n'
             '            return 404;\n'
             '        }\n'
             '\n'
-            f'        proxy_pass http://127.0.0.1:8081/$cookie_{_cookie_name(hostname)}/;\n'
+            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_name(hostname)}/;\n'
             '    }\n'
             '}\n'
         )
@@ -517,8 +513,8 @@ class TestDomainNginxConfigurations:
             f'    server_name {hostname};\n'
             '\n'
             f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign["id"]}";\n'
-            f'    if ($cookie_{_cookie_name(hostname)} != "") {{\n'
-            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{_cookie_name(hostname)}/";\n'
+            f'    if ($cookie_{cookie_name(hostname)} != "") {{\n'
+            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_name(hostname)}/";\n'
             '    }\n'
             '\n'
             '    location = / {\n'
@@ -526,11 +522,11 @@ class TestDomainNginxConfigurations:
             '    }\n'
             '\n'
             '    location / {\n'
-            f'        if ($cookie_{_cookie_name(hostname)} = "") {{\n'
+            f'        if ($cookie_{cookie_name(hostname)} = "") {{\n'
             '            return 404;\n'
             '        }\n'
             '\n'
-            f'        proxy_pass http://127.0.0.1:8081/$cookie_{_cookie_name(hostname)}/;\n'
+            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_name(hostname)}/;\n'
             '    }\n'
             '}\n'
         )
