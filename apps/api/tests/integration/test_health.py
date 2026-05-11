@@ -402,3 +402,60 @@ class TestCleanupDiskUtilizationWorker:
         snapshots = read_from_db('health_disk_utilization', fetchall=True)
         assert len(snapshots) == 1
         assert snapshots[0]['created_at'] == fresh_snapshot_timestamp
+
+
+class TestNginxValidationHealth:
+    def test_returns_null_snapshot_when_no_publish_attempts_exist(self, client, authorization):
+        response = client.get('/api/v2/health/nginx', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {'content': None}
+
+    def test_returns_latest_nginx_validation_snapshot(self, client, authorization, write_to_db, timestamp):
+        older_timestamp = timestamp - 120
+        write_to_db(
+            'health_nginx_validation_snapshot',
+            {
+                'created_at': older_timestamp,
+                'domain_id': 7,
+                'validation_status': 'failed',
+                'validation_error': 'nginx: [emerg] bad config',
+                'sites_available_files': ['sites-available/example.com/old.conf'],
+                'sites_enabled_refs': ['sites-enabled/example.com.conf -> ../sites-available/example.com/old.conf'],
+            },
+        )
+        latest_snapshot = write_to_db(
+            'health_nginx_validation_snapshot',
+            {
+                'created_at': timestamp - 10,
+                'domain_id': 9,
+                'validation_status': 'success',
+                'validation_error': None,
+                'sites_available_files': [
+                    'sites-available/example.com/20260510T010101Z-abc12345.conf',
+                    'sites-available/example.com/20260510T010202Z-def67890.conf',
+                ],
+                'sites_enabled_refs': [
+                    'sites-enabled/example.com.conf -> ../sites-available/example.com/20260510T010202Z-def67890.conf'
+                ],
+            },
+        )
+
+        response = client.get('/api/v2/health/nginx', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': {
+                'domainId': latest_snapshot['domain_id'],
+                'validationStatus': latest_snapshot['validation_status'],
+                'validationError': latest_snapshot['validation_error'],
+                'validationTimestamp': timestamp - 10,
+                'sitesAvailableFiles': [
+                    'sites-available/example.com/20260510T010101Z-abc12345.conf',
+                    'sites-available/example.com/20260510T010202Z-def67890.conf',
+                ],
+                'sitesEnabledRefs': [
+                    'sites-enabled/example.com.conf -> ../sites-available/example.com/20260510T010202Z-def67890.conf'
+                ],
+            }
+        }

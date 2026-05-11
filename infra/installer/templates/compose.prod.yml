@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/devalentino/bangi-web:0.0.1a20
+    image: ghcr.io/devalentino/bangi-web:0.0.1a24
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
@@ -10,7 +10,7 @@ services:
       - bangi
 
   api:
-    image: ghcr.io/devalentino/bangi-api:0.0.1a20
+    image: ghcr.io/devalentino/bangi-api:0.0.1a24
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
@@ -26,6 +26,7 @@ services:
     volumes:
       - /opt/bangi/shared/landings:/opt/bangi/shared/landings
       - /opt/bangi/shared/ip2location:/opt/bangi/shared/ip2location:ro
+      - /etc/nginx/bangi:/etc/nginx/bangi
     secrets:
       - source: bangi_ops_ssh_key
         target: bangi_ops_ssh_key
@@ -72,6 +73,8 @@ services:
     mem_reservation: 32m
     env_file:
       - /opt/bangi/shared/env/.env
+    ports:
+      - '127.0.0.1:8081:80'
     volumes:
       - /opt/bangi/shared/landings:/var/www/html/landings
     networks:
