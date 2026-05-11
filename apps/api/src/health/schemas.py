@@ -75,3 +75,16 @@ class DiskUtilizationHistorySummaryResponseSchema(Schema):
 class DiskUtilizationHistoryResponseSchema(Schema):
     summary = fields.Nested(DiskUtilizationHistorySummaryResponseSchema, required=True)
     content = fields.Nested(DiskUtilizationHistoryPointResponseSchema(many=True), required=True)
+
+
+class NginxValidationSnapshotResponseSchema(Schema):
+    domainId = fields.Integer(allow_none=True, required=True)
+    validationStatus = fields.String(required=True)
+    validationError = fields.String(allow_none=True, required=True)
+    validationTimestamp = fields.Integer(required=True)
+    sitesAvailableFiles = fields.List(fields.String(), required=True)
+    sitesEnabledRefs = fields.List(fields.String(), required=True)
+
+
+class NginxValidationResponseSchema(Schema):
+    content = fields.Nested(NginxValidationSnapshotResponseSchema, allow_none=True, required=True)

@@ -196,7 +196,11 @@ class TestDomains:
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Domain does not exist'}
 
-    def test_update_domain_resets_dns_when_hostname_changes(self, client, authorization, write_to_db, read_from_db):
+    def test_update_domain_resets_dns_when_hostname_changes(
+        self, client, authorization, write_to_db, read_from_db, nginx_workspace_base_dir
+    ):
+        from pathlib import Path
+
         domain = write_to_db(
             'domain',
             {
@@ -237,6 +241,12 @@ class TestDomains:
             'is_a_record_set': None,
             'is_disabled': False,
         }
+
+        old_enabled_link = Path(nginx_workspace_base_dir) / 'sites-enabled' / 'old.example.com.conf'
+        new_enabled_link = Path(nginx_workspace_base_dir) / 'sites-enabled' / 'new.example.com.conf'
+
+        assert old_enabled_link.exists() is False
+        assert new_enabled_link.is_symlink()
 
     def test_update_domain_attaches_campaign(self, client, authorization, campaign, write_to_db, read_from_db):
         domain = write_to_db(

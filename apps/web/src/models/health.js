@@ -5,14 +5,21 @@ class HealthModel {
   constructor() {
     this.summary = null;
     this.history = [];
+    this.nginxSnapshot = null;
+    this.nginxError = null;
     this.error = null;
     this.isLoading = false;
   }
 
   load() {
     this.isLoading = true;
+    this.summary = null;
+    this.history = [];
+    this.error = null;
+    this.nginxSnapshot = null;
+    this.nginxError = null;
 
-    return api
+    let diskPromise = api
       .request({
         method: "GET",
         url: `${config.backendApiBaseUrl}/health/disk-utilization/history`,
@@ -23,7 +30,6 @@ class HealthModel {
           this.summary = payload.summary;
           this.history = payload.content || [];
           this.error = null;
-          this.isLoading = false;
         }.bind(this),
       )
       .catch(
@@ -31,9 +37,32 @@ class HealthModel {
           this.summary = null;
           this.history = [];
           this.error = "Failed to load disk utilization.";
-          this.isLoading = false;
         }.bind(this),
       );
+
+    let nginxPromise = api
+      .request({
+        method: "GET",
+        url: `${config.backendApiBaseUrl}/health/nginx`,
+      })
+      .then(
+        function (payload) {
+          this.nginxSnapshot = payload.content;
+          this.nginxError = null;
+        }.bind(this),
+      )
+      .catch(
+        function () {
+          this.nginxSnapshot = null;
+          this.nginxError = "Failed to load Nginx validation snapshot.";
+        }.bind(this),
+      );
+
+    return Promise.all([diskPromise, nginxPromise]).finally(
+      function () {
+        this.isLoading = false;
+      }.bind(this),
+    );
   }
 
   isNeverReported() {

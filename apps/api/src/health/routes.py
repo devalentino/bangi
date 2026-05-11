@@ -4,7 +4,11 @@ from peewee import DatabaseError, MySQLDatabase
 from src.auth import auth
 from src.container import container
 from src.core.blueprint import Blueprint
-from src.health.schemas import DiskUtilizationHistoryRequestSchema, DiskUtilizationHistoryResponseSchema
+from src.health.schemas import (
+    DiskUtilizationHistoryRequestSchema,
+    DiskUtilizationHistoryResponseSchema,
+    NginxValidationResponseSchema,
+)
 from src.health.services import HealthService
 
 blueprint = Blueprint('health', __name__, description='Health')
@@ -57,4 +61,25 @@ class DiskUtilizationHistory(MethodView):
                 }
                 for snapshot in snapshots
             ],
+        }
+
+
+@blueprint.route('/nginx')
+class NginxValidation(MethodView):
+    @blueprint.response(200, NginxValidationResponseSchema)
+    @auth.login_required
+    def get(self):
+        snapshot = container.get(HealthService).latest_nginx_validation_snapshot()
+        if snapshot is None:
+            return {'content': None}
+
+        return {
+            'content': {
+                'domainId': snapshot.domain_id,
+                'validationStatus': snapshot.validation_status,
+                'validationError': snapshot.validation_error,
+                'validationTimestamp': int(snapshot.created_at.timestamp()),
+                'sitesAvailableFiles': list(snapshot.sites_available_files or []),
+                'sitesEnabledRefs': list(snapshot.sites_enabled_refs or []),
+            }
         }
