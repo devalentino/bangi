@@ -7,12 +7,13 @@ from unittest import mock
 import pytest
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def nginx_workspace_base_dir_cleanup(nginx_workspace_base_dir):
     shutil.rmtree(nginx_workspace_base_dir)
     os.makedirs(nginx_workspace_base_dir)
 
 
+@pytest.mark.usefixtures('nginx_workspace_base_dir_cleanup')
 class TestDomainNginxPublication:
     def test_create_domain_publishes_versioned_config(
         self, client, authorization, nginx_workspace_base_dir, mock_subprocess_run
@@ -226,6 +227,7 @@ class TestDomainNginxPublication:
         assert versioned_configs[1].exists()
 
 
+@pytest.mark.usefixtures('nginx_workspace_base_dir_cleanup')
 class TestDomainNginxConfigurations:
     @pytest.fixture(autouse=True)
     def mock_subprocess_run_success(self, mock_subprocess_run):
