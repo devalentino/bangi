@@ -12,6 +12,7 @@ from src.core.entities import database_proxy
 from src.core.repositories import CampaignRepository
 from src.core.services import CampaignService, ClientService, FlowService, Ip2LocationLocator
 from src.core.supervisor import WorkerContext, WorkerSupervisor
+from src.domains.services import DomainCookieService, DomainService, HostCommandExecutorService, NginxService
 from src.facebook_pacs.services import AdCabinetService as FacebookPacsAdCabinetService
 from src.facebook_pacs.services import BusinessPageService as FacebookPacsBusinessPageService
 from src.facebook_pacs.services import BusinessPortfolioService as FacebookPacsBusinessPortfolioService
@@ -48,6 +49,11 @@ container = create_sync_container(
         'IP2LOCATION_DB_PATH': _get_env('IP2LOCATION_DB_PATH'),
         'LANDING_PAGE_RENDERER_BASE_URL': _get_env('LANDING_PAGE_RENDERER_BASE_URL'),
         'INTERNAL_PROCESS_BASE_URL': _get_env('INTERNAL_PROCESS_BASE_URL'),
+        'NGINX_WORKSPACE_BASE_DIR': _get_env('NGINX_WORKSPACE_BASE_DIR', str, '/etc/nginx/bangi'),
+        'BANGI_HOST_OPS_SSH_USER': _get_env('BANGI_HOST_OPS_SSH_USER', str, 'bangi-ops'),
+        'BANGI_HOST_OPS_SSH_HOST': _get_env('BANGI_HOST_OPS_SSH_HOST', str, 'host.docker.internal'),
+        'BANGI_HOST_OPS_SSH_KEY_PATH': _get_env('BANGI_HOST_OPS_SSH_KEY_PATH', str, ''),
+        'BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH': _get_env('BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH', str, ''),
         'DISK_UTILIZATION_STALE_AFTER_SECONDS': _get_env('DISK_UTILIZATION_STALE_AFTER_SECONDS', int, 2 * 60 * 60),
         'DISK_UTILIZATION_WARNING_PERCENT': _get_env('DISK_UTILIZATION_WARNING_PERCENT', int, 70),
         'DISK_UTILIZATION_CRITICAL_PERCENT': _get_env('DISK_UTILIZATION_CRITICAL_PERCENT', int, 80),
@@ -63,6 +69,10 @@ container = create_sync_container(
         CampaignRepository,
         CampaignService,
         ClientService,
+        DomainCookieService,
+        DomainService,
+        HostCommandExecutorService,
+        NginxService,
         FlowService,
         FacebookPacsAdCabinetService,
         FacebookPacsBusinessPageService,

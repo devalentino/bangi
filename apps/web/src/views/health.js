@@ -81,6 +81,28 @@ class HealthView {
     };
   }
 
+  _nginxRows() {
+    const snapshot = this.model.nginxSnapshot;
+
+    return [
+      ["Validation status", snapshot ? snapshot.validationStatus : "-"],
+      ["Validation timestamp (local)", snapshot ? timestamp2LocalTime(snapshot.validationTimestamp) : "-"],
+      ["Validation timestamp (UTC)", snapshot ? timestamp2UtcTime(snapshot.validationTimestamp) : "-"],
+      [
+        "Available files",
+        snapshot && snapshot.sitesAvailableFiles && snapshot.sitesAvailableFiles.length
+          ? snapshot.sitesAvailableFiles.join(", ")
+          : "-",
+      ],
+      [
+        "Enabled refs",
+        snapshot && snapshot.sitesEnabledRefs && snapshot.sitesEnabledRefs.length
+          ? snapshot.sitesEnabledRefs.join(", ")
+          : "-",
+      ],
+    ];
+  }
+
   _usagePanel() {
     return m(".col-sm-12.col-xl-6", [
       m(".bg-light.rounded.h-100.p-4", [
@@ -110,8 +132,42 @@ class HealthView {
     ]);
   }
 
-  _historyPanel() {
+  _nginxPanel() {
+    const snapshot = this.model.nginxSnapshot;
+
     return m(".col-sm-12.col-xl-6", [
+      m(".bg-light.rounded.h-100.p-4", [
+        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Nginx Validation")),
+        this.model.nginxError ? m(".alert.alert-danger.py-2.mb-4", this.model.nginxError) : null,
+        !snapshot
+          ? m(".health-empty-state.py-5.text-center", [
+              m("i.fa.fa-server.fa-2x.mb-3"),
+              m("h5.mb-2", "No Validation Snapshot"),
+              m(".text-muted", "No published Nginx validation snapshot is available yet."),
+            ])
+          : [
+              snapshot.validationStatus === "failed"
+                ? m(".alert.alert-danger.py-2.mb-4", snapshot.validationError || "Validation failed.")
+                : m(".alert.alert-success.py-2.mb-4", "Latest Nginx validation succeeded."),
+              m(
+                "div.table-responsive",
+                m(
+                  "table.table.table-sm.mb-0",
+                  m(
+                    "tbody",
+                    this._nginxRows().map(function (row) {
+                      return m("tr", [m("th", { scope: "row" }, row[0]), m("td.text-end", row[1])]);
+                    }),
+                  ),
+                ),
+              ),
+            ],
+      ]),
+    ]);
+  }
+
+  _historyPanel() {
+    return m(".col-sm-12", [
       m(".bg-light.rounded.h-100.p-4", [
         m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "30-Day Disk History")),
         this.model.isNeverReported()
@@ -126,10 +182,16 @@ class HealthView {
   }
 
   view() {
+    const hasDiskSummary = this.model.summary !== null;
+    const hasNginxSnapshot = this.model.nginxSnapshot !== null || this.model.nginxError !== null;
+
     return m(".container-fluid.pt-4.px-4", [
       this.model.isLoading ? m(".bg-light.rounded.p-4.mb-4", "Loading system health...") : null,
       this.model.error ? m(".alert.alert-danger.mb-4", this.model.error) : null,
-      this.model.summary ? m(".row.g-4", [this._usagePanel(), this._historyPanel()]) : null,
+      hasDiskSummary
+        ? m("div", [m(".row.g-4", [this._usagePanel(), this._nginxPanel()]), m(".row.g-4.mt-0", [this._historyPanel()])])
+        : null,
+      !hasDiskSummary && hasNginxSnapshot ? m(".row.g-4", [this._nginxPanel()]) : null,
     ]);
   }
 }
