@@ -39,7 +39,6 @@ class Domains(MethodView):
                         'campaign_id': domain.campaign_id,
                         'is_a_record_set': (None if domain.is_a_record_set is None else bool(domain.is_a_record_set)),
                         'is_disabled': bool(domain.is_disabled),
-                        'cookie_name': domain_service.cookie_name(domain.hostname, domain.purpose),
                     }
                 )
                 for domain in domains
@@ -61,7 +60,6 @@ class Domains(MethodView):
                 'campaign_id': domain.campaign_id,
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
-                'cookie_name': domain_service.cookie_name(domain.hostname, domain.purpose),
             }
         )
 
@@ -81,7 +79,6 @@ class Domain(MethodView):
                 'campaign_id': domain.campaign_id,
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
-                'cookie_name': domain_service.cookie_name(domain.hostname, domain.purpose),
             }
         )
 
@@ -105,6 +102,5 @@ class Domain(MethodView):
                 'campaign_id': domain.campaign_id,
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
-                'cookie_name': domain_service.cookie_name(domain.hostname, domain.purpose),
             }
         )

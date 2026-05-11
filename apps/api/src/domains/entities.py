@@ -12,3 +12,13 @@ class Domain(Entity):
 
     class Meta:
         table_name = 'domain'
+
+
+class DomainCookie(Entity):
+    domain = ForeignKeyField(Domain, on_delete='CASCADE')
+    name = CharField(max_length=64)
+    opaque_name = CharField(max_length=64)
+
+    class Meta:
+        table_name = 'domain_cookie'
+        indexes = ((('domain', 'name'), True), (('domain', 'opaque_name'), True))

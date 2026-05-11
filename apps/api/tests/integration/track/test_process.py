@@ -28,7 +28,7 @@ def ip2location_mock(environment):
 
 class TestTrackRedirect:
     def test_track_redirect__tracks_discard_when_no_flow_matches(
-        self, client, campaign, write_to_db, read_from_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
     ):
         click_id = uuid4()
         write_to_db(
@@ -77,7 +77,7 @@ class TestTrackRedirect:
             'created_at': mock.ANY,
         }
 
-    def test_track_redirect(self, client, campaign, flow, read_from_db, ip2location_mock):
+    def test_track_redirect(self, client, campaign, domain, flow, read_from_db, ip2location_mock):
         click_id = uuid4()
         request_payload = {
             'clickId': str(click_id),
@@ -95,6 +95,15 @@ class TestTrackRedirect:
         response = client.get(f'/process/{campaign["id"]}', query_string=request_payload)
         assert response.status_code == 302, response.text
         assert response.headers['Location'] == flow['redirect_url']  # user gets redirected
+        cookie_row = read_from_db('domain_cookie', filters={'domain_id': domain['id'], 'name': 'flow_id'})
+        assert cookie_row == {
+            'id': mock.ANY,
+            'created_at': mock.ANY,
+            'domain_id': domain['id'],
+            'name': 'flow_id',
+            'opaque_name': mock.ANY,
+        }
+        assert response.headers['Set-Cookie'].startswith(f'{cookie_row["opaque_name"]}={flow["id"]};')
 
         assert ip2location_mock.get_country_short.called
 
@@ -119,7 +128,7 @@ class TestTrackRedirect:
             'tid': request_payload['tid'],
         }
 
-    def test_track_redirect__matches_flow_without_rule(self, client, campaign, write_to_db, ip2location_mock):
+    def test_track_redirect__matches_flow_without_rule(self, client, campaign, domain, write_to_db, ip2location_mock):
         write_to_db(
             'flow',
             {
@@ -153,13 +162,15 @@ class TestTrackRedirect:
         assert response.status_code == 302, response.text
         assert response.headers['Location'] == fallback_flow['redirect_url']
 
-    def test_track_redirect__missing_click_id(self, client, campaign, flow, ip2location_mock):
+    def test_track_redirect__missing_click_id(self, client, campaign, domain, flow, ip2location_mock):
         response = client.get(f'/process/{campaign["id"]}')
 
         assert response.status_code == 302, response.text
         assert response.headers['Location'] == flow['redirect_url']
 
-    def test_track_redirect__ignores_disabled_and_deleted_flows(self, client, campaign, write_to_db, ip2location_mock):
+    def test_track_redirect__ignores_disabled_and_deleted_flows(
+        self, client, campaign, domain, write_to_db, ip2location_mock
+    ):
         write_to_db(
             'flow',
             {
@@ -206,7 +217,7 @@ class TestTrackRedirect:
         assert response.headers['Location'] == runnable_flow['redirect_url']
 
     def test_track_redirect__returns_no_match_when_only_non_runnable_flows_remain(
-        self, client, campaign, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, ip2location_mock
     ):
         write_to_db(
             'flow',
@@ -241,7 +252,7 @@ class TestTrackRedirect:
         assert response.text == ''
 
     def test_track_redirect__does_not_track_discard_when_flow_matches(
-        self, client, campaign, flow, read_from_db, ip2location_mock
+        self, client, campaign, domain, flow, read_from_db, ip2location_mock
     ):
         response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
 
@@ -250,7 +261,7 @@ class TestTrackRedirect:
         assert read_from_db('track_discard') is None
 
     def test_track_redirect__generates_click_id_when_missing(
-        self, client, campaign, write_to_db, read_from_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
     ):
         write_to_db(
             'flow',
@@ -288,7 +299,7 @@ class TestTrackRedirect:
         assert discard['click_id'] == click['click_id']
 
     def test_track_redirect__uses_deterministic_order_for_runnable_flows(
-        self, client, campaign, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, ip2location_mock
     ):
         first_inserted_flow = write_to_db(
             'flow',
@@ -346,7 +357,7 @@ class TestTrackLanding:
             httpx.Response(status_code=200, text=landing_page_content)
         )
 
-    def test_track_landing(self, client, campaign, flow, read_from_db, ip2location_mock, landing_render_mock):
+    def test_track_landing(self, client, campaign, domain, flow, read_from_db, ip2location_mock, landing_render_mock):
         click_id = uuid4()
         request_payload = {
             'clickId': str(click_id),
@@ -388,3 +399,69 @@ class TestTrackLanding:
             'status': request_payload['status'],
             'tid': request_payload['tid'],
         }
+
+    def test_track_landing__sets_domain_sticky_cookie_on_first_visit(
+        self, client, campaign, domain, environment, write_to_db, read_from_db, ip2location_mock, respx_mock
+    ):
+        render_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Render flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 1,
+                'action_type': 'render',
+                'redirect_url': None,
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        respx_mock.get(f'{environment["LANDING_PAGE_RENDERER_BASE_URL"]}/{render_flow["id"]}/').mock(
+            httpx.Response(status_code=200, text='<html>Sticky landing</html>')
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 200, response.text
+        assert response.text == '<html>Sticky landing</html>'
+        cookie_row = read_from_db('domain_cookie', filters={'domain_id': domain['id'], 'name': 'flow_id'})
+        assert cookie_row == {
+            'id': mock.ANY,
+            'created_at': mock.ANY,
+            'domain_id': domain['id'],
+            'name': 'flow_id',
+            'opaque_name': mock.ANY,
+        }
+        cookie_header = response.headers['Set-Cookie']
+        assert cookie_row['opaque_name'] in cookie_header
+        assert f'={render_flow["id"]}' in cookie_header
+        assert 'HttpOnly' in cookie_header
+        assert 'Max-Age=31536000' in cookie_header
+        assert 'Path=/' in cookie_header
+
+    def test_track_landing__returns_404_when_campaign_domain_is_missing(self, client, campaign, read_from_db):
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Domain does not exist'}
+        assert read_from_db('track_click') is None
+
+    def test_track_landing__returns_404_when_campaign_domain_is_disabled(
+        self, client, campaign, read_from_db, write_to_db
+    ):
+        write_to_db(
+            'domain',
+            {
+                'hostname': 'campaign.example.com',
+                'purpose': 'campaign',
+                'campaign_id': campaign['id'],
+                'is_a_record_set': True,
+                'is_disabled': True,
+            },
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Domain does not exist'}
+        assert read_from_db('track_click') is None

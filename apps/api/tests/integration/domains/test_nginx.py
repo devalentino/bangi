@@ -264,6 +264,7 @@ class TestDomainNginxConfigurations:
         authorization,
         campaign,
         nginx_workspace_base_dir,
+        read_from_db,
         write_to_db,
     ):
         hostname = 'campaign-attached.example.com'
@@ -287,6 +288,14 @@ class TestDomainNginxConfigurations:
         assert response.status_code == 200, response.text
         available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / hostname
         versioned_configs = sorted(available_dir.glob('*.conf'))
+        cookie_row = read_from_db('domain_cookie', filters={'domain_id': domain['id'], 'name': 'flow_id'})
+        assert cookie_row == {
+            'id': mock.ANY,
+            'created_at': mock.ANY,
+            'domain_id': domain['id'],
+            'name': 'flow_id',
+            'opaque_name': mock.ANY,
+        }
 
         assert len(versioned_configs) == 1
         assert versioned_configs[0].read_text(encoding='utf-8') == (
@@ -296,12 +305,21 @@ class TestDomainNginxConfigurations:
             '    listen [::]:80;\n'
             f'    server_name {hostname};\n'
             '\n'
+            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign["id"]}";\n'
+            f'    if ($cookie_{cookie_row["opaque_name"]} != "") {{\n'
+            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_row["opaque_name"]}/";\n'
+            '    }\n'
+            '\n'
             '    location = / {\n'
-            f'        proxy_pass http://127.0.0.1:8000/process/{campaign["id"]};\n'
+            '        proxy_pass $bangi_campaign_upstream;\n'
             '    }\n'
             '\n'
             '    location / {\n'
-            '        return 404;\n'
+            f'        if ($cookie_{cookie_row["opaque_name"]} = "") {{\n'
+            '            return 404;\n'
+            '        }\n'
+            '\n'
+            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_row["opaque_name"]}/;\n'
             '    }\n'
             '}\n'
         )
@@ -388,6 +406,10 @@ class TestDomainNginxConfigurations:
             '        proxy_pass http://127.0.0.1:8000;\n'
             '    }\n'
             '\n'
+            '    location /process {\n'
+            '        return 404;\n'
+            '    }\n'
+            '\n'
             '    location / {\n'
             '        proxy_pass http://127.0.0.1:8080;\n'
             '    }\n'
@@ -416,6 +438,10 @@ class TestDomainNginxConfigurations:
             '\n'
             '    location /api/ {\n'
             '        proxy_pass http://127.0.0.1:8000;\n'
+            '    }\n'
+            '\n'
+            '    location /process {\n'
+            '        return 404;\n'
             '    }\n'
             '\n'
             '    location / {\n'
@@ -470,6 +496,7 @@ class TestDomainNginxConfigurations:
         authorization,
         campaign,
         nginx_workspace_base_dir,
+        read_from_db,
         write_to_db,
     ):
         hostname = 'dashboard-attached.example.com'
@@ -493,6 +520,14 @@ class TestDomainNginxConfigurations:
         assert response.status_code == 200, response.text
         available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / hostname
         versioned_configs = sorted(available_dir.glob('*.conf'))
+        cookie_row = read_from_db('domain_cookie', filters={'domain_id': domain['id'], 'name': 'flow_id'})
+        assert cookie_row == {
+            'id': mock.ANY,
+            'created_at': mock.ANY,
+            'domain_id': domain['id'],
+            'name': 'flow_id',
+            'opaque_name': mock.ANY,
+        }
 
         assert len(versioned_configs) == 1
         assert versioned_configs[0].read_text(encoding='utf-8') == (
@@ -502,12 +537,21 @@ class TestDomainNginxConfigurations:
             '    listen [::]:80;\n'
             f'    server_name {hostname};\n'
             '\n'
+            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign["id"]}";\n'
+            f'    if ($cookie_{cookie_row["opaque_name"]} != "") {{\n'
+            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_row["opaque_name"]}/";\n'
+            '    }\n'
+            '\n'
             '    location = / {\n'
-            f'        proxy_pass http://127.0.0.1:8000/process/{campaign["id"]};\n'
+            '        proxy_pass $bangi_campaign_upstream;\n'
             '    }\n'
             '\n'
             '    location / {\n'
-            '        return 404;\n'
+            f'        if ($cookie_{cookie_row["opaque_name"]} = "") {{\n'
+            '            return 404;\n'
+            '        }\n'
+            '\n'
+            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_row["opaque_name"]}/;\n'
             '    }\n'
             '}\n'
         )
