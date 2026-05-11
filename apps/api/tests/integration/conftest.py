@@ -35,8 +35,6 @@ def mock_environment(mysql, landing_pages_base_path, nginx_workspace_base_dir):
         'MARIADB_DATABASE': 'test',
         'LANDING_PAGES_BASE_PATH': landing_pages_base_path,
         'NGINX_WORKSPACE_BASE_DIR': nginx_workspace_base_dir,
-        'BANGI_HOST_OPS_SSH_USER': 'bangi-ops',
-        'BANGI_HOST_OPS_SSH_HOST': 'host.docker.internal',
         'BANGI_HOST_OPS_SSH_KEY_PATH': '/tmp/bangi-ops-id_ed25519',
         'BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH': '/tmp/bangi-ops-known_hosts',
     }
