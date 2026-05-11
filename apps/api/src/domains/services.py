@@ -1,19 +1,20 @@
-import hashlib
 import logging
+import secrets
 import subprocess
 import time
+import string
 from pathlib import Path
 from typing import Annotated, Protocol
 from uuid import uuid4
 
-from peewee import fn
+from peewee import IntegrityError, fn
 from wireup import Inject, injectable
 
 from src.core.entities import Campaign
 from src.core.enums import SortOrder
 from src.core.exceptions import CampaignDoesNotExistError
-from src.domains.entities import Domain
-from src.domains.enums import DomainPurpose
+from src.domains.entities import Domain, DomainCookie
+from src.domains.enums import DomainCookieName, DomainPurpose
 from src.domains.exceptions import (
     CampaignAlreadyBoundError,
     DashboardDomainCannotAttachCampaignError,
@@ -24,9 +25,37 @@ from src.health.services import HealthService
 
 logger = logging.getLogger(__name__)
 
+@injectable
+class DomainCookieService:
+    def get_or_create_opaque_name(self, domain_id: int, name: DomainCookieName) -> str:
+        cookie_name = name.value
+        cookie = DomainCookie.get_or_none(
+            (DomainCookie.domain == domain_id) & (DomainCookie.name == cookie_name)
+        )
+        if cookie is not None:
+            return cookie.opaque_name
 
-def _cookie_name_for_hostname(hostname: str, length: int) -> str:
-    return hashlib.sha256(hostname.encode()).hexdigest()[:length]
+        while True:
+            opaque_name = self._generate_opaque_name()
+            try:
+                cookie = DomainCookie.create(domain=domain_id, name=cookie_name, opaque_name=opaque_name)
+            except IntegrityError:
+                # Another request may have created the logical cookie row already.
+                # Re-read first; if it still does not exist, the random opaque name likely collided.
+                cookie = DomainCookie.get_or_none(
+                    (DomainCookie.domain == domain_id) & (DomainCookie.name == cookie_name)
+                )
+                if cookie is not None:
+                    return cookie.opaque_name
+                continue
+
+            return cookie.opaque_name
+
+    @staticmethod
+    def _generate_opaque_name() -> str:
+        alphabet = string.ascii_lowercase + string.digits
+        length = secrets.randbelow(6) + 2
+        return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
 class WebserverService(Protocol):
@@ -39,12 +68,7 @@ class WebserverService(Protocol):
 
 @injectable
 class DomainService:
-    def __init__(
-        self,
-        flow_id_cookie_key_length: Annotated[int, Inject(config='FLOW_ID_COOKIE_KEY_LENGTH')],
-        webserver_service: WebserverService,
-    ):
-        self.flow_id_cookie_key_length = flow_id_cookie_key_length
+    def __init__(self, webserver_service: WebserverService):
         self.webserver_service = webserver_service
 
     def get(self, id):
@@ -131,11 +155,6 @@ class DomainService:
         if previous_hostname != domain.hostname and snapshot.validation_status == 'success':
             self.webserver_service.disable(previous_hostname)
         return domain
-
-    def cookie_name(self, hostname, purpose):
-        if purpose != DomainPurpose.campaign:
-            return None
-        return _cookie_name_for_hostname(hostname, self.flow_id_cookie_key_length)
 
     def get_by_campaign_id(self, campaign_id):
         domain = Domain.get_or_none(
@@ -224,12 +243,12 @@ class NginxService:
         self,
         health_service: HealthService,
         host_command_executor_service: HostCommandExecutorService,
-        flow_id_cookie_key_length: Annotated[int, Inject(config='FLOW_ID_COOKIE_KEY_LENGTH')],
+        domain_cookie_service: DomainCookieService,
         nginx_workspace_base_dir: Annotated[str, Inject(config='NGINX_WORKSPACE_BASE_DIR')],
     ):
         self.health_service = health_service
         self.host_command_executor_service = host_command_executor_service
-        self.flow_id_cookie_key_length = flow_id_cookie_key_length
+        self.domain_cookie_service = domain_cookie_service
         self.nginx_workspace_base_dir = Path(nginx_workspace_base_dir)
 
     def publish(self, hostname: str):
@@ -311,6 +330,10 @@ class NginxService:
             '        proxy_pass http://127.0.0.1:8000;\n'
             '    }\n'
             '\n'
+            '    location /process {\n'
+            '        return 404;\n'
+            '    }\n'
+            '\n'
             '    location / {\n'
             '        proxy_pass http://127.0.0.1:8080;\n'
             '    }\n'
@@ -318,7 +341,7 @@ class NginxService:
         )
 
     def _render_campaign_domain_config(self, domain: Domain) -> str:
-        cookie_name = _cookie_name_for_hostname(domain.hostname, self.flow_id_cookie_key_length)
+        cookie_name = self.domain_cookie_service.get_or_create_opaque_name(domain.id, DomainCookieName.flow_id)
         return (
             '# Managed by Bangi. Campaign domain.\n'
             'server {\n'

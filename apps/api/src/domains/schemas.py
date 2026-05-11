@@ -67,7 +67,6 @@ class DomainResponseSchema(Schema):
     campaignId = fields.Integer(allow_none=True)
     isARecordSet = fields.Boolean(allow_none=True)
     isDisabled = fields.Boolean(required=True)
-    cookieName = fields.String(allow_none=True)
 
 
 class DomainListResponseSchema(Schema):

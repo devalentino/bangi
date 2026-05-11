@@ -6,6 +6,10 @@ class DomainPurpose(str, Enum):
     dashboard = 'dashboard'
 
 
+class DomainCookieName(str, Enum):
+    flow_id = 'flow_id'
+
+
 class DomainSortBy(str, Enum):
     id = 'id'
     createdAt = 'createdAt'

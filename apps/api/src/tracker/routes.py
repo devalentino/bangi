@@ -7,7 +7,8 @@ from src.container import container
 from src.core.blueprint import Blueprint
 from src.core.enums import FlowActionType
 from src.core.services import ClientService, FlowService
-from src.domains.services import DomainService
+from src.domains.enums import DomainCookieName
+from src.domains.services import DomainCookieService, DomainService
 from src.tracker.schemas import (
     TrackClickRequestSchema,
     TrackLeadRequestSchema,
@@ -71,10 +72,13 @@ class Process(MethodView):
     @process_blueprint.arguments(TrackProcessRequestSchema, location='query')
     @process_blueprint.response(200)
     def get(self, process_payload, campaignId):
+        domain_service = container.get(DomainService)
+        domain = domain_service.get_by_campaign_id(campaignId)
+
         track_click_service = container.get(TrackService)
         client_service = container.get(ClientService)
         flow_service = container.get(FlowService)
-        domain_service = container.get(DomainService)
+        cookie_service = container.get(DomainCookieService)
 
         click_id = process_payload.pop('clickId', None)
         if click_id is None:
@@ -85,8 +89,7 @@ class Process(MethodView):
         client = client_service.client_info(
             request.user_agent.string, request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
         )
-        domain = domain_service.get_by_campaign_id(campaignId)
-        cookie_name = domain_service.cookie_name(domain.hostname, domain.purpose)
+        cookie_name = cookie_service.get_or_create_opaque_name(domain.id, DomainCookieName.flow_id)
         cookie_value = request.cookies.get(cookie_name)
         action_type, subject, flow_id = flow_service.process_flows(campaignId, client, cookie_value)
 
