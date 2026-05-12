@@ -3,10 +3,13 @@ import secrets
 import string
 import subprocess
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Protocol
 from uuid import uuid4
 
+import dns.exception
+import dns.resolver
 from peewee import JOIN, IntegrityError, fn
 from wireup import Inject, injectable
 
@@ -24,6 +27,14 @@ from src.domains.exceptions import (
 from src.health.services import HealthService
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class WebserverPublishResult:
+    validation_status: str
+    validation_error: str | None
+    sites_available_files: list[str]
+    sites_enabled_refs: list[str]
 
 
 @injectable
@@ -58,17 +69,47 @@ class DomainCookieService:
 
 
 class WebserverService(Protocol):
-    def publish(self, hostname: str):
+    def publish(
+        self,
+        hostname: str,
+        purpose: str,
+        campaign_id: int | None,
+        flow_id_cookie_name: str | None,
+        is_disabled: bool,
+        is_a_record_set: bool | None,
+    ) -> WebserverPublishResult:
         pass
 
     def disable(self, hostname: str) -> None:
         pass
 
 
+class DnsService:
+    @staticmethod
+    def has_a_record(hostname: str, public_host_ip: str) -> bool:
+        if not public_host_ip:
+            return False
+
+        try:
+            answers = dns.resolver.resolve(hostname, 'A', lifetime=5)
+        except dns.exception.DNSException:
+            logger.error('Failed to resolve A record for managed domain', extra={'hostname': hostname})
+            return False
+
+        return any(answer.address == public_host_ip for answer in answers)
+
+
 @injectable
 class DomainService:
-    def __init__(self, webserver_service: WebserverService):
+    def __init__(
+        self,
+        webserver_service: WebserverService,
+        health_service: HealthService,
+        domain_cookie_service: DomainCookieService,
+    ):
         self.webserver_service = webserver_service
+        self.health_service = health_service
+        self.domain_cookie_service = domain_cookie_service
 
     def get(self, id):
         try:
@@ -104,7 +145,7 @@ class DomainService:
             is_a_record_set=None,
         )
         domain.save()
-        self.webserver_service.publish(domain.hostname)
+        self._publish_domain(domain)
         return domain
 
     def update(
@@ -151,7 +192,7 @@ class DomainService:
             domain.is_disabled = is_disabled
 
         domain.save()
-        snapshot = self.webserver_service.publish(domain.hostname)
+        snapshot = self._publish_domain(domain)
         if previous_hostname != domain.hostname and snapshot.validation_status == 'success':
             self.webserver_service.disable(previous_hostname)
         return domain
@@ -176,6 +217,31 @@ class DomainService:
         query = Domain.select(fn.count(Domain.id)).where((Domain.campaign == campaign_id) & (Domain.id != domain_id))
         if query.scalar():
             raise CampaignAlreadyBoundError()
+
+    def _publish_domain(self, domain) -> WebserverPublishResult:
+        flow_id_cookie_name = None
+        if domain.purpose == DomainPurpose.campaign and domain.campaign_id is not None:
+            flow_id_cookie_name = self.domain_cookie_service.get_or_create_opaque_name(
+                domain.id,
+                DomainCookieName.flow_id,
+            )
+
+        snapshot = self.webserver_service.publish(
+            domain.hostname,
+            domain.purpose,
+            domain.campaign_id,
+            flow_id_cookie_name,
+            bool(domain.is_disabled),
+            None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
+        )
+        self.health_service.record_nginx_validation_snapshot(
+            domain_id=domain.id,
+            validation_status=snapshot.validation_status,
+            validation_error=snapshot.validation_error,
+            sites_available_files=snapshot.sites_available_files,
+            sites_enabled_refs=snapshot.sites_enabled_refs,
+        )
+        return snapshot
 
 
 class HostCommandExecutionError(RuntimeError):
@@ -243,40 +309,66 @@ class HostCommandExecutorService:
 class NginxService:
     def __init__(
         self,
-        health_service: HealthService,
         host_command_executor_service: HostCommandExecutorService,
-        domain_cookie_service: DomainCookieService,
         nginx_workspace_base_dir: Annotated[str, Inject(config='NGINX_WORKSPACE_BASE_DIR')],
     ):
-        self.health_service = health_service
         self.host_command_executor_service = host_command_executor_service
-        self.domain_cookie_service = domain_cookie_service
         self.nginx_workspace_base_dir = Path(nginx_workspace_base_dir)
 
-    def publish(self, hostname: str):
-        domain = Domain.get(Domain.hostname == hostname)
+    def publish(
+        self,
+        hostname: str,
+        purpose: str,
+        campaign_id: int | None,
+        flow_id_cookie_name: str | None,
+        is_disabled: bool,
+        is_a_record_set: bool | None,
+    ) -> WebserverPublishResult:
         version = self._next_version()
-        available_dir = self._site_available_dir(domain.hostname)
-        enabled_link = self._site_enabled_link(domain.hostname)
+        available_dir = self._site_available_dir(hostname)
+        enabled_link = self._site_enabled_link(hostname)
         versioned_config_path = available_dir / f'{version}.conf'
         previous_active_target = self._current_active_target(enabled_link)
 
-        self._write_versioned_config(versioned_config_path, self._render_domain_config(domain))
+        config_content = self._render_domain_config(
+            hostname=hostname,
+            purpose=purpose,
+            campaign_id=campaign_id,
+            flow_id_cookie_name=flow_id_cookie_name,
+            is_disabled=is_disabled,
+            is_a_record_set=is_a_record_set,
+        )
+        self._write_versioned_config(versioned_config_path, config_content)
         validation_error = self._validate_host_nginx()
         if validation_error is not None:
-            return self._record_snapshot(domain, 'failed', validation_error)
+            return WebserverPublishResult(
+                validation_status='failed',
+                validation_error=validation_error,
+                sites_available_files=self._list_sites_available_files(),
+                sites_enabled_refs=self._list_sites_enabled_refs(),
+            )
 
         self._activate_version(enabled_link, versioned_config_path)
 
         reload_error = self._reload_host_nginx()
         if reload_error is not None:
             self._restore_previous_active(enabled_link, previous_active_target)
-            return self._record_snapshot(domain, 'failed', reload_error)
+            return WebserverPublishResult(
+                validation_status='failed',
+                validation_error=reload_error,
+                sites_available_files=self._list_sites_available_files(),
+                sites_enabled_refs=self._list_sites_enabled_refs(),
+            )
 
-        return self._record_snapshot(domain, 'success', None)
+        return WebserverPublishResult(
+            validation_status='success',
+            validation_error=None,
+            sites_available_files=self._list_sites_available_files(),
+            sites_enabled_refs=self._list_sites_enabled_refs(),
+        )
 
     def _next_version(self) -> str:
-        timestamp = int(time.time())
+        timestamp = time.time_ns()
         return f'{timestamp}-{uuid4().hex[:8]}'
 
     def _site_available_dir(self, hostname: str) -> Path:
@@ -294,39 +386,46 @@ class NginxService:
         temporary_path.write_text(config_content, encoding='utf-8')
         temporary_path.replace(destination_path)
 
-    def _render_domain_config(self, domain: Domain) -> str:
-        if (
-            domain.is_disabled
-            or domain.is_a_record_set is False
-            or (domain.purpose == 'campaign' and domain.campaign_id is None)
-        ):
-            return self._render_disabled_domain_config(domain)
+    def _render_domain_config(
+        self,
+        *,
+        hostname: str,
+        purpose: str,
+        campaign_id: int | None,
+        flow_id_cookie_name: str | None,
+        is_disabled: bool,
+        is_a_record_set: bool | None,
+    ) -> str:
+        if is_disabled or is_a_record_set is False or (purpose == 'campaign' and campaign_id is None):
+            return self.render_disabled_domain_config(hostname)
 
-        if domain.purpose == 'dashboard':
-            return self._render_dashboard_domain_config(domain)
+        if purpose == 'dashboard':
+            return self.render_dashboard_domain_config(hostname)
 
-        return self._render_campaign_domain_config(domain)
+        if flow_id_cookie_name is None:
+            raise ValueError('flow_id_cookie_name is required for campaign domains')
+        return self.render_campaign_domain_config(hostname, campaign_id, flow_id_cookie_name)
 
     @staticmethod
-    def _render_disabled_domain_config(domain: Domain) -> str:
+    def render_disabled_domain_config(hostname: str) -> str:
         return (
             '# Managed by Bangi. Disabled or unroutable domain.\n'
             'server {\n'
             '    listen 80;\n'
             '    listen [::]:80;\n'
-            f'    server_name {domain.hostname};\n'
+            f'    server_name {hostname};\n'
             '    return 503;\n'
             '}\n'
         )
 
     @staticmethod
-    def _render_dashboard_domain_config(domain: Domain) -> str:
+    def render_dashboard_domain_config(hostname: str) -> str:
         return (
             '# Managed by Bangi. Dashboard domain.\n'
             'server {\n'
             '    listen 80;\n'
             '    listen [::]:80;\n'
-            f'    server_name {domain.hostname};\n'
+            f'    server_name {hostname};\n'
             '\n'
             '    location /api/ {\n'
             '        proxy_pass http://127.0.0.1:8000;\n'
@@ -342,18 +441,18 @@ class NginxService:
             '}\n'
         )
 
-    def _render_campaign_domain_config(self, domain: Domain) -> str:
-        cookie_name = self.domain_cookie_service.get_or_create_opaque_name(domain.id, DomainCookieName.flow_id)
+    @staticmethod
+    def render_campaign_domain_config(hostname: str, campaign_id: int, flow_id_cookie_name: str) -> str:
         return (
             '# Managed by Bangi. Campaign domain.\n'
             'server {\n'
             '    listen 80;\n'
             '    listen [::]:80;\n'
-            f'    server_name {domain.hostname};\n'
+            f'    server_name {hostname};\n'
             '\n'
-            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{domain.campaign_id}";\n'
-            f'    if ($cookie_{cookie_name} != "") {{\n'
-            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_name}/";\n'
+            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}";\n'
+            f'    if ($cookie_{flow_id_cookie_name} != "") {{\n'
+            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/";\n'
             '    }\n'
             '\n'
             '    location = / {\n'
@@ -361,11 +460,11 @@ class NginxService:
             '    }\n'
             '\n'
             '    location / {\n'
-            f'        if ($cookie_{cookie_name} = "") {{\n'
+            f'        if ($cookie_{flow_id_cookie_name} = "") {{\n'
             '            return 404;\n'
             '        }\n'
             '\n'
-            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_name}/;\n'
+            f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/;\n'
             '    }\n'
             '}\n'
         )
@@ -417,15 +516,6 @@ class NginxService:
         enabled_link = self._site_enabled_link(hostname)
         if enabled_link.exists() or enabled_link.is_symlink():
             enabled_link.unlink()
-
-    def _record_snapshot(self, domain: Domain, validation_status: str, validation_error: str | None):
-        return self.health_service.record_nginx_validation_snapshot(
-            domain_id=domain.id,
-            validation_status=validation_status,
-            validation_error=validation_error,
-            sites_available_files=self._list_sites_available_files(),
-            sites_enabled_refs=self._list_sites_enabled_refs(),
-        )
 
     def _list_sites_available_files(self) -> list[str]:
         available_root = self.nginx_workspace_base_dir / 'sites-available'
