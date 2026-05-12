@@ -243,6 +243,7 @@ class DomainService:
         )
         return snapshot
 
+
 class HostCommandExecutionError(RuntimeError):
     pass
 
