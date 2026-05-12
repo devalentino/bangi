@@ -7,7 +7,7 @@ import time
 
 from src.container import container
 from src.core.supervisor import WorkerContext, register_worker
-from src.domains.services import DnsService, NginxService, WebserverService
+from src.domains.services import DnsService, WebserverService
 
 logger = logging.getLogger(__name__)
 
