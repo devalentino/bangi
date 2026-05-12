@@ -17,10 +17,9 @@ class TestDnsRefreshWorker:
     def mock_cleanup_discard_worker_settings(self, monkeypatch):
         monkeypatch.setattr('src.domains.workers.DOMAIN_DNS_REFRESH_PERIOD_SECONDS', 0.1)
 
-    def test_refreshes_unknown_domain_state_and_publishes_when_a_record_points_to_public_ip(
-        self, client, read_from_db, write_to_db, monkeypatch, mock_subprocess_run
-    ):
-        domain = write_to_db(
+    @pytest.fixture
+    def domain(self, write_to_db):
+        return write_to_db(
             'domain',
             {
                 'hostname': 'example.com',
@@ -31,13 +30,17 @@ class TestDnsRefreshWorker:
             },
         )
 
+    @pytest.mark.usefixtures('domain')
+    def test_refreshes_unknown_domain_state_and_publishes_when_a_record_points_to_public_ip(
+        self, client, domain, read_from_db, mock_subprocess_run
+    ):
         client.get('/api/v2/health')
         sleep(0.3)
 
         updated = read_from_db('domain', filters={'id': domain['id']})
         snapshot = read_from_db('health_nginx_validation_snapshot', filters={'domain_id': domain['id']})
 
-        assert updated['is_a_record_set'] is True
+        assert updated['is_a_record_set']
         assert snapshot['validation_status'] == 'success'
         assert snapshot['validation_error'] is None
         assert snapshot['domain_id'] == domain['id']

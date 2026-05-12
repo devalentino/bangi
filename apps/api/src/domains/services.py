@@ -72,9 +72,9 @@ class WebserverService(Protocol):
     def publish(
         self,
         hostname: str,
-        domain_id: int,
         purpose: str,
         campaign_id: int | None,
+        flow_id_cookie_name: str | None,
         is_disabled: bool,
         is_a_record_set: bool | None,
     ) -> WebserverPublishResult:
@@ -105,9 +105,11 @@ class DomainService:
         self,
         webserver_service: WebserverService,
         health_service: HealthService,
+        domain_cookie_service: DomainCookieService,
     ):
         self.webserver_service = webserver_service
         self.health_service = health_service
+        self.domain_cookie_service = domain_cookie_service
 
     def get(self, id):
         try:
@@ -217,11 +219,18 @@ class DomainService:
             raise CampaignAlreadyBoundError()
 
     def _publish_domain(self, domain) -> WebserverPublishResult:
+        flow_id_cookie_name = None
+        if domain.purpose == DomainPurpose.campaign and domain.campaign_id is not None:
+            flow_id_cookie_name = self.domain_cookie_service.get_or_create_opaque_name(
+                domain.id,
+                DomainCookieName.flow_id,
+            )
+
         snapshot = self.webserver_service.publish(
             domain.hostname,
-            domain.id,
             domain.purpose,
             domain.campaign_id,
+            flow_id_cookie_name,
             bool(domain.is_disabled),
             None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
         )
@@ -300,19 +309,17 @@ class NginxService:
     def __init__(
         self,
         host_command_executor_service: HostCommandExecutorService,
-        domain_cookie_service: DomainCookieService,
         nginx_workspace_base_dir: Annotated[str, Inject(config='NGINX_WORKSPACE_BASE_DIR')],
     ):
         self.host_command_executor_service = host_command_executor_service
-        self.domain_cookie_service = domain_cookie_service
         self.nginx_workspace_base_dir = Path(nginx_workspace_base_dir)
 
     def publish(
         self,
         hostname: str,
-        domain_id: int,
         purpose: str,
         campaign_id: int | None,
+        flow_id_cookie_name: str | None,
         is_disabled: bool,
         is_a_record_set: bool | None,
     ) -> WebserverPublishResult:
@@ -324,9 +331,9 @@ class NginxService:
 
         config_content = self._render_domain_config(
             hostname=hostname,
-            domain_id=domain_id,
             purpose=purpose,
             campaign_id=campaign_id,
+            flow_id_cookie_name=flow_id_cookie_name,
             is_disabled=is_disabled,
             is_a_record_set=is_a_record_set,
         )
@@ -382,9 +389,9 @@ class NginxService:
         self,
         *,
         hostname: str,
-        domain_id: int,
         purpose: str,
         campaign_id: int | None,
+        flow_id_cookie_name: str | None,
         is_disabled: bool,
         is_a_record_set: bool | None,
     ) -> str:
@@ -394,7 +401,8 @@ class NginxService:
         if purpose == 'dashboard':
             return self.render_dashboard_domain_config(hostname)
 
-        flow_id_cookie_name = self.domain_cookie_service.get_or_create_opaque_name(domain_id, DomainCookieName.flow_id)
+        if flow_id_cookie_name is None:
+            raise ValueError('flow_id_cookie_name is required for campaign domains')
         return self.render_campaign_domain_config(hostname, campaign_id, flow_id_cookie_name)
 
     @staticmethod

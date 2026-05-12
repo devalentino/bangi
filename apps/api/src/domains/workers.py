@@ -1,11 +1,13 @@
 import json
 import logging
 import os
+import secrets
+import string
 import time
 
 from src.container import container
 from src.core.supervisor import WorkerContext, register_worker
-from src.domains.services import DnsService, NginxService
+from src.domains.services import DnsService, NginxService, WebserverService
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,36 @@ def _fetch_domains_needing_refresh(database):
         )
     )
     return cursor.fetchall()
+
+
+def _get_or_create_flow_id_cookie_name(database, domain_id: int) -> str:
+    cursor = database.execute_sql(
+        'SELECT opaque_name FROM domain_cookie WHERE domain_id = %s AND name = %s',
+        (domain_id, 'flow_id'),
+    )
+    row = cursor.fetchone()
+    if row is not None:
+        return row[0]
+
+    while True:
+        alphabet = string.ascii_lowercase + string.digits
+        length = secrets.randbelow(6) + 2
+        opaque_name = ''.join(secrets.choice(alphabet) for _ in range(length))
+        try:
+            database.execute_sql(
+                'INSERT INTO domain_cookie (domain_id, name, opaque_name) VALUES (%s, %s, %s)',
+                (domain_id, 'flow_id', opaque_name),
+            )
+            database.commit()
+            return opaque_name
+        except Exception:
+            cursor = database.execute_sql(
+                'SELECT opaque_name FROM domain_cookie WHERE domain_id = %s AND name = %s',
+                (domain_id, 'flow_id'),
+            )
+            row = cursor.fetchone()
+            if row is not None:
+                return row[0]
 
 
 def _bulk_update_domain_dns_states(database, updates: list[tuple[int, bool]]) -> None:
@@ -102,7 +134,7 @@ def refresh_domain_dns_worker(context: WorkerContext) -> None:
     )
 
     database = context.database
-    nginx_service = container.get(NginxService)
+    webserver_service = container.get(WebserverService)
     pending_updates = []
     processed_domain_ids = []
     pending_snapshots = []
@@ -117,11 +149,15 @@ def refresh_domain_dns_worker(context: WorkerContext) -> None:
             continue
 
         if current_state:
-            snapshot = nginx_service.publish(
+            flow_id_cookie_name = None
+            if purpose == 'campaign' and campaign_id is not None:
+                flow_id_cookie_name = _get_or_create_flow_id_cookie_name(database, domain_id)
+
+            snapshot = webserver_service.publish(
                 hostname,
-                domain_id,
                 purpose,
                 campaign_id,
+                flow_id_cookie_name,
                 bool(is_disabled),
                 current_state,
             )
