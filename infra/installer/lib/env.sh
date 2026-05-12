@@ -126,6 +126,21 @@ bangi_write_runtime_environment() {
         LANDING_PAGES_BASE_PATH
         IP2LOCATION_DB_PATH
         LANDING_PAGE_RENDERER_BASE_URL
+        BANGI_PUBLIC_HOST_IP
+    )
+
+    local runtime_required_keys=(
+        MARIADB_ROOT_PASSWORD
+        MARIADB_USER
+        MARIADB_PASSWORD
+        MARIADB_HOST
+        MARIADB_PORT
+        MARIADB_DATABASE
+        BASIC_AUTHENTICATION_USERNAME
+        BASIC_AUTHENTICATION_PASSWORD
+        LANDING_PAGES_BASE_PATH
+        IP2LOCATION_DB_PATH
+        LANDING_PAGE_RENDERER_BASE_URL
     )
 
     declare -gA BANGI_ENV_VALUES=()
@@ -142,8 +157,9 @@ bangi_write_runtime_environment() {
     bangi_env_set_if_missing BANGI_ENV_VALUES LANDING_PAGES_BASE_PATH "${BANGI_SHARED_LANDINGS_DIR}"
     bangi_env_set_if_missing BANGI_ENV_VALUES IP2LOCATION_DB_PATH "${BANGI_SHARED_IP2LOCATION_DIR}/IP2LOCATION-LITE-DB1.IPV6.BIN"
     bangi_env_set_if_missing BANGI_ENV_VALUES LANDING_PAGE_RENDERER_BASE_URL "http://landing-renderer"
+    bangi_env_set_if_missing BANGI_ENV_VALUES BANGI_PUBLIC_HOST_IP "$(bangi_detect_public_host)"
 
-    bangi_env_validate_required "${runtime_keys[@]}"
+    bangi_env_validate_required "${runtime_required_keys[@]}"
     bangi_env_write_file "${BANGI_RUNTIME_ENV_FILE}" "0600" "${runtime_keys[@]}"
 }
 
