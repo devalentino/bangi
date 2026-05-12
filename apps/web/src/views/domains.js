@@ -28,7 +28,15 @@ class DomainsView {
   }
 
   _disabledBadge(domain) {
-    return domain.isDisabled ? "Disabled" : "Enabled";
+    return domain.isDisabled
+      ? m("i", {
+          class: "fa fa-ban text-danger",
+          title: "Disabled",
+        })
+      : m("i", {
+          class: "fa fa-check text-success",
+          title: "Enabled",
+        });
   }
 
   _campaignBadge(domain) {
@@ -74,7 +82,6 @@ class DomainsView {
                           m("th", { scope: "col" }, "Campaign"),
                           m("th", { scope: "col" }, "A Record"),
                           m("th", { scope: "col" }, "State"),
-                          m("th", { scope: "col" }, "Actions"),
                         ]),
                       ),
                       m(
@@ -83,7 +90,7 @@ class DomainsView {
                           ? m("tr", [
                               m(
                                 "td.text-center",
-                                { colspan: 7 },
+                                { colspan: 6 },
                                 "No domains found.",
                               ),
                             ])
@@ -103,14 +110,6 @@ class DomainsView {
                                   m("td", this._campaignBadge(domain)),
                                   m("td", this._aRecordBadge(domain)),
                                   m("td", this._disabledBadge(domain)),
-                                  m(
-                                    "td",
-                                    m(
-                                      "a.btn.btn-outline-primary.btn-sm",
-                                      { href: `#!/domains/${domain.id}` },
-                                      "Edit",
-                                    ),
-                                  ),
                                 ]);
                               }.bind(this),
                             ),
