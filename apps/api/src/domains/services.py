@@ -368,7 +368,7 @@ class NginxService:
         )
 
     def _next_version(self) -> str:
-        timestamp = int(time.time())
+        timestamp = time.time_ns()
         return f'{timestamp}-{uuid4().hex[:8]}'
 
     def _site_available_dir(self, hostname: str) -> Path:
