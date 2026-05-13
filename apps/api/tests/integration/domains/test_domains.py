@@ -35,6 +35,7 @@ class TestDomains:
             'is_a_record_set': None,
             'is_disabled': False,
         }
+        assert read_from_db('domain_certificate') is None
 
     def test_list_domains_returns_campaign_and_dashboard_domains(self, client, authorization, campaign, write_to_db):
         for index in range(19):
@@ -250,6 +251,38 @@ class TestDomains:
 
         assert old_enabled_link.exists() is False
         assert new_enabled_link.is_symlink()
+
+    def test_update_domain_to_disabled_keeps_certificate_metadata_unchanged(
+        self, client, authorization, domain, read_from_db, write_to_db
+    ):
+        certificate = write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'active',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/campaign.example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/campaign.example.com/privkey.pem',
+                'issued_at': 1778587200,
+                'expires_at': 1786363200,
+                'last_attempted_at': 1778587200,
+                'last_issued_at': 1778587200,
+                'last_renewed_at': None,
+                'next_retry_at': None,
+                'failure_count': 0,
+                'failure_reason': None,
+            },
+        )
+
+        response = client.patch(
+            f'/api/v2/domains/{domain["id"]}',
+            headers={'Authorization': authorization},
+            json={'isDisabled': True},
+        )
+
+        assert response.status_code == 200, response.text
+        assert read_from_db('domain_certificate', filters={'id': certificate['id']}) == certificate
 
     def test_update_domain_attaches_campaign(self, client, authorization, campaign, write_to_db, read_from_db):
         domain = write_to_db(

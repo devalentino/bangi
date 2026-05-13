@@ -1,9 +1,11 @@
 import logging
+import random
 import secrets
 import string
 import subprocess
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Protocol
 from uuid import uuid4
@@ -16,12 +18,19 @@ from wireup import Inject, injectable
 from src.core.entities import Campaign
 from src.core.enums import SortOrder
 from src.core.exceptions import CampaignDoesNotExistError
-from src.domains.entities import Domain, DomainCookie
-from src.domains.enums import DomainCookieName, DomainPurpose
+from src.domains.entities import Domain, DomainCertificate, DomainCookie
+from src.domains.enums import (
+    DomainCertificateCa,
+    DomainCertificateStatus,
+    DomainCertificateValidationMethod,
+    DomainCookieName,
+    DomainPurpose,
+)
 from src.domains.exceptions import (
     CampaignAlreadyBoundError,
     DashboardDomainCannotAttachCampaignError,
     DomainAlreadyExistsError,
+    DomainCertificateDoesNotExistError,
     DomainDoesNotExistError,
 )
 from src.health.services import HealthService
@@ -35,6 +44,18 @@ class WebserverPublishResult:
     validation_error: str | None
     sites_available_files: list[str]
     sites_enabled_refs: list[str]
+
+
+@dataclass(slots=True)
+class AcmeExecutionSnapshot:
+    status: str
+    hostname: str
+    certificate_path: str | None
+    private_key_path: str | None
+    issued_at: datetime | None
+    expires_at: datetime | None
+    error: str | None
+    is_renewal: bool = False
 
 
 @injectable
@@ -97,6 +118,70 @@ class DnsService:
             return False
 
         return any(answer.address == public_host_ip for answer in answers)
+
+
+@injectable
+class CertificateService:
+    def __init__(
+        self,
+        certificate_max_backoff_seconds: Annotated[int, Inject(config='BANGI_CERTIFICATE_MAX_BACKOFF_SECONDS')],
+        certificate_retry_jitter_seconds: Annotated[int, Inject(config='BANGI_CERTIFICATE_RETRY_JITTER_SECONDS')],
+    ):
+        self.certificate_max_backoff_seconds = certificate_max_backoff_seconds
+        self.certificate_retry_jitter_seconds = certificate_retry_jitter_seconds
+
+    def get(self, domain_id: int) -> DomainCertificate:
+        try:
+            return DomainCertificate.get(DomainCertificate.domain == domain_id)
+        except DomainCertificate.DoesNotExist as exc:
+            raise DomainCertificateDoesNotExistError() from exc
+
+    def update_status(self, domain_id: int, snapshot: AcmeExecutionSnapshot) -> DomainCertificate:
+        now = int(time.time())
+        certificate = DomainCertificate.get_or_none(DomainCertificate.domain == domain_id)
+        if certificate is None:
+            certificate = DomainCertificate(
+                domain=domain_id,
+                ca=DomainCertificateCa.letsencrypt.value,
+                validation_method=DomainCertificateValidationMethod.http_01_webroot.value,
+                failure_count=0,
+            )
+
+        status = DomainCertificateStatus(snapshot.status)
+        certificate.status = status.value
+        certificate.last_attempted_at = now
+
+        if status == DomainCertificateStatus.active:
+            certificate.certificate_path = snapshot.certificate_path
+            certificate.private_key_path = snapshot.private_key_path
+            certificate.issued_at = snapshot.issued_at
+            certificate.expires_at = snapshot.expires_at
+            certificate.failure_count = 0
+            certificate.failure_reason = None
+            certificate.next_retry_at = None
+            if snapshot.is_renewal:
+                certificate.last_renewed_at = now
+            else:
+                certificate.last_issued_at = now
+        elif status == DomainCertificateStatus.failed:
+            if certificate.id is None:
+                certificate.certificate_path = None
+                certificate.private_key_path = None
+            certificate.failure_count = certificate.failure_count + 1
+            certificate.failure_reason = snapshot.error
+            certificate.next_retry_at = now + self._retry_delay_seconds(certificate.failure_count)
+        elif status == DomainCertificateStatus.pending:
+            certificate.failure_reason = None
+        elif status == DomainCertificateStatus.expired:
+            certificate.next_retry_at = now
+
+        certificate.save()
+        return certificate
+
+    def _retry_delay_seconds(self, failure_count: int) -> int:
+        retry_delay_seconds = min(2**failure_count * 300, self.certificate_max_backoff_seconds)
+        retry_jitter_seconds = random.randint(0, self.certificate_retry_jitter_seconds)
+        return retry_delay_seconds + retry_jitter_seconds
 
 
 @injectable
