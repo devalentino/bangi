@@ -338,7 +338,7 @@ class TestDomains:
         response = client.patch(
             f'/api/v2/domains/{domain["id"]}',
             headers={'Authorization': authorization},
-            json={'isDisabled': True},
+            json={'isDisabled': True, 'campaignId': domain['campaign_id']},
         )
 
         assert response.status_code == 200, response.text
