@@ -7,6 +7,7 @@ BANGI_APT_BASE_PACKAGES=(
     sudo
     nginx
     cron
+    openssl
     unzip
 )
 
