@@ -50,8 +50,10 @@ bangi_verify_compose_services_running() {
 bangi_verify_mariadb_health() {
     bangi_log "Checking MariaDB health"
 
-    bangi_compose exec -T mariadb sh -ec 'mariadb -u root -p"${MARIADB_ROOT_PASSWORD}" -e "SELECT 1"' >/dev/null \
-        || bangi_fatal "MariaDB health check failed"
+    bangi_retry_healthcheck \
+        "MariaDB health check" \
+        "MariaDB health check failed" \
+        bangi_compose exec -T mariadb sh -ec 'mariadb -u root -p"${MARIADB_ROOT_PASSWORD}" -e "SELECT 1"' >/dev/null
 }
 
 bangi_verify_backend_health() {
