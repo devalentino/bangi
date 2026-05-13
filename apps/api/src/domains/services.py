@@ -1,29 +1,63 @@
 import logging
+import random
+import re
 import secrets
+import shlex
 import string
 import subprocess
 import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Protocol
 from uuid import uuid4
 
+import dns.exception
+import dns.resolver
 from peewee import JOIN, IntegrityError, fn
 from wireup import Inject, injectable
 
 from src.core.entities import Campaign
 from src.core.enums import SortOrder
 from src.core.exceptions import CampaignDoesNotExistError
-from src.domains.entities import Domain, DomainCookie
-from src.domains.enums import DomainCookieName, DomainPurpose
+from src.domains.entities import Domain, DomainCertificate, DomainCookie
+from src.domains.enums import (
+    DomainCertificateCa,
+    DomainCertificateStatus,
+    DomainCertificateValidationMethod,
+    DomainCookieName,
+    DomainPurpose,
+)
 from src.domains.exceptions import (
     CampaignAlreadyBoundError,
     DashboardDomainCannotAttachCampaignError,
     DomainAlreadyExistsError,
+    DomainCertificateDoesNotExistError,
     DomainDoesNotExistError,
 )
 from src.health.services import HealthService
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class WebserverPublishResult:
+    validation_status: str
+    validation_error: str | None
+    sites_available_files: list[str]
+    sites_enabled_refs: list[str]
+
+
+@dataclass(slots=True)
+class AcmeExecutionSnapshot:
+    status: str
+    hostname: str
+    certificate_path: str | None
+    private_key_path: str | None
+    issued_at: datetime | None
+    expires_at: datetime | None
+    error: str | None
+    is_renewal: bool = False
 
 
 @injectable
@@ -58,17 +92,122 @@ class DomainCookieService:
 
 
 class WebserverService(Protocol):
-    def publish(self, hostname: str):
+    def publish(
+        self,
+        hostname: str,
+        purpose: str,
+        campaign_id: int | None,
+        flow_id_cookie_name: str | None,
+        is_disabled: bool,
+        is_a_record_set: bool | None,
+        certificate_path: str | None = None,
+        private_key_path: str | None = None,
+    ) -> WebserverPublishResult:
         pass
 
     def disable(self, hostname: str) -> None:
         pass
 
 
+class DnsService:
+    @staticmethod
+    def has_a_record(hostname: str, public_host_ip: str) -> bool:
+        if not public_host_ip:
+            return False
+
+        try:
+            answers = dns.resolver.resolve(hostname, 'A', lifetime=5)
+        except dns.exception.DNSException:
+            logger.error('Failed to resolve A record for managed domain', extra={'hostname': hostname})
+            return False
+
+        return any(answer.address == public_host_ip for answer in answers)
+
+
+@injectable
+class CertificateService:
+    def __init__(
+        self,
+        certificate_max_backoff_seconds: Annotated[int, Inject(config='BANGI_CERTIFICATE_MAX_BACKOFF_SECONDS')],
+        certificate_retry_jitter_seconds: Annotated[int, Inject(config='BANGI_CERTIFICATE_RETRY_JITTER_SECONDS')],
+    ):
+        self.certificate_max_backoff_seconds = certificate_max_backoff_seconds
+        self.certificate_retry_jitter_seconds = certificate_retry_jitter_seconds
+
+    def get(self, domain_id: int) -> DomainCertificate:
+        try:
+            return DomainCertificate.get(DomainCertificate.domain == domain_id)
+        except DomainCertificate.DoesNotExist as exc:
+            raise DomainCertificateDoesNotExistError() from exc
+
+    def update_status(self, domain_id: int, snapshot: AcmeExecutionSnapshot) -> DomainCertificate:
+        now = int(time.time())
+        certificate = DomainCertificate.get_or_none(DomainCertificate.domain == domain_id)
+        if certificate is None:
+            certificate = DomainCertificate(
+                domain=domain_id,
+                ca=DomainCertificateCa.letsencrypt.value,
+                validation_method=DomainCertificateValidationMethod.http_01_webroot.value,
+                certificate_path=None,
+                private_key_path=None,
+                issued_at=None,
+                expires_at=None,
+                last_attempted_at=None,
+                last_issued_at=None,
+                last_renewed_at=None,
+                next_retry_at=None,
+                failure_count=0,
+                failure_reason=None,
+            )
+
+        status = DomainCertificateStatus(snapshot.status)
+        certificate.status = status.value
+        certificate.last_attempted_at = now
+
+        if status == DomainCertificateStatus.active:
+            certificate.certificate_path = snapshot.certificate_path
+            certificate.private_key_path = snapshot.private_key_path
+            certificate.issued_at = snapshot.issued_at
+            certificate.expires_at = snapshot.expires_at
+            certificate.failure_count = 0
+            certificate.failure_reason = None
+            certificate.next_retry_at = None
+            if snapshot.is_renewal:
+                certificate.last_renewed_at = now
+            else:
+                certificate.last_issued_at = now
+        elif status == DomainCertificateStatus.failed:
+            if certificate.id is None:
+                certificate.certificate_path = None
+                certificate.private_key_path = None
+            certificate.failure_count = certificate.failure_count + 1
+            certificate.failure_reason = snapshot.error
+            certificate.next_retry_at = now + self._retry_delay_seconds(certificate.failure_count)
+        elif status == DomainCertificateStatus.pending:
+            certificate.failure_reason = None
+        elif status == DomainCertificateStatus.expired:
+            certificate.next_retry_at = now
+
+        certificate.save()
+        return certificate
+
+    def _retry_delay_seconds(self, failure_count: int) -> int:
+        retry_delay_seconds = min(2**failure_count * 300, self.certificate_max_backoff_seconds)
+        retry_jitter_seconds = random.randint(0, self.certificate_retry_jitter_seconds)
+        return retry_delay_seconds + retry_jitter_seconds
+
+
 @injectable
 class DomainService:
-    def __init__(self, webserver_service: WebserverService):
+    def __init__(
+        self,
+        webserver_service: WebserverService,
+        health_service: HealthService,
+        domain_cookie_service: DomainCookieService,
+    ):
         self.webserver_service = webserver_service
+        self.health_service = health_service
+        self.domain_cookie_service = domain_cookie_service
 
     def get(self, id):
         try:
@@ -81,14 +220,25 @@ class DomainService:
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [
-            domain
-            for domain in Domain.select(Domain, Campaign)
+        return (
+            Domain.select(
+                Domain.id.alias('id'),
+                Domain.hostname.alias('hostname'),
+                Domain.purpose.alias('purpose'),
+                Domain.campaign_id.alias('campaign_id'),
+                Campaign.name.alias('campaign_name'),
+                Domain.is_a_record_set.alias('is_a_record_set'),
+                Domain.is_disabled.alias('is_disabled'),
+                DomainCertificate.status.alias('certificate_status'),
+            )
             .join(Campaign, JOIN.LEFT_OUTER)
+            .switch(Domain)
+            .join(DomainCertificate, JOIN.LEFT_OUTER)
             .order_by(order_by, Domain.id.asc())
             .limit(page_size)
             .offset((page - 1) * page_size)
-        ]
+            .dicts()
+        )
 
     def count(self):
         return Domain.select(fn.count(Domain.id)).scalar()
@@ -104,7 +254,7 @@ class DomainService:
             is_a_record_set=None,
         )
         domain.save()
-        self.webserver_service.publish(domain.hostname)
+        self._publish_domain(domain)
         return domain
 
     def update(
@@ -151,7 +301,7 @@ class DomainService:
             domain.is_disabled = is_disabled
 
         domain.save()
-        snapshot = self.webserver_service.publish(domain.hostname)
+        snapshot = self._publish_domain(domain)
         if previous_hostname != domain.hostname and snapshot.validation_status == 'success':
             self.webserver_service.disable(previous_hostname)
         return domain
@@ -177,6 +327,45 @@ class DomainService:
         if query.scalar():
             raise CampaignAlreadyBoundError()
 
+    def _publish_domain(self, domain) -> WebserverPublishResult:
+        flow_id_cookie_name = None
+        if domain.purpose == DomainPurpose.campaign and domain.campaign_id is not None:
+            flow_id_cookie_name = self.domain_cookie_service.get_or_create_opaque_name(
+                domain.id,
+                DomainCookieName.flow_id,
+            )
+
+        certificate = DomainCertificate.get_or_none(DomainCertificate.domain == domain.id)
+        certificate_path = None
+        private_key_path = None
+        if (
+            certificate is not None
+            and certificate.status == DomainCertificateStatus.active
+            and certificate.certificate_path
+            and certificate.private_key_path
+        ):
+            certificate_path = certificate.certificate_path
+            private_key_path = certificate.private_key_path
+
+        snapshot = self.webserver_service.publish(
+            domain.hostname,
+            domain.purpose,
+            domain.campaign_id,
+            flow_id_cookie_name,
+            bool(domain.is_disabled),
+            None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
+            certificate_path,
+            private_key_path,
+        )
+        self.health_service.record_nginx_validation_snapshot(
+            domain_id=domain.id,
+            validation_status=snapshot.validation_status,
+            validation_error=snapshot.validation_error,
+            sites_available_files=snapshot.sites_available_files,
+            sites_enabled_refs=snapshot.sites_enabled_refs,
+        )
+        return snapshot
+
 
 class HostCommandExecutionError(RuntimeError):
     pass
@@ -196,7 +385,7 @@ class HostCommandExecutorService:
         self.host_ops_ssh_key_path = host_ops_ssh_key_path
         self.host_ops_ssh_known_hosts_path = host_ops_ssh_known_hosts_path
 
-    def run(self, command: str) -> None:
+    def run(self, command: str) -> str:
         if not all(
             [
                 self.host_ops_ssh_user,
@@ -238,45 +427,223 @@ class HostCommandExecutorService:
             )
             raise HostCommandExecutionError(output or f'Host operation failed: {command}')
 
+        return output
+
+
+@injectable
+class AcmeService:
+    _CERTIFICATE_PATH_PATTERNS = (
+        re.compile(r'(?:Your cert(?:ificate)? is in|The cert is in|The full-?chain cert is in):\s*(\S+)'),
+    )
+    _PRIVATE_KEY_PATH_PATTERNS = (re.compile(r'(?:Your cert key is in|The domain key is here|The key is in):\s*(\S+)'),)
+
+    def __init__(self, host_command_executor_service: HostCommandExecutorService):
+        self.host_command_executor_service = host_command_executor_service
+
+    def issue(self, hostname: str) -> AcmeExecutionSnapshot:
+        return self._run_wrapper('acme-issue-certificate', hostname, is_renewal=False)
+
+    def renew(self, hostname: str) -> AcmeExecutionSnapshot:
+        return self._run_wrapper('acme-renew-certificate', hostname, is_renewal=True)
+
+    def _run_wrapper(self, wrapper_command: str, hostname: str, is_renewal: bool) -> AcmeExecutionSnapshot:
+        command = f'{wrapper_command} {shlex.quote(hostname)}'
+        try:
+            output = self.host_command_executor_service.run(command)
+        except HostCommandExecutionError as exc:
+            return self._failed_snapshot(
+                hostname,
+                str(exc),
+                is_renewal,
+                command=command,
+                output=str(exc),
+                detail=str(exc),
+            )
+
+        certificate_path = self._extract_first_match(output, self._CERTIFICATE_PATH_PATTERNS)
+        private_key_path = self._extract_first_match(output, self._PRIVATE_KEY_PATH_PATTERNS)
+        if certificate_path is None or private_key_path is None:
+            return self._failed_snapshot(
+                hostname,
+                'Invalid ACME wrapper output: missing certificate paths',
+                is_renewal,
+                command=command,
+                output=output,
+            )
+
+        issued_at = self._extract_openssl_timestamp(output, 'notBefore=')
+        expires_at = self._extract_openssl_timestamp(output, 'notAfter=')
+        if expires_at is None:
+            try:
+                issued_at, expires_at = self._load_certificate_timestamps(certificate_path)
+            except (HostCommandExecutionError, ValueError) as exc:
+                return self._failed_snapshot(
+                    hostname,
+                    str(exc),
+                    is_renewal,
+                    command=command,
+                    output=output,
+                    detail=str(exc),
+                )
+
+        if expires_at is None:
+            return self._failed_snapshot(
+                hostname,
+                'Invalid ACME wrapper output: missing certificate expiration',
+                is_renewal,
+                command=command,
+                output=output,
+            )
+
+        return AcmeExecutionSnapshot(
+            status=DomainCertificateStatus.active.value,
+            hostname=hostname,
+            certificate_path=certificate_path,
+            private_key_path=private_key_path,
+            issued_at=issued_at,
+            expires_at=expires_at,
+            error=None,
+            is_renewal=is_renewal,
+        )
+
+    @classmethod
+    def _extract_first_match(cls, output: str, patterns: tuple[re.Pattern[str], ...]) -> str | None:
+        for line in output.splitlines():
+            stripped_line = line.strip()
+            for pattern in patterns:
+                match = pattern.search(stripped_line)
+                if match is not None:
+                    return match.group(1)
+        return None
+
+    def _load_certificate_timestamps(self, certificate_path: str) -> tuple[datetime | None, datetime | None]:
+        certificate_info_command = f"openssl x509 -startdate -enddate -noout -in {shlex.quote(certificate_path)}"
+        output = self.host_command_executor_service.run(certificate_info_command)
+
+        issued_at = None
+        expires_at = None
+        for line in output.splitlines():
+            stripped_line = line.strip()
+            if stripped_line.startswith('notBefore='):
+                issued_at = self._parse_openssl_timestamp(stripped_line.removeprefix('notBefore='))
+            elif stripped_line.startswith('notAfter='):
+                expires_at = self._parse_openssl_timestamp(stripped_line.removeprefix('notAfter='))
+        return issued_at, expires_at
+
+    @classmethod
+    def _extract_openssl_timestamp(cls, output: str, prefix: str) -> datetime | None:
+        for line in output.splitlines():
+            stripped_line = line.strip()
+            if stripped_line.startswith(prefix):
+                return cls._parse_openssl_timestamp(stripped_line.removeprefix(prefix))
+        return None
+
+    @staticmethod
+    def _parse_openssl_timestamp(raw_value: str) -> datetime:
+        parsed_value = datetime.strptime(raw_value, '%b %d %H:%M:%S %Y %Z')
+        return parsed_value.replace(tzinfo=timezone.utc)
+
+    def _failed_snapshot(
+        self,
+        hostname: str,
+        reason: str,
+        is_renewal: bool,
+        command: str | None = None,
+        output: str | None = None,
+        detail: str | None = None,
+    ) -> AcmeExecutionSnapshot:
+        logger.error(
+            'ACME wrapper failed',
+            extra={
+                'hostname': hostname,
+                'command': command,
+                'output': output,
+                'failure_detail': detail,
+                'failure_reason': reason,
+                'is_renewal': is_renewal,
+            },
+        )
+        return AcmeExecutionSnapshot(
+            status=DomainCertificateStatus.failed.value,
+            hostname=hostname,
+            certificate_path=None,
+            private_key_path=None,
+            issued_at=None,
+            expires_at=None,
+            error=output or reason,
+            is_renewal=is_renewal,
+        )
+
 
 @injectable(as_type=WebserverService)
 class NginxService:
     def __init__(
         self,
-        health_service: HealthService,
         host_command_executor_service: HostCommandExecutorService,
-        domain_cookie_service: DomainCookieService,
         nginx_workspace_base_dir: Annotated[str, Inject(config='NGINX_WORKSPACE_BASE_DIR')],
     ):
-        self.health_service = health_service
         self.host_command_executor_service = host_command_executor_service
-        self.domain_cookie_service = domain_cookie_service
         self.nginx_workspace_base_dir = Path(nginx_workspace_base_dir)
 
-    def publish(self, hostname: str):
-        domain = Domain.get(Domain.hostname == hostname)
+    def publish(
+        self,
+        hostname: str,
+        purpose: str,
+        campaign_id: int | None,
+        flow_id_cookie_name: str | None,
+        is_disabled: bool,
+        is_a_record_set: bool | None,
+        certificate_path: str | None = None,
+        private_key_path: str | None = None,
+    ) -> WebserverPublishResult:
         version = self._next_version()
-        available_dir = self._site_available_dir(domain.hostname)
-        enabled_link = self._site_enabled_link(domain.hostname)
+        available_dir = self._site_available_dir(hostname)
+        enabled_link = self._site_enabled_link(hostname)
         versioned_config_path = available_dir / f'{version}.conf'
         previous_active_target = self._current_active_target(enabled_link)
 
-        self._write_versioned_config(versioned_config_path, self._render_domain_config(domain))
+        config_content = self._render_domain_config(
+            hostname=hostname,
+            purpose=purpose,
+            campaign_id=campaign_id,
+            flow_id_cookie_name=flow_id_cookie_name,
+            is_disabled=is_disabled,
+            is_a_record_set=is_a_record_set,
+            certificate_path=certificate_path,
+            private_key_path=private_key_path,
+        )
+        self._write_versioned_config(versioned_config_path, config_content)
+        self._activate_version(enabled_link, versioned_config_path)
+
         validation_error = self._validate_host_nginx()
         if validation_error is not None:
-            return self._record_snapshot(domain, 'failed', validation_error)
-
-        self._activate_version(enabled_link, versioned_config_path)
+            self._restore_previous_active(enabled_link, previous_active_target)
+            return WebserverPublishResult(
+                validation_status='failed',
+                validation_error=validation_error,
+                sites_available_files=self._list_sites_available_files(),
+                sites_enabled_refs=self._list_sites_enabled_refs(),
+            )
 
         reload_error = self._reload_host_nginx()
         if reload_error is not None:
             self._restore_previous_active(enabled_link, previous_active_target)
-            return self._record_snapshot(domain, 'failed', reload_error)
+            return WebserverPublishResult(
+                validation_status='failed',
+                validation_error=reload_error,
+                sites_available_files=self._list_sites_available_files(),
+                sites_enabled_refs=self._list_sites_enabled_refs(),
+            )
 
-        return self._record_snapshot(domain, 'success', None)
+        return WebserverPublishResult(
+            validation_status='success',
+            validation_error=None,
+            sites_available_files=self._list_sites_available_files(),
+            sites_enabled_refs=self._list_sites_enabled_refs(),
+        )
 
     def _next_version(self) -> str:
-        timestamp = int(time.time())
+        timestamp = time.time_ns()
         return f'{timestamp}-{uuid4().hex[:8]}'
 
     def _site_available_dir(self, hostname: str) -> Path:
@@ -294,81 +661,88 @@ class NginxService:
         temporary_path.write_text(config_content, encoding='utf-8')
         temporary_path.replace(destination_path)
 
-    def _render_domain_config(self, domain: Domain) -> str:
-        if (
-            domain.is_disabled
-            or domain.is_a_record_set is False
-            or (domain.purpose == 'campaign' and domain.campaign_id is None)
-        ):
-            return self._render_disabled_domain_config(domain)
+    def _render_domain_config(
+        self,
+        *,
+        hostname: str,
+        purpose: str,
+        campaign_id: int | None,
+        flow_id_cookie_name: str | None,
+        is_disabled: bool,
+        is_a_record_set: bool | None,
+        certificate_path: str | None,
+        private_key_path: str | None,
+    ) -> str:
+        if is_disabled or is_a_record_set is False or (purpose == 'campaign' and campaign_id is None):
+            return self.render_disabled_domain_config(hostname)
 
-        if domain.purpose == 'dashboard':
-            return self._render_dashboard_domain_config(domain)
+        has_active_certificate = certificate_path is not None and private_key_path is not None
+        if purpose == 'dashboard':
+            if has_active_certificate:
+                return self.render_dashboard_domain_config(hostname, certificate_path, private_key_path)
+            return self.render_dashboard_domain_config(hostname)
 
-        return self._render_campaign_domain_config(domain)
+        if flow_id_cookie_name is None:
+            raise ValueError('flow_id_cookie_name is required for campaign domains')
+        if has_active_certificate:
+            return self.render_campaign_domain_config(
+                hostname,
+                campaign_id,
+                flow_id_cookie_name,
+                certificate_path,
+                private_key_path,
+            )
+        return self.render_campaign_domain_config(hostname, campaign_id, flow_id_cookie_name)
 
-    @staticmethod
-    def _render_disabled_domain_config(domain: Domain) -> str:
-        return (
-            '# Managed by Bangi. Disabled or unroutable domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {domain.hostname};\n'
-            '    return 503;\n'
-            '}\n'
+    @classmethod
+    def render_disabled_domain_config(cls, hostname: str) -> str:
+        return cls._render_template('disabled_http.conf.template', hostname=hostname)
+
+    @classmethod
+    def render_dashboard_domain_config(
+        cls,
+        hostname: str,
+        certificate_path: str | None = None,
+        private_key_path: str | None = None,
+    ) -> str:
+        if certificate_path is not None and private_key_path is not None:
+            return cls._render_template(
+                'dashboard_https.conf.template',
+                hostname=hostname,
+                certificate_path=certificate_path,
+                private_key_path=private_key_path,
+            )
+        return cls._render_template('dashboard_http.conf.template', hostname=hostname)
+
+    @classmethod
+    def render_campaign_domain_config(
+        cls,
+        hostname: str,
+        campaign_id: int,
+        flow_id_cookie_name: str,
+        certificate_path: str | None = None,
+        private_key_path: str | None = None,
+    ) -> str:
+        if certificate_path is not None and private_key_path is not None:
+            return cls._render_template(
+                'campaign_https.conf.template',
+                hostname=hostname,
+                campaign_id=str(campaign_id),
+                flow_id_cookie_name=flow_id_cookie_name,
+                certificate_path=certificate_path,
+                private_key_path=private_key_path,
+            )
+        return cls._render_template(
+            'campaign_http.conf.template',
+            hostname=hostname,
+            campaign_id=str(campaign_id),
+            flow_id_cookie_name=flow_id_cookie_name,
         )
 
     @staticmethod
-    def _render_dashboard_domain_config(domain: Domain) -> str:
-        return (
-            '# Managed by Bangi. Dashboard domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {domain.hostname};\n'
-            '\n'
-            '    location /api/ {\n'
-            '        proxy_pass http://127.0.0.1:8000;\n'
-            '    }\n'
-            '\n'
-            '    location /process {\n'
-            '        return 404;\n'
-            '    }\n'
-            '\n'
-            '    location / {\n'
-            '        proxy_pass http://127.0.0.1:8080;\n'
-            '    }\n'
-            '}\n'
-        )
-
-    def _render_campaign_domain_config(self, domain: Domain) -> str:
-        cookie_name = self.domain_cookie_service.get_or_create_opaque_name(domain.id, DomainCookieName.flow_id)
-        return (
-            '# Managed by Bangi. Campaign domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {domain.hostname};\n'
-            '\n'
-            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{domain.campaign_id}";\n'
-            f'    if ($cookie_{cookie_name} != "") {{\n'
-            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_name}/";\n'
-            '    }\n'
-            '\n'
-            '    location = / {\n'
-            '        proxy_pass $bangi_campaign_upstream;\n'
-            '    }\n'
-            '\n'
-            '    location / {\n'
-            f'        if ($cookie_{cookie_name} = "") {{\n'
-            '            return 404;\n'
-            '        }\n'
-            '\n'
-            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_name}/;\n'
-            '    }\n'
-            '}\n'
-        )
+    def _render_template(template_name: str, **context: str) -> str:
+        template_path = Path(__file__).parent / 'nginx_templates' / template_name
+        return string.Template(template_path.read_text(encoding='utf-8')).substitute(context)
 
     def _validate_host_nginx(self) -> str | None:
         try:
@@ -417,15 +791,6 @@ class NginxService:
         enabled_link = self._site_enabled_link(hostname)
         if enabled_link.exists() or enabled_link.is_symlink():
             enabled_link.unlink()
-
-    def _record_snapshot(self, domain: Domain, validation_status: str, validation_error: str | None):
-        return self.health_service.record_nginx_validation_snapshot(
-            domain_id=domain.id,
-            validation_status=validation_status,
-            validation_error=validation_error,
-            sites_available_files=self._list_sites_available_files(),
-            sites_enabled_refs=self._list_sites_enabled_refs(),
-        )
 
     def _list_sites_available_files(self) -> list[str]:
         available_root = self.nginx_workspace_base_dir / 'sites-available'

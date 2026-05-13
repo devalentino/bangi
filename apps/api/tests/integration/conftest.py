@@ -17,6 +17,11 @@ mysql_in_docker = factories.mysql_noproc(
 mysql = factories.mysql('mysql_in_docker', passwd=os.getenv('MARIADB_PASSWORD'))
 
 
+@pytest.fixture
+def public_ip():
+    return '203.0.113.10'
+
+
 @pytest.fixture(autouse=True, scope='session')
 def landing_pages_base_path(tmpdir_factory):
     return str(tmpdir_factory.mktemp('landings'))
@@ -28,13 +33,14 @@ def nginx_workspace_base_dir(tmpdir_factory):
 
 
 @pytest.fixture(autouse=True)
-def mock_environment(mysql, landing_pages_base_path, nginx_workspace_base_dir):
+def mock_environment(mysql, public_ip, landing_pages_base_path, nginx_workspace_base_dir):
     environ = os.environ | {
         'MARIADB_HOST': mysql.host,
         'MARIADB_PORT': str(mysql.port),
         'MARIADB_DATABASE': 'test',
         'LANDING_PAGES_BASE_PATH': landing_pages_base_path,
         'NGINX_WORKSPACE_BASE_DIR': nginx_workspace_base_dir,
+        'BANGI_PUBLIC_HOST_IP': public_ip,
         'BANGI_HOST_OPS_SSH_KEY_PATH': '/tmp/bangi-ops-id_ed25519',
         'BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH': '/tmp/bangi-ops-known_hosts',
     }

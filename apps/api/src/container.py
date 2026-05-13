@@ -12,7 +12,14 @@ from src.core.entities import database_proxy
 from src.core.repositories import CampaignRepository
 from src.core.services import CampaignService, ClientService, FlowService, Ip2LocationLocator
 from src.core.supervisor import WorkerContext, WorkerSupervisor
-from src.domains.services import DomainCookieService, DomainService, HostCommandExecutorService, NginxService
+from src.domains.services import (
+    AcmeService,
+    CertificateService,
+    DomainCookieService,
+    DomainService,
+    HostCommandExecutorService,
+    NginxService,
+)
 from src.facebook_pacs.services import AdCabinetService as FacebookPacsAdCabinetService
 from src.facebook_pacs.services import BusinessPageService as FacebookPacsBusinessPageService
 from src.facebook_pacs.services import BusinessPortfolioService as FacebookPacsBusinessPortfolioService
@@ -54,6 +61,8 @@ container = create_sync_container(
         'BANGI_HOST_OPS_SSH_HOST': _get_env('BANGI_HOST_OPS_SSH_HOST', str, 'host.docker.internal'),
         'BANGI_HOST_OPS_SSH_KEY_PATH': _get_env('BANGI_HOST_OPS_SSH_KEY_PATH', str, ''),
         'BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH': _get_env('BANGI_HOST_OPS_SSH_KNOWN_HOSTS_PATH', str, ''),
+        'BANGI_CERTIFICATE_MAX_BACKOFF_SECONDS': _get_env('BANGI_CERTIFICATE_MAX_BACKOFF_SECONDS', int, 86400),
+        'BANGI_CERTIFICATE_RETRY_JITTER_SECONDS': _get_env('BANGI_CERTIFICATE_RETRY_JITTER_SECONDS', int, 120),
         'DISK_UTILIZATION_STALE_AFTER_SECONDS': _get_env('DISK_UTILIZATION_STALE_AFTER_SECONDS', int, 2 * 60 * 60),
         'DISK_UTILIZATION_WARNING_PERCENT': _get_env('DISK_UTILIZATION_WARNING_PERCENT', int, 70),
         'DISK_UTILIZATION_CRITICAL_PERCENT': _get_env('DISK_UTILIZATION_CRITICAL_PERCENT', int, 80),
@@ -69,6 +78,8 @@ container = create_sync_container(
         CampaignRepository,
         CampaignService,
         ClientService,
+        AcmeService,
+        CertificateService,
         DomainCookieService,
         DomainService,
         HostCommandExecutorService,

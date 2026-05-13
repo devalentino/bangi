@@ -18,3 +18,18 @@ class DomainSortBy(str, Enum):
     campaignId = 'campaignId'
     isARecordSet = 'isARecordSet'
     isDisabled = 'isDisabled'
+
+
+class DomainCertificateStatus(str, Enum):
+    pending = 'pending'
+    active = 'active'
+    failed = 'failed'
+    expired = 'expired'
+
+
+class DomainCertificateCa(str, Enum):
+    letsencrypt = 'letsencrypt'
+
+
+class DomainCertificateValidationMethod(str, Enum):
+    http_01_webroot = 'http-01-webroot'

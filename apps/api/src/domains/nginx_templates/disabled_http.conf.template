@@ -1,0 +1,16 @@
+# Managed by Bangi. Disabled or unroutable domain.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${hostname};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /etc/nginx/bangi/acme-challenges;
+        default_type "text/plain";
+        try_files $$uri =404;
+    }
+
+    location / {
+        return 503;
+    }
+}
