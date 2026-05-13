@@ -446,17 +446,20 @@ class AcmeService:
                 output=output,
             )
 
-        try:
-            issued_at, expires_at = self._load_certificate_timestamps(certificate_path)
-        except (HostCommandExecutionError, ValueError) as exc:
-            return self._failed_snapshot(
-                hostname,
-                str(exc),
-                is_renewal,
-                command=command,
-                output=output,
-                detail=str(exc),
-            )
+        issued_at = self._extract_openssl_timestamp(output, 'notBefore=')
+        expires_at = self._extract_openssl_timestamp(output, 'notAfter=')
+        if expires_at is None:
+            try:
+                issued_at, expires_at = self._load_certificate_timestamps(certificate_path)
+            except (HostCommandExecutionError, ValueError) as exc:
+                return self._failed_snapshot(
+                    hostname,
+                    str(exc),
+                    is_renewal,
+                    command=command,
+                    output=output,
+                    detail=str(exc),
+                )
 
         if expires_at is None:
             return self._failed_snapshot(
@@ -501,6 +504,14 @@ class AcmeService:
             elif stripped_line.startswith('notAfter='):
                 expires_at = self._parse_openssl_timestamp(stripped_line.removeprefix('notAfter='))
         return issued_at, expires_at
+
+    @classmethod
+    def _extract_openssl_timestamp(cls, output: str, prefix: str) -> datetime | None:
+        for line in output.splitlines():
+            stripped_line = line.strip()
+            if stripped_line.startswith(prefix):
+                return cls._parse_openssl_timestamp(stripped_line.removeprefix(prefix))
+        return None
 
     @staticmethod
     def _parse_openssl_timestamp(raw_value: str) -> datetime:

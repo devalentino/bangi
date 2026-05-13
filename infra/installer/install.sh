@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-BANGI_RELEASE_TAG="0.0.1a28"
+BANGI_RELEASE_TAG="0.0.1a29"
 BANGI_GITHUB_OWNER="devalentino"
 BANGI_GITHUB_REPO="bangi"
 BANGI_RAW_BASE_URL="https://raw.githubusercontent.com/${BANGI_GITHUB_OWNER}/${BANGI_GITHUB_REPO}/${BANGI_RELEASE_TAG}"
@@ -18,6 +18,7 @@ BANGI_INSTALLER_MODULES=(
     packages.sh
     assets.sh
     env.sh
+    acme.sh
     ip2location.sh
     compose.sh
     nginx.sh
@@ -93,6 +94,8 @@ source "${INSTALLER_LIB_DIR}/packages.sh"
 source "${INSTALLER_LIB_DIR}/assets.sh"
 # shellcheck source=infra/installer/lib/env.sh
 source "${INSTALLER_LIB_DIR}/env.sh"
+# shellcheck source=infra/installer/lib/acme.sh
+source "${INSTALLER_LIB_DIR}/acme.sh"
 # shellcheck source=infra/installer/lib/ip2location.sh
 source "${INSTALLER_LIB_DIR}/ip2location.sh"
 # shellcheck source=infra/installer/lib/compose.sh
@@ -117,6 +120,7 @@ main() {
     bangi_create_paths
     bangi_fetch_assets
     bangi_write_environment
+    bangi_install_acme
     bangi_install_ip2location_database
     bangi_install_ops_user
     bangi_install_compose
