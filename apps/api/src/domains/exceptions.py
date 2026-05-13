@@ -10,6 +10,10 @@ class DomainDoesNotExistError(DoesNotExistError):
     message = 'Domain does not exist'
 
 
+class DomainCertificateDoesNotExistError(DoesNotExistError):
+    message = 'Domain certificate does not exist'
+
+
 class CampaignAlreadyBoundError(ApplicationError):
     http_status_code = 400
     message = 'Campaign is already attached to a domain'

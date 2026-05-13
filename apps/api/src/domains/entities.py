@@ -1,6 +1,7 @@
-from peewee import BooleanField, CharField, ForeignKeyField
+from peewee import BooleanField, CharField, ForeignKeyField, IntegerField, TextField
 
 from src.core.entities import Campaign, Entity
+from src.core.peewee import UTCTimestampField
 
 
 class Domain(Entity):
@@ -22,3 +23,23 @@ class DomainCookie(Entity):
     class Meta:
         table_name = 'domain_cookie'
         indexes = ((('domain', 'name'), True), (('domain', 'opaque_name'), True))
+
+
+class DomainCertificate(Entity):
+    domain = ForeignKeyField(Domain, on_delete='CASCADE', unique=True)
+    status = CharField(max_length=32)
+    ca = CharField(max_length=32)
+    validation_method = CharField(max_length=32)
+    certificate_path = CharField(max_length=512, null=True)
+    private_key_path = CharField(max_length=512, null=True)
+    issued_at = UTCTimestampField(null=True, utc=True)
+    expires_at = UTCTimestampField(null=True, utc=True)
+    last_attempted_at = UTCTimestampField(null=True, utc=True)
+    last_issued_at = UTCTimestampField(null=True, utc=True)
+    last_renewed_at = UTCTimestampField(null=True, utc=True)
+    next_retry_at = UTCTimestampField(null=True, utc=True)
+    failure_count = IntegerField(default=0)
+    failure_reason = TextField(null=True)
+
+    class Meta:
+        table_name = 'domain_certificate'
