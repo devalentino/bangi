@@ -17,7 +17,7 @@ def _certificate_output(hostname):
 
 @pytest.fixture
 def certificate_worker_settings(monkeypatch):
-    monkeypatch.setattr('src.domains.workers.renew_ca_certificates.CERTIFICATE_RENEWAL_PERIOD_SECONDS', 0.1)
+    monkeypatch.setattr('src.domains.workers.renew_ca_certificates.CERTIFICATE_RENEWAL_PERIOD_SECONDS', 0.2)
 
 
 @pytest.fixture
@@ -240,10 +240,6 @@ class TestCertificateRenewalWorkerDisabledDomains:
 
 @pytest.mark.usefixtures('dns_resolver_mock')
 class TestCertificateRenewalWorkerCandidateLimit:
-    @pytest.fixture
-    def certificate_worker_settings(self, monkeypatch):
-        monkeypatch.setattr('src.domains.workers.renew_ca_certificates.CERTIFICATE_RENEWAL_PERIOD_SECONDS', 60)
-
     @pytest.mark.usefixtures('certificate_worker_settings')
     def test_worker_limits_candidates_to_two_per_run(self, client, write_to_db, mock_subprocess_run):
         for index in range(3):
