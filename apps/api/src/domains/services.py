@@ -1,6 +1,6 @@
 import logging
-import re
 import random
+import re
 import secrets
 import shlex
 import string
@@ -410,9 +410,7 @@ class AcmeService:
     _CERTIFICATE_PATH_PATTERNS = (
         re.compile(r'(?:Your cert(?:ificate)? is in|The cert is in|The full-?chain cert is in):\s*(\S+)'),
     )
-    _PRIVATE_KEY_PATH_PATTERNS = (
-        re.compile(r'(?:Your cert key is in|The domain key is here|The key is in):\s*(\S+)'),
-    )
+    _PRIVATE_KEY_PATH_PATTERNS = (re.compile(r'(?:Your cert key is in|The domain key is here|The key is in):\s*(\S+)'),)
 
     def __init__(self, host_command_executor_service: HostCommandExecutorService):
         self.host_command_executor_service = host_command_executor_service
