@@ -4,21 +4,16 @@ from flask.views import MethodView
 from src.auth import auth
 from src.container import container
 from src.core.blueprint import Blueprint
+from src.domains.exceptions import DomainCertificateDoesNotExistError
 from src.domains.schemas import (
+    DomainCertificateResponseSchema,
     DomainCreateRequestSchema,
     DomainListRequestSchema,
     DomainListResponseSchema,
     DomainResponseSchema,
     DomainUpdateRequestSchema,
 )
-from src.domains.services import DomainService
-from src.health.services import HealthService
-
-
-def _validation_failed(domain):
-    snapshot = container.get(HealthService).latest_nginx_validation_snapshot()
-    return bool(snapshot is not None and snapshot.validation_status == 'failed' and snapshot.domain_id == domain.id)
-
+from src.domains.services import CertificateService, DomainService
 
 blueprint = Blueprint('domains', __name__, description='Domains')
 
@@ -36,22 +31,9 @@ class Domains(MethodView):
             humps.decamelize(parameters_payload['sortBy'].value),
             parameters_payload['sortOrder'],
         )
+
         return {
-            'content': [
-                humps.camelize(
-                    {
-                        'id': domain.id,
-                        'hostname': domain.hostname,
-                        'purpose': domain.purpose,
-                        'campaign_id': domain.campaign_id,
-                        'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
-                        'validation_failed': False,
-                        'is_a_record_set': (None if domain.is_a_record_set is None else bool(domain.is_a_record_set)),
-                        'is_disabled': bool(domain.is_disabled),
-                    }
-                )
-                for domain in domains
-            ],
+            'content': [humps.camelize(domain) for domain in domains],
             'pagination': parameters_payload | {'total': domain_service.count()},
         }
 
@@ -68,9 +50,9 @@ class Domains(MethodView):
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
                 'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
-                'validation_failed': False,
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
+                'certificate_status': None,
             }
         )
 
@@ -81,7 +63,14 @@ class Domain(MethodView):
     @auth.login_required
     def get(self, domainId):
         domain_service = container.get(DomainService)
+        certificate_service = container.get(CertificateService)
         domain = domain_service.get(domainId)
+
+        try:
+            certificate_status = certificate_service.get(domain.id).status
+        except DomainCertificateDoesNotExistError:
+            certificate_status = None
+
         return humps.camelize(
             {
                 'id': domain.id,
@@ -89,9 +78,9 @@ class Domain(MethodView):
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
                 'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
-                'validation_failed': _validation_failed(domain),
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
+                'certificate_status': certificate_status,
             }
         )
 
@@ -100,6 +89,8 @@ class Domain(MethodView):
     @auth.login_required
     def patch(self, payload, domainId):
         domain_service = container.get(DomainService)
+        certificate_service = container.get(CertificateService)
+
         domain = domain_service.update(
             domainId,
             hostname=payload.get('hostname'),
@@ -107,6 +98,12 @@ class Domain(MethodView):
             campaign_id=payload.get('campaignId'),
             is_disabled=payload.get('isDisabled'),
         )
+
+        try:
+            certificate_status = certificate_service.get(domain.id).status
+        except DomainCertificateDoesNotExistError:
+            certificate_status = None
+
         return humps.camelize(
             {
                 'id': domain.id,
@@ -114,8 +111,39 @@ class Domain(MethodView):
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
                 'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
-                'validation_failed': _validation_failed(domain),
                 'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
                 'is_disabled': bool(domain.is_disabled),
+                'certificate_status': certificate_status,
+            }
+        )
+
+
+@blueprint.route('/<int:domainId>/certificate')
+class DomainCertificate(MethodView):
+    @blueprint.response(200, DomainCertificateResponseSchema)
+    @auth.login_required
+    def get(self, domainId):
+        certificate_service = container.get(CertificateService)
+
+        certificate = certificate_service.get(domainId)
+        return humps.camelize(
+            {
+                'status': certificate.status,
+                'ca': certificate.ca,
+                'validation_method': certificate.validation_method,
+                'expires_at': None if certificate.expires_at is None else int(certificate.expires_at.timestamp()),
+                'last_attempted_at': (
+                    None if certificate.last_attempted_at is None else int(certificate.last_attempted_at.timestamp())
+                ),
+                'last_issued_at': (
+                    None if certificate.last_issued_at is None else int(certificate.last_issued_at.timestamp())
+                ),
+                'last_renewed_at': (
+                    None if certificate.last_renewed_at is None else int(certificate.last_renewed_at.timestamp())
+                ),
+                'next_retry_at': (
+                    None if certificate.next_retry_at is None else int(certificate.next_retry_at.timestamp())
+                ),
+                'failure_reason': certificate.failure_reason,
             }
         )

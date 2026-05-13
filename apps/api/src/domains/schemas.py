@@ -66,9 +66,21 @@ class DomainResponseSchema(Schema):
     purpose = fields.String(required=True)
     campaignId = fields.Integer(allow_none=True)
     campaignName = fields.String(allow_none=True)
-    validationFailed = fields.Boolean(required=True)
     isARecordSet = fields.Boolean(allow_none=True)
     isDisabled = fields.Boolean(required=True)
+    certificateStatus = fields.String(allow_none=True)
+
+
+class DomainCertificateResponseSchema(Schema):
+    status = fields.String(required=True)
+    ca = fields.String(required=True)
+    validationMethod = fields.String(required=True)
+    expiresAt = fields.Integer(allow_none=True)
+    lastAttemptedAt = fields.Integer(allow_none=True)
+    lastIssuedAt = fields.Integer(allow_none=True)
+    lastRenewedAt = fields.Integer(allow_none=True)
+    nextRetryAt = fields.Integer(allow_none=True)
+    failureReason = fields.String(allow_none=True)
 
 
 class DomainListResponseSchema(Schema):

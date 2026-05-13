@@ -207,14 +207,25 @@ class DomainService:
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [
-            domain
-            for domain in Domain.select(Domain, Campaign)
+        return (
+            Domain.select(
+                Domain.id.alias('id'),
+                Domain.hostname.alias('hostname'),
+                Domain.purpose.alias('purpose'),
+                Domain.campaign_id.alias('campaign_id'),
+                Campaign.name.alias('campaign_name'),
+                Domain.is_a_record_set.alias('is_a_record_set'),
+                Domain.is_disabled.alias('is_disabled'),
+                DomainCertificate.status.alias('certificate_status'),
+            )
             .join(Campaign, JOIN.LEFT_OUTER)
+            .switch(Domain)
+            .join(DomainCertificate, JOIN.LEFT_OUTER)
             .order_by(order_by, Domain.id.asc())
             .limit(page_size)
             .offset((page - 1) * page_size)
-        ]
+            .dicts()
+        )
 
     def count(self):
         return Domain.select(fn.count(Domain.id)).scalar()
