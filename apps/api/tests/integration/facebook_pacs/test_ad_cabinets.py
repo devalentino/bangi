@@ -133,7 +133,7 @@ class TestAdCabinet:
             f'/api/v2/facebook/pacs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{business_portfolio["id"]}',
             headers={'Authorization': authorization},
         )
-        assert response.status_code == 201
+        assert response.status_code == 201, response.text
         assert response.json == {
             'id': ad_cabinet['id'],
             'isBanned': ad_cabinet['is_banned'],
@@ -163,7 +163,7 @@ class TestAdCabinetWithBusinessPortfolio:
             f'/api/v2/facebook/pacs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{business_portfolio["id"]}',
             headers={'Authorization': authorization},
         )
-        assert response.status_code == 204
+        assert response.status_code == 204, response.text
 
         db_payload = read_from_db('facebook_pacs_ad_cabinet', filters={'id': ad_cabinet['id']})
         assert db_payload['business_portfolio_id'] is None
@@ -176,5 +176,5 @@ class TestAdCabinetWithBusinessPortfolio:
             f'/api/v2/facebook/pacs/ad-cabinets/{ad_cabinet["id"]}/business-portfolio/{nonexistent_manager_id}',
             headers={'Authorization': authorization},
         )
-        assert response.status_code == 400
+        assert response.status_code == 400, response.text
         assert response.json == {'message': 'Bad Business Manager'}
