@@ -12,6 +12,9 @@ class DomainModel {
     this.campaigns = [];
     this.campaignError = null;
     this.domain = null;
+    this.certificate = null;
+    this.certificateError = null;
+    this.isCertificateLoading = false;
     this.form = {
       hostname: "",
       purpose: "campaign",
@@ -63,6 +66,9 @@ class DomainModel {
     this.error = null;
     this.successMessage = null;
     this.lastLoaded = null;
+    this.certificate = null;
+    this.certificateError = null;
+    this.isCertificateLoading = false;
     this.isLoading = true;
 
     api.request({
@@ -74,10 +80,32 @@ class DomainModel {
         this.lastLoaded = payload;
         this.setFormValues(payload);
         this.isLoading = false;
+        if (payload.certificateStatus) {
+          this.fetchCertificate();
+        }
       }.bind(this))
       .catch(function () {
         this.error = "Failed to load domain details.";
         this.isLoading = false;
+      }.bind(this));
+  }
+
+  fetchCertificate() {
+    this.certificate = null;
+    this.certificateError = null;
+    this.isCertificateLoading = true;
+
+    api.request({
+      method: "GET",
+      url: `${config.backendApiBaseUrl}/domains/${this.domainId}/certificate`,
+    })
+      .then(function (payload) {
+        this.certificate = payload;
+        this.isCertificateLoading = false;
+      }.bind(this))
+      .catch(function () {
+        this.certificateError = "Failed to load certificate details.";
+        this.isCertificateLoading = false;
       }.bind(this));
   }
 

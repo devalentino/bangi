@@ -1,5 +1,6 @@
 let m = require("mithril");
 let DomainModel = require("../models/domain");
+let { timestamp2LocalTime, timestamp2UtcTime } = require("../utils/date");
 
 class DomainView {
   constructor() {
@@ -81,6 +82,84 @@ class DomainView {
       m("i.fa.fa-question.text-muted.me-2", { title: "Unchecked" }),
       "Unchecked",
     ];
+  }
+
+  _certificateStatusText(status) {
+    if (!status) {
+      return "None";
+    }
+
+    return {
+      pending: "Pending",
+      active: "Active",
+      failed: "Failed",
+      expired: "Expired",
+    }[status] || status;
+  }
+
+  _certificateRow(label, value) {
+    return m(".d-flex.justify-content-between.border-bottom.py-2.small", [
+      m("span.text-muted", label),
+      m("span.text-end", value || "-"),
+    ]);
+  }
+
+  _certificatePanel() {
+    if (this.model.domainId === "new") {
+      return null;
+    }
+
+    let certificateStatus = this.model.domain
+      ? this.model.domain.certificateStatus
+      : null;
+
+    if (!certificateStatus) {
+      return m(".mt-4", [
+        m("h6.mb-3", "Certificate"),
+        this._certificateRow("Status", this._certificateStatusText(null)),
+      ]);
+    }
+
+    if (this.model.isCertificateLoading) {
+      return m(".mt-4", [
+        m("h6.mb-3", "Certificate"),
+        m("div", "Loading certificate..."),
+      ]);
+    }
+
+    if (this.model.certificateError) {
+      return m(".mt-4", [
+        m("h6.mb-3", "Certificate"),
+        m(".alert.alert-warning", this.model.certificateError),
+        this._certificateRow("Status", this._certificateStatusText(certificateStatus)),
+      ]);
+    }
+
+    if (!this.model.certificate) {
+      return m(".mt-4", [
+        m("h6.mb-3", "Certificate"),
+        this._certificateRow("Status", this._certificateStatusText(certificateStatus)),
+      ]);
+    }
+
+    let certificate = this.model.certificate;
+    return m(".mt-4", [
+      m("h6.mb-3", "Certificate"),
+      this._certificateRow("Status", this._certificateStatusText(certificate.status)),
+      this._certificateRow("CA", certificate.ca),
+      this._certificateRow("Validation method", certificate.validationMethod),
+      this._certificateRow("Expires (local)", timestamp2LocalTime(certificate.expiresAt)),
+      this._certificateRow("Expires (UTC)", timestamp2UtcTime(certificate.expiresAt)),
+      this._certificateRow("Last attempted (local)", timestamp2LocalTime(certificate.lastAttemptedAt)),
+      this._certificateRow("Last attempted (UTC)", timestamp2UtcTime(certificate.lastAttemptedAt)),
+      this._certificateRow("Last issued (local)", timestamp2LocalTime(certificate.lastIssuedAt)),
+      this._certificateRow("Last issued (UTC)", timestamp2UtcTime(certificate.lastIssuedAt)),
+      this._certificateRow("Last renewed (local)", timestamp2LocalTime(certificate.lastRenewedAt)),
+      this._certificateRow("Last renewed (UTC)", timestamp2UtcTime(certificate.lastRenewedAt)),
+      this._certificateRow("Next retry (local)", timestamp2LocalTime(certificate.nextRetryAt)),
+      this._certificateRow("Next retry (UTC)", timestamp2UtcTime(certificate.nextRetryAt)),
+      this._certificateRow("Failure reason", certificate.failureReason),
+    ]);
   }
 
   view() {
@@ -179,11 +258,8 @@ class DomainView {
         m(".col-12.col-xl-5", [
           m(".bg-light.rounded.h-100.p-4", [
             m("h6.mb-4", "Domain Status"),
-            m("label.form-label", { for: "domainARecord" }, "A Record"),
-            m(
-              "#domainARecord.form-control-plaintext",
-              this._aRecordBadge(),
-            ),
+            this._certificateRow("A Record", this._aRecordBadge()),
+            this._certificatePanel(),
           ]),
         ]),
       ]),
