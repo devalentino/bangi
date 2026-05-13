@@ -17,7 +17,7 @@ def _certificate_output(hostname):
 
 @pytest.fixture
 def certificate_worker_settings(monkeypatch):
-    monkeypatch.setattr('src.domains.workers.renew_ca_certificates.CERTIFICATE_RENEWAL_PERIOD_SECONDS', 0.2)
+    monkeypatch.setattr('src.domains.workers.renew_ca_certificates.CERTIFICATE_RENEWAL_PERIOD_SECONDS', 0.25)
 
 
 @pytest.fixture
