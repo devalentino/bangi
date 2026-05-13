@@ -14,6 +14,8 @@ BANGI_OPS_DISPATCHER="${BANGI_OPS_BIN_DIR}/dispatch"
 BANGI_OPS_WRAPPERS=(
     nginx-validate
     nginx-reload
+    acme-issue-certificate
+    acme-renew-certificate
     refresh-ip2location
 )
 
@@ -71,6 +73,143 @@ set -Eeuo pipefail
 exec /usr/bin/systemctl reload nginx
 EOF
             ;;
+        acme-issue-certificate|acme-renew-certificate)
+            local acme_action="issue"
+            local wrapper_label="${wrapper_name}"
+
+            if [[ "${wrapper_name}" == "acme-renew-certificate" ]]; then
+                acme_action="renew"
+            fi
+
+            cat >"${temporary_path}" <<EOF \
+                || bangi_fatal "Cannot write operations wrapper: ${wrapper_label}"
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ACME_ACTION="${acme_action}"
+ACME_HOME="${BANGI_ACME_HOME_DIR}"
+RUNTIME_ENV_FILE="${BANGI_RUNTIME_ENV_FILE}"
+DEFAULT_CHALLENGE_WEBROOT="${BANGI_ACME_CHALLENGE_WEBROOT}"
+DEFAULT_CERTIFICATE_BASE_DIR="${BANGI_CERTIFICATE_BASE_DIR}"
+
+fatal() {
+    printf '%s\n' "\$*" >&2
+    exit 1
+}
+
+load_env_file() {
+    local file_path="\$1"
+    local line=""
+    local key=""
+    local value=""
+
+    [[ -f "\${file_path}" ]] || return 0
+
+    while IFS= read -r line || [[ -n "\${line}" ]]; do
+        [[ -n "\${line}" && "\${line}" != \#* && "\${line}" == *=* ]] || continue
+        key="\${line%%=*}"
+        value="\${line#*=}"
+        key="\${key#export }"
+        [[ "\${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+        printf -v "\${key}" '%s' "\${value}"
+        export "\${key}"
+    done <"\${file_path}"
+}
+
+validate_hostname() {
+    local hostname="\$1"
+    local label=""
+
+    [[ -n "\${hostname}" && "\${#hostname}" -le 253 ]] || return 1
+    [[ "\${hostname}" == "\${hostname,,}" ]] || return 1
+    [[ "\${hostname}" == *.* ]] || return 1
+    [[ "\${hostname}" != *..* ]] || return 1
+    [[ "\${hostname}" =~ ^[a-z0-9.-]+$ ]] || return 1
+
+    IFS='.' read -r -a labels <<<"\${hostname}"
+    for label in "\${labels[@]}"; do
+        [[ -n "\${label}" && "\${#label}" -le 63 ]] || return 1
+        [[ "\${label}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || return 1
+    done
+}
+
+select_acme_server() {
+    if [[ "\${BANGI_ACME_USE_STAGING:-false}" == "true" ]]; then
+        printf '%s\n' "\${BANGI_ACME_STAGING_SERVER:?BANGI_ACME_STAGING_SERVER is required}"
+        return 0
+    fi
+
+    printf '%s\n' "\${BANGI_ACME_SERVER:?BANGI_ACME_SERVER is required}"
+}
+
+sanitize_error() {
+    tr -d '\000-\010\013\014\016-\037' | tail -n 20
+}
+
+if [[ "\$#" -ne 1 ]]; then
+    fatal "${wrapper_label} requires exactly one hostname argument"
+fi
+
+hostname="\$1"
+validate_hostname "\${hostname}" || fatal "Invalid hostname"
+
+load_env_file "\${RUNTIME_ENV_FILE}"
+
+if [[ "\${BANGI_ACME_ENABLED:-true}" != "true" ]]; then
+    fatal "ACME support is disabled"
+fi
+
+if [[ "\${BANGI_ACME_CA:-letsencrypt}" != "letsencrypt" ]]; then
+    fatal "Unsupported ACME CA"
+fi
+
+account_email="\${BANGI_ACME_ACCOUNT_EMAIL:?BANGI_ACME_ACCOUNT_EMAIL is required}"
+challenge_webroot="\${BANGI_ACME_CHALLENGE_WEBROOT:-\${DEFAULT_CHALLENGE_WEBROOT}}"
+certificate_base_dir="\${BANGI_CERTIFICATE_BASE_DIR:-\${DEFAULT_CERTIFICATE_BASE_DIR}}"
+certificate_dir="\${certificate_base_dir}/\${hostname}"
+fullchain_path="\${certificate_dir}/fullchain.pem"
+private_key_path="\${certificate_dir}/privkey.pem"
+acme_server="\$(select_acme_server)"
+
+case "\${challenge_webroot}" in
+    /etc/nginx/bangi/acme-challenges|/etc/nginx/bangi/acme-challenges/*) ;;
+    *) fatal "ACME challenge webroot must be under /etc/nginx/bangi/acme-challenges" ;;
+esac
+
+case "\${certificate_dir}" in
+    /etc/nginx/bangi/certs/*) ;;
+    *) fatal "Certificate directory must be under /etc/nginx/bangi/certs" ;;
+esac
+
+install -d -m 0755 -o root -g root "\${challenge_webroot}" "\${certificate_dir}"
+
+"\${ACME_HOME}/acme.sh" --home "\${ACME_HOME}" --server "\${acme_server}" --accountemail "\${account_email}" --register-account -m "\${account_email}" >/dev/null
+
+if [[ "\${ACME_ACTION}" == "issue" ]]; then
+    if ! output="\$("\${ACME_HOME}/acme.sh" --home "\${ACME_HOME}" --server "\${acme_server}" --issue --webroot "\${challenge_webroot}" -d "\${hostname}" 2>&1)"; then
+        printf '%s\n' "\${output}" | sanitize_error >&2
+        exit 1
+    fi
+else
+    if ! output="\$("\${ACME_HOME}/acme.sh" --home "\${ACME_HOME}" --server "\${acme_server}" --renew -d "\${hostname}" --webroot "\${challenge_webroot}" 2>&1)"; then
+        printf '%s\n' "\${output}" | sanitize_error >&2
+        exit 1
+    fi
+fi
+
+if ! install_output="\$("\${ACME_HOME}/acme.sh" --home "\${ACME_HOME}" --install-cert -d "\${hostname}" --fullchain-file "\${fullchain_path}" --key-file "\${private_key_path}" 2>&1)"; then
+    printf '%s\n' "\${install_output}" | sanitize_error >&2
+    exit 1
+fi
+
+chmod 0644 "\${fullchain_path}"
+chmod 0600 "\${private_key_path}"
+
+printf 'The full-chain cert is in: %s\n' "\${fullchain_path}"
+printf 'The key is in: %s\n' "\${private_key_path}"
+openssl x509 -startdate -enddate -noout -in "\${fullchain_path}"
+EOF
+            ;;
         refresh-ip2location)
             cat >"${temporary_path}" <<'EOF' \
                 || bangi_fatal "Cannot write operations wrapper: refresh-ip2location"
@@ -114,6 +253,16 @@ case "${SSH_ORIGINAL_COMMAND:-}" in
         ;;
     nginx-reload)
         exec sudo -n /opt/bangi/ops/bin/nginx-reload
+        ;;
+    acme-issue-certificate\ *)
+        read -r command_name hostname extra <<<"${SSH_ORIGINAL_COMMAND}"
+        [[ "${command_name}" == "acme-issue-certificate" && -n "${hostname}" && -z "${extra}" ]] || exit 126
+        exec sudo -n /opt/bangi/ops/bin/acme-issue-certificate "${hostname}"
+        ;;
+    acme-renew-certificate\ *)
+        read -r command_name hostname extra <<<"${SSH_ORIGINAL_COMMAND}"
+        [[ "${command_name}" == "acme-renew-certificate" && -n "${hostname}" && -z "${extra}" ]] || exit 126
+        exec sudo -n /opt/bangi/ops/bin/acme-renew-certificate "${hostname}"
         ;;
     refresh-ip2location)
         exec sudo -n /opt/bangi/ops/bin/refresh-ip2location
@@ -226,7 +375,7 @@ bangi_install_ops_sudoers() {
         || bangi_fatal "Cannot write sudoers allowlist: ${temporary_path}"
 # Managed by Bangi installer. Local edits may be overwritten.
 Defaults:${BANGI_OPS_USER} secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Cmnd_Alias BANGI_OPS_WRAPPERS = ${BANGI_OPS_BIN_DIR}/nginx-validate, ${BANGI_OPS_BIN_DIR}/nginx-reload, ${BANGI_OPS_BIN_DIR}/refresh-ip2location
+Cmnd_Alias BANGI_OPS_WRAPPERS = ${BANGI_OPS_BIN_DIR}/nginx-validate, ${BANGI_OPS_BIN_DIR}/nginx-reload, ${BANGI_OPS_BIN_DIR}/acme-issue-certificate, ${BANGI_OPS_BIN_DIR}/acme-renew-certificate, ${BANGI_OPS_BIN_DIR}/refresh-ip2location
 ${BANGI_OPS_USER} ALL=(root) NOPASSWD: BANGI_OPS_WRAPPERS
 EOF
 

@@ -4,6 +4,7 @@ class Sidebar {
   view() {
     let currentRoute = m.route.get();
     let isHealthRoute = currentRoute === "/health";
+    let isDomainsRoute = currentRoute.indexOf("/domains") === 0;
     let isFacebookPacsRoute = currentRoute.indexOf("/facebook/pacs") === 0;
     let isStatisticsRoute = currentRoute === "/statistics";
     let isExpensesReportRoute = currentRoute === "/reports/expenses";
@@ -138,6 +139,14 @@ class Sidebar {
                 ],
                 ),
               ]),
+              m(
+                "a.nav-item.nav-link",
+                { href: "#!/domains", class: linkClass(isDomainsRoute) },
+                [
+                  m("i.fa.fa-globe.me-2"),
+                  "Domains",
+                ],
+              ),
               m(
                 "a.nav-item.nav-link",
                 { href: "#!/health", class: linkClass(isHealthRoute) },
