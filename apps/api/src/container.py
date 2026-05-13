@@ -13,6 +13,7 @@ from src.core.repositories import CampaignRepository
 from src.core.services import CampaignService, ClientService, FlowService, Ip2LocationLocator
 from src.core.supervisor import WorkerContext, WorkerSupervisor
 from src.domains.services import (
+    AcmeService,
     CertificateService,
     DomainCookieService,
     DomainService,
@@ -77,6 +78,7 @@ container = create_sync_container(
         CampaignRepository,
         CampaignService,
         ClientService,
+        AcmeService,
         CertificateService,
         DomainCookieService,
         DomainService,

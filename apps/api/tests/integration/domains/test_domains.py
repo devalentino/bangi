@@ -20,9 +20,9 @@ class TestDomains:
             'purpose': 'campaign',
             'campaignId': None,
             'campaignName': None,
-            'validationFailed': False,
             'isARecordSet': None,
             'isDisabled': False,
+            'certificateStatus': None,
         }
 
         domain = read_from_db('domain')
@@ -59,6 +59,25 @@ class TestDomains:
                 'is_disabled': False,
             },
         )
+        campaign_domain_certificate = write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': campaign_domain['id'],
+                'status': 'active',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/example.com/privkey.pem',
+                'issued_at': 1778587200,
+                'expires_at': 1786363200,
+                'last_attempted_at': 1778587200,
+                'last_issued_at': 1778587200,
+                'last_renewed_at': None,
+                'next_retry_at': None,
+                'failure_count': 0,
+                'failure_reason': None,
+            },
+        )
         dashboard_domain = write_to_db(
             'domain',
             {
@@ -80,9 +99,9 @@ class TestDomains:
             'purpose': 'campaign',
             'campaignId': None,
             'campaignName': None,
-            'validationFailed': False,
             'isARecordSet': None,
             'isDisabled': False,
+            'certificateStatus': None,
         }
         assert response.json['content'][-1] == {
             'id': mock.ANY,
@@ -90,9 +109,9 @@ class TestDomains:
             'purpose': campaign_domain['purpose'],
             'campaignId': campaign_domain['campaign_id'],
             'campaignName': campaign['name'],
-            'validationFailed': False,
             'isARecordSet': campaign_domain['is_a_record_set'],
             'isDisabled': campaign_domain['is_disabled'],
+            'certificateStatus': campaign_domain_certificate['status'],
         }
         assert dashboard_domain['hostname'] not in {item['hostname'] for item in response.json['content']}
         assert response.json['pagination'] == {
@@ -150,9 +169,9 @@ class TestDomains:
                     'purpose': third['purpose'],
                     'campaignId': third['campaign_id'],
                     'campaignName': None,
-                    'validationFailed': False,
                     'isARecordSet': third['is_a_record_set'],
                     'isDisabled': third['is_disabled'],
+                    'certificateStatus': None,
                 },
                 {
                     'id': first['id'],
@@ -160,9 +179,9 @@ class TestDomains:
                     'purpose': first['purpose'],
                     'campaignId': first['campaign_id'],
                     'campaignName': None,
-                    'validationFailed': False,
                     'isARecordSet': first['is_a_record_set'],
                     'isDisabled': first['is_disabled'],
+                    'certificateStatus': None,
                 },
                 {
                     'id': second['id'],
@@ -170,9 +189,9 @@ class TestDomains:
                     'purpose': second['purpose'],
                     'campaignId': second['campaign_id'],
                     'campaignName': None,
-                    'validationFailed': False,
                     'isARecordSet': second['is_a_record_set'],
                     'isDisabled': second['is_disabled'],
+                    'certificateStatus': None,
                 },
             ],
             'pagination': {'page': 1, 'pageSize': 3, 'sortBy': 'hostname', 'sortOrder': 'desc', 'total': 3},
@@ -188,9 +207,44 @@ class TestDomains:
             'purpose': domain['purpose'],
             'campaignId': domain['campaign_id'],
             'campaignName': campaign['name'],
-            'validationFailed': False,
             'isARecordSet': domain['is_a_record_set'],
             'isDisabled': domain['is_disabled'],
+            'certificateStatus': None,
+        }
+
+    def test_get_domain_returns_certificate_status(self, client, authorization, domain, campaign, write_to_db):
+        certificate = write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'active',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/campaign.example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/campaign.example.com/privkey.pem',
+                'issued_at': 1778587200,
+                'expires_at': 1786363200,
+                'last_attempted_at': 1778587200,
+                'last_issued_at': 1778587200,
+                'last_renewed_at': None,
+                'next_retry_at': None,
+                'failure_count': 0,
+                'failure_reason': None,
+            },
+        )
+
+        response = client.get(f'/api/v2/domains/{domain["id"]}', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'id': domain['id'],
+            'hostname': domain['hostname'],
+            'purpose': domain['purpose'],
+            'campaignId': domain['campaign_id'],
+            'campaignName': campaign['name'],
+            'isARecordSet': domain['is_a_record_set'],
+            'isDisabled': domain['is_disabled'],
+            'certificateStatus': certificate['status'],
         }
 
     def test_get_domain__non_existent(self, client, authorization):
@@ -198,6 +252,12 @@ class TestDomains:
 
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Domain does not exist'}
+
+    def test_get_domain_certificate__non_existent(self, client, authorization, domain):
+        response = client.get(f'/api/v2/domains/{domain["id"]}/certificate', headers={'Authorization': authorization})
+
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Domain certificate does not exist'}
 
     def test_update_domain_resets_dns_when_hostname_changes(
         self, client, authorization, write_to_db, read_from_db, nginx_workspace_base_dir
@@ -230,9 +290,9 @@ class TestDomains:
             'purpose': 'campaign',
             'campaignId': None,
             'campaignName': None,
-            'validationFailed': False,
             'isARecordSet': None,
             'isDisabled': False,
+            'certificateStatus': None,
         }
 
         updated = read_from_db('domain', filters={'id': domain['id']})
@@ -253,7 +313,7 @@ class TestDomains:
         assert new_enabled_link.is_symlink()
 
     def test_update_domain_to_disabled_keeps_certificate_metadata_unchanged(
-        self, client, authorization, domain, read_from_db, write_to_db
+        self, client, authorization, domain, campaign, read_from_db, write_to_db
     ):
         certificate = write_to_db(
             'domain_certificate',
@@ -278,10 +338,20 @@ class TestDomains:
         response = client.patch(
             f'/api/v2/domains/{domain["id"]}',
             headers={'Authorization': authorization},
-            json={'isDisabled': True},
+            json={'isDisabled': True, 'campaignId': domain['campaign_id']},
         )
 
         assert response.status_code == 200, response.text
+        assert response.json == {
+            'id': domain['id'],
+            'hostname': domain['hostname'],
+            'purpose': domain['purpose'],
+            'campaignId': domain['campaign_id'],
+            'campaignName': campaign['name'],
+            'isARecordSet': True,
+            'isDisabled': True,
+            'certificateStatus': 'active',
+        }
         assert read_from_db('domain_certificate', filters={'id': certificate['id']}) == certificate
 
     def test_update_domain_attaches_campaign(self, client, authorization, campaign, write_to_db, read_from_db):
@@ -311,9 +381,9 @@ class TestDomains:
             'purpose': 'campaign',
             'campaignId': campaign['id'],
             'campaignName': campaign['name'],
-            'validationFailed': False,
             'isARecordSet': True,
             'isDisabled': False,
+            'certificateStatus': None,
         }
 
         updated = read_from_db('domain', filters={'id': domain['id']})
@@ -458,9 +528,9 @@ class TestDomains:
             'purpose': 'dashboard',
             'campaignId': None,
             'campaignName': None,
-            'validationFailed': False,
             'isARecordSet': True,
             'isDisabled': False,
+            'certificateStatus': None,
         }
 
         updated = read_from_db('domain', filters={'id': domain['id']})
@@ -522,9 +592,9 @@ class TestDomains:
             'purpose': 'dashboard',
             'campaignId': None,
             'campaignName': None,
-            'validationFailed': False,
             'isARecordSet': True,
             'isDisabled': False,
+            'certificateStatus': None,
         }
 
         updated = read_from_db('domain', filters={'id': domain['id']})

@@ -1,11 +1,13 @@
 import logging
 import random
+import re
 import secrets
+import shlex
 import string
 import subprocess
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Protocol
 from uuid import uuid4
@@ -207,14 +209,25 @@ class DomainService:
         if sort_order == SortOrder.desc:
             order_by = order_by.desc()
 
-        return [
-            domain
-            for domain in Domain.select(Domain, Campaign)
+        return (
+            Domain.select(
+                Domain.id.alias('id'),
+                Domain.hostname.alias('hostname'),
+                Domain.purpose.alias('purpose'),
+                Domain.campaign_id.alias('campaign_id'),
+                Campaign.name.alias('campaign_name'),
+                Domain.is_a_record_set.alias('is_a_record_set'),
+                Domain.is_disabled.alias('is_disabled'),
+                DomainCertificate.status.alias('certificate_status'),
+            )
             .join(Campaign, JOIN.LEFT_OUTER)
+            .switch(Domain)
+            .join(DomainCertificate, JOIN.LEFT_OUTER)
             .order_by(order_by, Domain.id.asc())
             .limit(page_size)
             .offset((page - 1) * page_size)
-        ]
+            .dicts()
+        )
 
     def count(self):
         return Domain.select(fn.count(Domain.id)).scalar()
@@ -347,7 +360,7 @@ class HostCommandExecutorService:
         self.host_ops_ssh_key_path = host_ops_ssh_key_path
         self.host_ops_ssh_known_hosts_path = host_ops_ssh_known_hosts_path
 
-    def run(self, command: str) -> None:
+    def run(self, command: str) -> str:
         if not all(
             [
                 self.host_ops_ssh_user,
@@ -388,6 +401,142 @@ class HostCommandExecutorService:
                 },
             )
             raise HostCommandExecutionError(output or f'Host operation failed: {command}')
+
+        return output
+
+
+@injectable
+class AcmeService:
+    _CERTIFICATE_PATH_PATTERNS = (
+        re.compile(r'(?:Your cert(?:ificate)? is in|The cert is in|The full-?chain cert is in):\s*(\S+)'),
+    )
+    _PRIVATE_KEY_PATH_PATTERNS = (re.compile(r'(?:Your cert key is in|The domain key is here|The key is in):\s*(\S+)'),)
+
+    def __init__(self, host_command_executor_service: HostCommandExecutorService):
+        self.host_command_executor_service = host_command_executor_service
+
+    def issue(self, hostname: str) -> AcmeExecutionSnapshot:
+        return self._run_wrapper('acme-issue-certificate', hostname, is_renewal=False)
+
+    def renew(self, hostname: str) -> AcmeExecutionSnapshot:
+        return self._run_wrapper('acme-renew-certificate', hostname, is_renewal=True)
+
+    def _run_wrapper(self, wrapper_command: str, hostname: str, is_renewal: bool) -> AcmeExecutionSnapshot:
+        command = f'{wrapper_command} {shlex.quote(hostname)}'
+        try:
+            output = self.host_command_executor_service.run(command)
+        except HostCommandExecutionError as exc:
+            return self._failed_snapshot(
+                hostname,
+                str(exc),
+                is_renewal,
+                command=command,
+                output=str(exc),
+                detail=str(exc),
+            )
+
+        certificate_path = self._extract_first_match(output, self._CERTIFICATE_PATH_PATTERNS)
+        private_key_path = self._extract_first_match(output, self._PRIVATE_KEY_PATH_PATTERNS)
+        if certificate_path is None or private_key_path is None:
+            return self._failed_snapshot(
+                hostname,
+                'Invalid ACME wrapper output: missing certificate paths',
+                is_renewal,
+                command=command,
+                output=output,
+            )
+
+        try:
+            issued_at, expires_at = self._load_certificate_timestamps(certificate_path)
+        except (HostCommandExecutionError, ValueError) as exc:
+            return self._failed_snapshot(
+                hostname,
+                str(exc),
+                is_renewal,
+                command=command,
+                output=output,
+                detail=str(exc),
+            )
+
+        if expires_at is None:
+            return self._failed_snapshot(
+                hostname,
+                'Invalid ACME wrapper output: missing certificate expiration',
+                is_renewal,
+                command=command,
+                output=output,
+            )
+
+        return AcmeExecutionSnapshot(
+            status=DomainCertificateStatus.active.value,
+            hostname=hostname,
+            certificate_path=certificate_path,
+            private_key_path=private_key_path,
+            issued_at=issued_at,
+            expires_at=expires_at,
+            error=None,
+            is_renewal=is_renewal,
+        )
+
+    @classmethod
+    def _extract_first_match(cls, output: str, patterns: tuple[re.Pattern[str], ...]) -> str | None:
+        for line in output.splitlines():
+            stripped_line = line.strip()
+            for pattern in patterns:
+                match = pattern.search(stripped_line)
+                if match is not None:
+                    return match.group(1)
+        return None
+
+    def _load_certificate_timestamps(self, certificate_path: str) -> tuple[datetime | None, datetime | None]:
+        certificate_info_command = f"openssl x509 -startdate -enddate -noout -in {shlex.quote(certificate_path)}"
+        output = self.host_command_executor_service.run(certificate_info_command)
+
+        issued_at = None
+        expires_at = None
+        for line in output.splitlines():
+            stripped_line = line.strip()
+            if stripped_line.startswith('notBefore='):
+                issued_at = self._parse_openssl_timestamp(stripped_line.removeprefix('notBefore='))
+            elif stripped_line.startswith('notAfter='):
+                expires_at = self._parse_openssl_timestamp(stripped_line.removeprefix('notAfter='))
+        return issued_at, expires_at
+
+    @staticmethod
+    def _parse_openssl_timestamp(raw_value: str) -> datetime:
+        parsed_value = datetime.strptime(raw_value, '%b %d %H:%M:%S %Y %Z')
+        return parsed_value.replace(tzinfo=timezone.utc)
+
+    def _failed_snapshot(
+        self,
+        hostname: str,
+        reason: str,
+        is_renewal: bool,
+        command: str | None = None,
+        output: str | None = None,
+        detail: str | None = None,
+    ) -> AcmeExecutionSnapshot:
+        logger.error(
+            'ACME wrapper failed',
+            extra={
+                'hostname': hostname,
+                'command': command,
+                'output': output,
+                'failure_detail': detail,
+                'failure_reason': reason,
+                'is_renewal': is_renewal,
+            },
+        )
+        return AcmeExecutionSnapshot(
+            status=DomainCertificateStatus.failed.value,
+            hostname=hostname,
+            certificate_path=None,
+            private_key_path=None,
+            issued_at=None,
+            expires_at=None,
+            error=output or reason,
+            is_renewal=is_renewal,
+        )
 
 
 @injectable(as_type=WebserverService)

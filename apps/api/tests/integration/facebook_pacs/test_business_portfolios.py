@@ -145,7 +145,7 @@ class TestBusinessPortfolio:
             f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
             headers={'Authorization': authorization},
         )
-        assert response.status_code == 201
+        assert response.status_code == 201, response.text
         assert response.json == {
             'id': business_portfolio['id'],
             'name': business_portfolio['name'],
@@ -189,7 +189,7 @@ class TestBusinessPortfolio:
             f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
             headers={'Authorization': authorization},
         )
-        assert response.status_code == 204
+        assert response.status_code == 204, response.text
 
         db_payload = read_from_db(
             'facebook_pacs_business_portfolio2executor',
@@ -204,7 +204,7 @@ class TestBusinessPortfolio:
             f'/api/v2/facebook/pacs/business-portfolios/{business_portfolio["id"]}/executors/{executor["id"]}',
             headers={'Authorization': authorization},
         )
-        assert response.status_code == 204
+        assert response.status_code == 204, response.text
 
         db_payload = read_from_db(
             'facebook_pacs_business_portfolio2executor',
@@ -222,7 +222,7 @@ class TestBusinessPortfolio:
             f'/{business_portfolio["id"]}/executors/{non_existent_executor}',
             headers={'Authorization': authorization},
         )
-        assert response.status_code == 404
+        assert response.status_code == 404, response.text
         assert response.json == {'message': 'Does not exist'}
 
 
