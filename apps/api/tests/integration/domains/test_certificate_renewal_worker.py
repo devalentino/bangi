@@ -17,7 +17,7 @@ def _certificate_output(hostname):
 
 @pytest.fixture
 def certificate_worker_settings(monkeypatch):
-    monkeypatch.setattr('src.domains.workers.renew_ca_certificates.CERTIFICATE_RENEWAL_PERIOD_SECONDS', 0.25)
+    monkeypatch.setattr('src.domains.workers.renew_ca_certificates.CERTIFICATE_RENEWAL_PERIOD_SECONDS', 0.1)
 
 
 @pytest.fixture
@@ -258,7 +258,7 @@ class TestCertificateRenewalWorkerCandidateLimit:
         mock_subprocess_run.return_value.stderr = 'ACME failed'
 
         client.get('/api/v2/health')
-        sleep(0.3)
+        sleep(0.12)
 
         assert [call.args[0][-1] for call in mock_subprocess_run.call_args_list] == [
             'acme-issue-certificate candidate-0.example.com',
