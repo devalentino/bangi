@@ -39,6 +39,31 @@ class DomainsView {
         });
   }
 
+  _certificateBadge(domain) {
+    if (!domain.certificateStatus) {
+      return m("span.text-muted", "-");
+    }
+
+    let statusClasses = {
+      pending: "badge bg-secondary",
+      active: "badge bg-success",
+      failed: "badge bg-danger",
+      expired: "badge bg-danger",
+    };
+    let labels = {
+      pending: "Pending",
+      active: "Active",
+      failed: "Failed",
+      expired: "Expired",
+    };
+
+    return m(
+      "span",
+      { class: statusClasses[domain.certificateStatus] || "badge bg-secondary" },
+      labels[domain.certificateStatus] || domain.certificateStatus,
+    );
+  }
+
   _campaignBadge(domain) {
     if (domain.campaignName) {
       return domain.campaignName;
@@ -81,6 +106,7 @@ class DomainsView {
                           m("th", { scope: "col" }, "Purpose"),
                           m("th", { scope: "col" }, "Campaign"),
                           m("th", { scope: "col" }, "A Record"),
+                          m("th", { scope: "col" }, "Certificate"),
                           m("th", { scope: "col" }, "State"),
                         ]),
                       ),
@@ -90,7 +116,7 @@ class DomainsView {
                           ? m("tr", [
                               m(
                                 "td.text-center",
-                                { colspan: 6 },
+                                { colspan: 7 },
                                 "No domains found.",
                               ),
                             ])
@@ -109,6 +135,7 @@ class DomainsView {
                                   m("td", this._purposeBadge(domain)),
                                   m("td", this._campaignBadge(domain)),
                                   m("td", this._aRecordBadge(domain)),
+                                  m("td", this._certificateBadge(domain)),
                                   m("td", this._disabledBadge(domain)),
                                 ]);
                               }.bind(this),
