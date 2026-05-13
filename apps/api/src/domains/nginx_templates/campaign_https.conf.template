@@ -1,0 +1,42 @@
+# Managed by Bangi. Campaign domain.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${hostname};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /etc/nginx/bangi/acme-challenges;
+        default_type "text/plain";
+        try_files $$uri =404;
+    }
+
+    location / {
+        return 301 https://$$host$$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${hostname};
+
+    ssl_certificate ${certificate_path};
+    ssl_certificate_key ${private_key_path};
+
+    set $$bangi_campaign_upstream "http://127.0.0.1:8000/process/${campaign_id}";
+    if ($$cookie_${flow_id_cookie_name} != "") {
+        set $$bangi_campaign_upstream "http://127.0.0.1:8081/$$cookie_${flow_id_cookie_name}/";
+    }
+
+    location = / {
+        proxy_pass $$bangi_campaign_upstream;
+    }
+
+    location / {
+        if ($$cookie_${flow_id_cookie_name} = "") {
+            return 404;
+        }
+
+        proxy_pass http://127.0.0.1:8081/$$cookie_${flow_id_cookie_name}/;
+    }
+}

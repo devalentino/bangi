@@ -22,9 +22,16 @@ def _get_public_host_ip() -> str:
 def _fetch_domains_needing_refresh(database):
     cursor = database.execute_sql(
         (
-            'SELECT id, hostname, purpose, campaign_id, is_a_record_set, is_disabled '
-            'FROM domain WHERE is_a_record_set IS NULL OR is_a_record_set = FALSE ORDER BY id ASC'
-        )
+            'SELECT domain.id, domain.hostname, domain.purpose, domain.campaign_id, '
+            'domain.is_a_record_set, domain.is_disabled, '
+            'domain_certificate.certificate_path, domain_certificate.private_key_path '
+            'FROM domain '
+            'LEFT JOIN domain_certificate '
+            'ON domain_certificate.domain_id = domain.id AND domain_certificate.status = %s '
+            'WHERE domain.is_a_record_set IS NULL OR domain.is_a_record_set = FALSE '
+            'ORDER BY domain.id ASC'
+        ),
+        ('active',),
     )
     return cursor.fetchall()
 
@@ -139,9 +146,16 @@ def refresh_domain_dns_worker(context: WorkerContext) -> None:
     processed_domain_ids = []
     pending_snapshots = []
 
-    for domain_id, hostname, purpose, campaign_id, is_a_record_set, is_disabled in _fetch_domains_needing_refresh(
-        database
-    ):
+    for (
+        domain_id,
+        hostname,
+        purpose,
+        campaign_id,
+        is_a_record_set,
+        is_disabled,
+        certificate_path,
+        private_key_path,
+    ) in _fetch_domains_needing_refresh(database):
         current_state = DnsService.has_a_record(hostname, public_host_ip)
         previous_state = None if is_a_record_set is None else bool(is_a_record_set)
 
@@ -160,6 +174,8 @@ def refresh_domain_dns_worker(context: WorkerContext) -> None:
                 flow_id_cookie_name,
                 bool(is_disabled),
                 current_state,
+                certificate_path,
+                private_key_path,
             )
             if snapshot.validation_status != 'success':
                 logger.warning(

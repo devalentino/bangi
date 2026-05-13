@@ -100,6 +100,8 @@ class WebserverService(Protocol):
         flow_id_cookie_name: str | None,
         is_disabled: bool,
         is_a_record_set: bool | None,
+        certificate_path: str | None = None,
+        private_key_path: str | None = None,
     ) -> WebserverPublishResult:
         pass
 
@@ -324,6 +326,18 @@ class DomainService:
                 DomainCookieName.flow_id,
             )
 
+        certificate = DomainCertificate.get_or_none(DomainCertificate.domain == domain.id)
+        certificate_path = None
+        private_key_path = None
+        if (
+            certificate is not None
+            and certificate.status == DomainCertificateStatus.active
+            and certificate.certificate_path
+            and certificate.private_key_path
+        ):
+            certificate_path = certificate.certificate_path
+            private_key_path = certificate.private_key_path
+
         snapshot = self.webserver_service.publish(
             domain.hostname,
             domain.purpose,
@@ -331,6 +345,8 @@ class DomainService:
             flow_id_cookie_name,
             bool(domain.is_disabled),
             None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
+            certificate_path,
+            private_key_path,
         )
         self.health_service.record_nginx_validation_snapshot(
             domain_id=domain.id,
@@ -568,6 +584,8 @@ class NginxService:
         flow_id_cookie_name: str | None,
         is_disabled: bool,
         is_a_record_set: bool | None,
+        certificate_path: str | None = None,
+        private_key_path: str | None = None,
     ) -> WebserverPublishResult:
         version = self._next_version()
         available_dir = self._site_available_dir(hostname)
@@ -582,18 +600,21 @@ class NginxService:
             flow_id_cookie_name=flow_id_cookie_name,
             is_disabled=is_disabled,
             is_a_record_set=is_a_record_set,
+            certificate_path=certificate_path,
+            private_key_path=private_key_path,
         )
         self._write_versioned_config(versioned_config_path, config_content)
+        self._activate_version(enabled_link, versioned_config_path)
+
         validation_error = self._validate_host_nginx()
         if validation_error is not None:
+            self._restore_previous_active(enabled_link, previous_active_target)
             return WebserverPublishResult(
                 validation_status='failed',
                 validation_error=validation_error,
                 sites_available_files=self._list_sites_available_files(),
                 sites_enabled_refs=self._list_sites_enabled_refs(),
             )
-
-        self._activate_version(enabled_link, versioned_config_path)
 
         reload_error = self._reload_host_nginx()
         if reload_error is not None:
@@ -640,79 +661,79 @@ class NginxService:
         flow_id_cookie_name: str | None,
         is_disabled: bool,
         is_a_record_set: bool | None,
+        certificate_path: str | None,
+        private_key_path: str | None,
     ) -> str:
         if is_disabled or is_a_record_set is False or (purpose == 'campaign' and campaign_id is None):
             return self.render_disabled_domain_config(hostname)
 
+        has_active_certificate = certificate_path is not None and private_key_path is not None
         if purpose == 'dashboard':
+            if has_active_certificate:
+                return self.render_dashboard_domain_config(hostname, certificate_path, private_key_path)
             return self.render_dashboard_domain_config(hostname)
 
         if flow_id_cookie_name is None:
             raise ValueError('flow_id_cookie_name is required for campaign domains')
+        if has_active_certificate:
+            return self.render_campaign_domain_config(
+                hostname,
+                campaign_id,
+                flow_id_cookie_name,
+                certificate_path,
+                private_key_path,
+            )
         return self.render_campaign_domain_config(hostname, campaign_id, flow_id_cookie_name)
 
-    @staticmethod
-    def render_disabled_domain_config(hostname: str) -> str:
-        return (
-            '# Managed by Bangi. Disabled or unroutable domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '    return 503;\n'
-            '}\n'
+    @classmethod
+    def render_disabled_domain_config(cls, hostname: str) -> str:
+        return cls._render_template('disabled_http.conf.template', hostname=hostname)
+
+    @classmethod
+    def render_dashboard_domain_config(
+        cls,
+        hostname: str,
+        certificate_path: str | None = None,
+        private_key_path: str | None = None,
+    ) -> str:
+        if certificate_path is not None and private_key_path is not None:
+            return cls._render_template(
+                'dashboard_https.conf.template',
+                hostname=hostname,
+                certificate_path=certificate_path,
+                private_key_path=private_key_path,
+            )
+        return cls._render_template('dashboard_http.conf.template', hostname=hostname)
+
+    @classmethod
+    def render_campaign_domain_config(
+        cls,
+        hostname: str,
+        campaign_id: int,
+        flow_id_cookie_name: str,
+        certificate_path: str | None = None,
+        private_key_path: str | None = None,
+    ) -> str:
+        if certificate_path is not None and private_key_path is not None:
+            return cls._render_template(
+                'campaign_https.conf.template',
+                hostname=hostname,
+                campaign_id=str(campaign_id),
+                flow_id_cookie_name=flow_id_cookie_name,
+                certificate_path=certificate_path,
+                private_key_path=private_key_path,
+            )
+        return cls._render_template(
+            'campaign_http.conf.template',
+            hostname=hostname,
+            campaign_id=str(campaign_id),
+            flow_id_cookie_name=flow_id_cookie_name,
         )
 
     @staticmethod
-    def render_dashboard_domain_config(hostname: str) -> str:
-        return (
-            '# Managed by Bangi. Dashboard domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '\n'
-            '    location /api/ {\n'
-            '        proxy_pass http://127.0.0.1:8000;\n'
-            '    }\n'
-            '\n'
-            '    location /process {\n'
-            '        return 404;\n'
-            '    }\n'
-            '\n'
-            '    location / {\n'
-            '        proxy_pass http://127.0.0.1:8080;\n'
-            '    }\n'
-            '}\n'
-        )
-
-    @staticmethod
-    def render_campaign_domain_config(hostname: str, campaign_id: int, flow_id_cookie_name: str) -> str:
-        return (
-            '# Managed by Bangi. Campaign domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '\n'
-            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}";\n'
-            f'    if ($cookie_{flow_id_cookie_name} != "") {{\n'
-            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/";\n'
-            '    }\n'
-            '\n'
-            '    location = / {\n'
-            '        proxy_pass $bangi_campaign_upstream;\n'
-            '    }\n'
-            '\n'
-            '    location / {\n'
-            f'        if ($cookie_{flow_id_cookie_name} = "") {{\n'
-            '            return 404;\n'
-            '        }\n'
-            '\n'
-            f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/;\n'
-            '    }\n'
-            '}\n'
-        )
+    def _render_template(template_name: str, **context: str) -> str:
+        template_path = Path(__file__).parent / 'nginx_templates' / template_name
+        return string.Template(template_path.read_text(encoding='utf-8')).substitute(context)
 
     def _validate_host_nginx(self) -> str | None:
         try:

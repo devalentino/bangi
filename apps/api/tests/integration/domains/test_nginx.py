@@ -7,6 +7,169 @@ from unittest import mock
 import pytest
 
 
+def expected_acme_location():
+    return (
+        '    location ^~ /.well-known/acme-challenge/ {\n'
+        '        root /etc/nginx/bangi/acme-challenges;\n'
+        '        default_type "text/plain";\n'
+        '        try_files $uri =404;\n'
+        '    }\n'
+    )
+
+
+def expected_disabled_config(hostname):
+    return (
+        '# Managed by Bangi. Disabled or unroutable domain.\n'
+        'server {\n'
+        '    listen 80;\n'
+        '    listen [::]:80;\n'
+        f'    server_name {hostname};\n'
+        '\n'
+        f'{expected_acme_location()}'
+        '\n'
+        '    location / {\n'
+        '        return 503;\n'
+        '    }\n'
+        '}\n'
+    )
+
+
+def expected_dashboard_http_config(hostname):
+    return (
+        '# Managed by Bangi. Dashboard domain.\n'
+        'server {\n'
+        '    listen 80;\n'
+        '    listen [::]:80;\n'
+        f'    server_name {hostname};\n'
+        '\n'
+        f'{expected_acme_location()}'
+        '\n'
+        '    location /api/ {\n'
+        '        proxy_pass http://127.0.0.1:8000;\n'
+        '    }\n'
+        '\n'
+        '    location /process {\n'
+        '        return 404;\n'
+        '    }\n'
+        '\n'
+        '    location / {\n'
+        '        proxy_pass http://127.0.0.1:8080;\n'
+        '    }\n'
+        '}\n'
+    )
+
+
+def expected_dashboard_https_config(hostname, certificate_path, private_key_path):
+    return (
+        '# Managed by Bangi. Dashboard domain.\n'
+        'server {\n'
+        '    listen 80;\n'
+        '    listen [::]:80;\n'
+        f'    server_name {hostname};\n'
+        '\n'
+        f'{expected_acme_location()}'
+        '\n'
+        '    location / {\n'
+        '        return 301 https://$host$request_uri;\n'
+        '    }\n'
+        '}\n'
+        '\n'
+        'server {\n'
+        '    listen 443 ssl http2;\n'
+        '    listen [::]:443 ssl http2;\n'
+        f'    server_name {hostname};\n'
+        '\n'
+        f'    ssl_certificate {certificate_path};\n'
+        f'    ssl_certificate_key {private_key_path};\n'
+        '\n'
+        '    location /api/ {\n'
+        '        proxy_pass http://127.0.0.1:8000;\n'
+        '    }\n'
+        '\n'
+        '    location /process {\n'
+        '        return 404;\n'
+        '    }\n'
+        '\n'
+        '    location / {\n'
+        '        proxy_pass http://127.0.0.1:8080;\n'
+        '    }\n'
+        '}\n'
+    )
+
+
+def expected_campaign_http_config(hostname, campaign_id, flow_id_cookie_name):
+    return (
+        '# Managed by Bangi. Campaign domain.\n'
+        'server {\n'
+        '    listen 80;\n'
+        '    listen [::]:80;\n'
+        f'    server_name {hostname};\n'
+        '\n'
+        f'{expected_acme_location()}'
+        '\n'
+        f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}";\n'
+        f'    if ($cookie_{flow_id_cookie_name} != "") {{\n'
+        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/";\n'
+        '    }\n'
+        '\n'
+        '    location = / {\n'
+        '        proxy_pass $bangi_campaign_upstream;\n'
+        '    }\n'
+        '\n'
+        '    location / {\n'
+        f'        if ($cookie_{flow_id_cookie_name} = "") {{\n'
+        '            return 404;\n'
+        '        }\n'
+        '\n'
+        f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/;\n'
+        '    }\n'
+        '}\n'
+    )
+
+
+def expected_campaign_https_config(hostname, campaign_id, flow_id_cookie_name, certificate_path, private_key_path):
+    return (
+        '# Managed by Bangi. Campaign domain.\n'
+        'server {\n'
+        '    listen 80;\n'
+        '    listen [::]:80;\n'
+        f'    server_name {hostname};\n'
+        '\n'
+        f'{expected_acme_location()}'
+        '\n'
+        '    location / {\n'
+        '        return 301 https://$host$request_uri;\n'
+        '    }\n'
+        '}\n'
+        '\n'
+        'server {\n'
+        '    listen 443 ssl http2;\n'
+        '    listen [::]:443 ssl http2;\n'
+        f'    server_name {hostname};\n'
+        '\n'
+        f'    ssl_certificate {certificate_path};\n'
+        f'    ssl_certificate_key {private_key_path};\n'
+        '\n'
+        f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}";\n'
+        f'    if ($cookie_{flow_id_cookie_name} != "") {{\n'
+        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/";\n'
+        '    }\n'
+        '\n'
+        '    location = / {\n'
+        '        proxy_pass $bangi_campaign_upstream;\n'
+        '    }\n'
+        '\n'
+        '    location / {\n'
+        f'        if ($cookie_{flow_id_cookie_name} = "") {{\n'
+        '            return 404;\n'
+        '        }\n'
+        '\n'
+        f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/;\n'
+        '    }\n'
+        '}\n'
+    )
+
+
 @pytest.fixture
 def nginx_workspace_base_dir_cleanup(nginx_workspace_base_dir):
     shutil.rmtree(nginx_workspace_base_dir)
@@ -36,15 +199,7 @@ class TestDomainNginxPublication:
         versioned_configs = sorted(available_dir.glob('*.conf'))
 
         assert len(versioned_configs) == 1
-        assert versioned_configs[0].read_text(encoding='utf-8') == (
-            '# Managed by Bangi. Disabled or unroutable domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            '    server_name example.com;\n'
-            '    return 503;\n'
-            '}\n'
-        )
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_disabled_config('example.com')
         assert enabled_link.is_symlink()
         assert enabled_link.readlink().as_posix() == f'../sites-available/example.com/{versioned_configs[0].name}'
 
@@ -248,15 +403,7 @@ class TestDomainNginxConfigurations:
         versioned_configs = sorted(available_dir.glob('*.conf'))
 
         assert len(versioned_configs) == 1
-        assert versioned_configs[0].read_text(encoding='utf-8') == (
-            '# Managed by Bangi. Disabled or unroutable domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '    return 503;\n'
-            '}\n'
-        )
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_disabled_config(hostname)
 
     def test_campaign_domain_exists_campaign_got_attached_writes_campaign_config(
         self,
@@ -298,30 +445,10 @@ class TestDomainNginxConfigurations:
         }
 
         assert len(versioned_configs) == 1
-        assert versioned_configs[0].read_text(encoding='utf-8') == (
-            '# Managed by Bangi. Campaign domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '\n'
-            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign["id"]}";\n'
-            f'    if ($cookie_{cookie_row["opaque_name"]} != "") {{\n'
-            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_row["opaque_name"]}/";\n'
-            '    }\n'
-            '\n'
-            '    location = / {\n'
-            '        proxy_pass $bangi_campaign_upstream;\n'
-            '    }\n'
-            '\n'
-            '    location / {\n'
-            f'        if ($cookie_{cookie_row["opaque_name"]} = "") {{\n'
-            '            return 404;\n'
-            '        }\n'
-            '\n'
-            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_row["opaque_name"]}/;\n'
-            '    }\n'
-            '}\n'
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_campaign_http_config(
+            hostname,
+            campaign['id'],
+            cookie_row['opaque_name'],
         )
 
     def test_campaign_domain_exists_campaign_is_attached_got_detached_writes_disabled_config(
@@ -355,15 +482,7 @@ class TestDomainNginxConfigurations:
         versioned_configs = sorted(available_dir.glob('*.conf'))
 
         assert len(versioned_configs) == 1
-        assert versioned_configs[0].read_text(encoding='utf-8') == (
-            '# Managed by Bangi. Disabled or unroutable domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '    return 503;\n'
-            '}\n'
-        )
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_disabled_config(hostname)
 
     def test_campaign_domain_exists_campaign_is_detached_purpose_changed_to_dashboard_writes_dashboard_config(
         self,
@@ -395,26 +514,7 @@ class TestDomainNginxConfigurations:
         versioned_configs = sorted(available_dir.glob('*.conf'))
 
         assert len(versioned_configs) == 1
-        assert versioned_configs[0].read_text(encoding='utf-8') == (
-            '# Managed by Bangi. Dashboard domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '\n'
-            '    location /api/ {\n'
-            '        proxy_pass http://127.0.0.1:8000;\n'
-            '    }\n'
-            '\n'
-            '    location /process {\n'
-            '        return 404;\n'
-            '    }\n'
-            '\n'
-            '    location / {\n'
-            '        proxy_pass http://127.0.0.1:8080;\n'
-            '    }\n'
-            '}\n'
-        )
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_dashboard_http_config(hostname)
 
     def test_dashboard_domain_created_writes_dashboard_config(self, client, authorization, nginx_workspace_base_dir):
         hostname = 'dashboard-created.example.com'
@@ -429,26 +529,7 @@ class TestDomainNginxConfigurations:
         versioned_configs = sorted(available_dir.glob('*.conf'))
 
         assert len(versioned_configs) == 1
-        assert versioned_configs[0].read_text(encoding='utf-8') == (
-            '# Managed by Bangi. Dashboard domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '\n'
-            '    location /api/ {\n'
-            '        proxy_pass http://127.0.0.1:8000;\n'
-            '    }\n'
-            '\n'
-            '    location /process {\n'
-            '        return 404;\n'
-            '    }\n'
-            '\n'
-            '    location / {\n'
-            '        proxy_pass http://127.0.0.1:8080;\n'
-            '    }\n'
-            '}\n'
-        )
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_dashboard_http_config(hostname)
 
     def test_dashboard_domain_exists_purpose_changed_to_campaign_writes_disabled_config(
         self,
@@ -480,15 +561,7 @@ class TestDomainNginxConfigurations:
         versioned_configs = sorted(available_dir.glob('*.conf'))
 
         assert len(versioned_configs) == 1
-        assert versioned_configs[0].read_text(encoding='utf-8') == (
-            '# Managed by Bangi. Disabled or unroutable domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '    return 503;\n'
-            '}\n'
-        )
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_disabled_config(hostname)
 
     def test_dashboard_domain_exists_purpose_changed_to_campaign_campaign_attached_writes_campaign_config(
         self,
@@ -530,28 +603,178 @@ class TestDomainNginxConfigurations:
         }
 
         assert len(versioned_configs) == 1
-        assert versioned_configs[0].read_text(encoding='utf-8') == (
-            '# Managed by Bangi. Campaign domain.\n'
-            'server {\n'
-            '    listen 80;\n'
-            '    listen [::]:80;\n'
-            f'    server_name {hostname};\n'
-            '\n'
-            f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign["id"]}";\n'
-            f'    if ($cookie_{cookie_row["opaque_name"]} != "") {{\n'
-            f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{cookie_row["opaque_name"]}/";\n'
-            '    }\n'
-            '\n'
-            '    location = / {\n'
-            '        proxy_pass $bangi_campaign_upstream;\n'
-            '    }\n'
-            '\n'
-            '    location / {\n'
-            f'        if ($cookie_{cookie_row["opaque_name"]} = "") {{\n'
-            '            return 404;\n'
-            '        }\n'
-            '\n'
-            f'        proxy_pass http://127.0.0.1:8081/$cookie_{cookie_row["opaque_name"]}/;\n'
-            '    }\n'
-            '}\n'
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_campaign_http_config(
+            hostname,
+            campaign['id'],
+            cookie_row['opaque_name'],
         )
+
+    def test_campaign_domain_with_active_certificate_writes_https_config(
+        self,
+        client,
+        authorization,
+        campaign,
+        nginx_workspace_base_dir,
+        read_from_db,
+        write_to_db,
+    ):
+        hostname = 'campaign-https.example.com'
+        certificate_path = f'/etc/nginx/bangi/certs/{hostname}/fullchain.pem'
+        private_key_path = f'/etc/nginx/bangi/certs/{hostname}/privkey.pem'
+        domain = write_to_db(
+            'domain',
+            {
+                'hostname': hostname,
+                'purpose': 'campaign',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'active',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': certificate_path,
+                'private_key_path': private_key_path,
+                'issued_at': 1778587200,
+                'expires_at': 1786363200,
+                'last_attempted_at': 1778587200,
+                'last_issued_at': 1778587200,
+                'last_renewed_at': None,
+                'next_retry_at': None,
+                'failure_count': 0,
+                'failure_reason': None,
+            },
+        )
+
+        response = client.patch(
+            f'/api/v2/domains/{domain["id"]}',
+            headers={'Authorization': authorization},
+            json={'campaignId': campaign['id']},
+        )
+
+        assert response.status_code == 200, response.text
+        available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / hostname
+        versioned_configs = sorted(available_dir.glob('*.conf'))
+        cookie_row = read_from_db('domain_cookie', filters={'domain_id': domain['id'], 'name': 'flow_id'})
+
+        assert len(versioned_configs) == 1
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_campaign_https_config(
+            hostname,
+            campaign['id'],
+            cookie_row['opaque_name'],
+            certificate_path,
+            private_key_path,
+        )
+
+    def test_dashboard_domain_with_active_certificate_writes_https_config(
+        self,
+        client,
+        authorization,
+        nginx_workspace_base_dir,
+        write_to_db,
+    ):
+        hostname = 'dashboard-https.example.com'
+        certificate_path = f'/etc/nginx/bangi/certs/{hostname}/fullchain.pem'
+        private_key_path = f'/etc/nginx/bangi/certs/{hostname}/privkey.pem'
+        domain = write_to_db(
+            'domain',
+            {
+                'hostname': hostname,
+                'purpose': 'campaign',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'active',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': certificate_path,
+                'private_key_path': private_key_path,
+                'issued_at': 1778587200,
+                'expires_at': 1786363200,
+                'last_attempted_at': 1778587200,
+                'last_issued_at': 1778587200,
+                'last_renewed_at': None,
+                'next_retry_at': None,
+                'failure_count': 0,
+                'failure_reason': None,
+            },
+        )
+
+        response = client.patch(
+            f'/api/v2/domains/{domain["id"]}',
+            headers={'Authorization': authorization},
+            json={'purpose': 'dashboard', 'campaignId': None},
+        )
+
+        assert response.status_code == 200, response.text
+        available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / hostname
+        versioned_configs = sorted(available_dir.glob('*.conf'))
+
+        assert len(versioned_configs) == 1
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_dashboard_https_config(
+            hostname,
+            certificate_path,
+            private_key_path,
+        )
+
+    def test_domain_without_active_certificate_writes_http_config(
+        self,
+        client,
+        authorization,
+        nginx_workspace_base_dir,
+        write_to_db,
+    ):
+        hostname = 'dashboard-failed-certificate.example.com'
+        domain = write_to_db(
+            'domain',
+            {
+                'hostname': hostname,
+                'purpose': 'campaign',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'failed',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': f'/etc/nginx/bangi/certs/{hostname}/fullchain.pem',
+                'private_key_path': f'/etc/nginx/bangi/certs/{hostname}/privkey.pem',
+                'issued_at': 1778587200,
+                'expires_at': 1786363200,
+                'last_attempted_at': 1778587200,
+                'last_issued_at': 1778587200,
+                'last_renewed_at': None,
+                'next_retry_at': None,
+                'failure_count': 1,
+                'failure_reason': 'ACME challenge failed',
+            },
+        )
+
+        response = client.patch(
+            f'/api/v2/domains/{domain["id"]}',
+            headers={'Authorization': authorization},
+            json={'purpose': 'dashboard', 'campaignId': None},
+        )
+
+        assert response.status_code == 200, response.text
+        available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / hostname
+        versioned_configs = sorted(available_dir.glob('*.conf'))
+
+        assert len(versioned_configs) == 1
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_dashboard_http_config(hostname)
