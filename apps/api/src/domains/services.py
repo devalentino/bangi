@@ -148,7 +148,16 @@ class CertificateService:
                 domain=domain_id,
                 ca=DomainCertificateCa.letsencrypt.value,
                 validation_method=DomainCertificateValidationMethod.http_01_webroot.value,
+                certificate_path=None,
+                private_key_path=None,
+                issued_at=None,
+                expires_at=None,
+                last_attempted_at=None,
+                last_issued_at=None,
+                last_renewed_at=None,
+                next_retry_at=None,
                 failure_count=0,
+                failure_reason=None,
             )
 
         status = DomainCertificateStatus(snapshot.status)

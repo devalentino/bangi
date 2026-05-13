@@ -200,30 +200,6 @@ class TestCertificateRenewalWorker:
             'acme-renew-certificate dashboard.example.com',
         ]
 
-    def test_worker_limits_candidates_to_two_per_run(self, client, write_to_db, mock_subprocess_run):
-        for index in range(3):
-            write_to_db(
-                'domain',
-                {
-                    'hostname': f'candidate-{index}.example.com',
-                    'purpose': 'dashboard',
-                    'campaign_id': None,
-                    'is_a_record_set': True,
-                    'is_disabled': False,
-                },
-            )
-        mock_subprocess_run.return_value.returncode = 1
-        mock_subprocess_run.return_value.stdout = ''
-        mock_subprocess_run.return_value.stderr = 'ACME failed'
-
-        client.get('/api/v2/health')
-        sleep(0.3)
-
-        assert [call.args[0][-1] for call in mock_subprocess_run.call_args_list] == [
-            'acme-issue-certificate candidate-0.example.com',
-            'acme-issue-certificate candidate-1.example.com',
-        ]
-
 
 @pytest.mark.usefixtures('certificate_worker_settings', 'dns_resolver_mock')
 class TestCertificateRenewalWorkerDisabledDomains:
@@ -260,3 +236,35 @@ class TestCertificateRenewalWorkerDisabledDomains:
 
         assert read_from_db('domain_certificate', filters={'id': active_certificate['id']}) == active_certificate
         assert mock_subprocess_run.call_count == 0
+
+
+@pytest.mark.usefixtures('dns_resolver_mock')
+class TestCertificateRenewalWorkerCandidateLimit:
+    @pytest.fixture
+    def certificate_worker_settings(self, monkeypatch):
+        monkeypatch.setattr('src.domains.workers.renew_ca_certificates.CERTIFICATE_RENEWAL_PERIOD_SECONDS', 60)
+
+    @pytest.mark.usefixtures('certificate_worker_settings')
+    def test_worker_limits_candidates_to_two_per_run(self, client, write_to_db, mock_subprocess_run):
+        for index in range(3):
+            write_to_db(
+                'domain',
+                {
+                    'hostname': f'candidate-{index}.example.com',
+                    'purpose': 'dashboard',
+                    'campaign_id': None,
+                    'is_a_record_set': True,
+                    'is_disabled': False,
+                },
+            )
+        mock_subprocess_run.return_value.returncode = 1
+        mock_subprocess_run.return_value.stdout = ''
+        mock_subprocess_run.return_value.stderr = 'ACME failed'
+
+        client.get('/api/v2/health')
+        sleep(0.3)
+
+        assert [call.args[0][-1] for call in mock_subprocess_run.call_args_list] == [
+            'acme-issue-certificate candidate-0.example.com',
+            'acme-issue-certificate candidate-1.example.com',
+        ]
