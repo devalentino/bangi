@@ -1,21 +1,13 @@
 from time import sleep
-from unittest import mock
 
 import pytest
-
-
-@pytest.fixture
-def dns_resolver_mock(public_ip):
-    with mock.patch('src.domains.services.dns.resolver') as resolver:
-        resolver.resolve.return_value = [mock.Mock(address=public_ip)]
-        yield resolver
 
 
 @pytest.mark.usefixtures('dns_resolver_mock')
 class TestDnsRefreshWorker:
     @pytest.fixture(autouse=True)
     def mock_cleanup_discard_worker_settings(self, monkeypatch):
-        monkeypatch.setattr('src.domains.workers.DOMAIN_DNS_REFRESH_PERIOD_SECONDS', 0.1)
+        monkeypatch.setattr('src.domains.workers.refresh_domain_dns.DOMAIN_DNS_REFRESH_PERIOD_SECONDS', 0.1)
 
     @pytest.fixture
     def domain(self, write_to_db):
