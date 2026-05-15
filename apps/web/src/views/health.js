@@ -137,6 +137,97 @@ class HealthView {
     ]);
   }
 
+  _certificateStatusText(diagnostic) {
+    if (diagnostic.isARecordSet !== true) {
+      return "DNS not ready";
+    }
+
+    if (!diagnostic.status) {
+      return "No certificate";
+    }
+
+    const labels = {
+      pending: "Pending",
+      active: "Active",
+      failed: "Failed",
+      expired: "Expired",
+    };
+
+    return labels[diagnostic.status] || diagnostic.status;
+  }
+
+  _certificateStatusBadge(diagnostic) {
+    const badgeClasses = {
+      pending: "badge bg-info text-dark",
+      active: "badge bg-success",
+      failed: "badge bg-warning text-dark",
+      expired: "badge bg-danger",
+    };
+    const badgeClass = diagnostic.isARecordSet !== true
+      ? "badge bg-info text-dark"
+      : badgeClasses[diagnostic.status] || "badge bg-secondary";
+
+    return m(
+      "span",
+      { class: badgeClass },
+      this._certificateStatusText(diagnostic),
+    );
+  }
+
+  _aRecordIcon(diagnostic) {
+    return m("i.text-muted", {
+      class: diagnostic.isARecordSet ? "fa fa-check" : "fa fa-times",
+      title: diagnostic.isARecordSet ? "A record is set" : "A record is not set",
+    });
+  }
+
+  _certificateDiagnosticsPanel() {
+    return m(".col-sm-12", [
+      m(".bg-light.rounded.h-100.p-4", [
+        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Certificate Diagnostics")),
+        this.model.certificateError ? m(".alert.alert-danger.py-2.mb-4", this.model.certificateError) : null,
+        this.model.certificateDiagnostics.length === 0
+          ? m(".health-empty-state.py-5.text-center", [
+              m("i.fa.fa-lock.fa-2x.mb-3"),
+              m("h5.mb-2", "No Certificate Risks"),
+              m(".text-muted", "Enabled domains do not currently have certificate diagnostics to surface."),
+            ])
+          : m(
+              "div.table-responsive",
+              m("table.table.table-sm.health-certificate-table.align-middle.mb-0", [
+                m("thead", [
+                  m("tr", [
+                    m("th", { scope: "col" }, "Domain"),
+                    m("th", { scope: "col" }, "Certificate status"),
+                    m("th", { scope: "col" }, "A record"),
+                    m("th", { scope: "col" }, "Expires"),
+                    m("th", { scope: "col" }, "Last attempt"),
+                    m("th", { scope: "col" }, "Failures"),
+                    m("th", { scope: "col" }, "Failure"),
+                  ]),
+                ]),
+                m(
+                  "tbody",
+                  this.model.certificateDiagnostics.map(
+                    function (diagnostic) {
+                      return m("tr", [
+                        m("td", diagnostic.hostname),
+                        m("td", this._certificateStatusBadge(diagnostic)),
+                        m("td", this._aRecordIcon(diagnostic)),
+                        m("td", timestamp2LocalTime(diagnostic.expiresAt)),
+                        m("td", timestamp2LocalTime(diagnostic.lastAttemptedAt)),
+                        m("td", diagnostic.failureCount),
+                        m("td", diagnostic.failureReason || "-"),
+                      ]);
+                    }.bind(this),
+                  ),
+                ),
+              ]),
+            ),
+      ]),
+    ]);
+  }
+
   _usagePanel() {
     return m(".col-sm-12.col-xl-6", [
       m(".bg-light.rounded.h-100.p-4", [
@@ -238,14 +329,23 @@ class HealthView {
   view() {
     const hasDiskSummary = this.model.summary !== null;
     const hasNginxSnapshot = this.model.nginxSnapshot !== null || this.model.nginxError !== null;
+    const hasCertificateDiagnostics =
+      this.model.certificateDiagnostics.length > 0 || this.model.certificateError !== null;
 
     return m(".container-fluid.pt-4.px-4", [
       this.model.isLoading ? m(".bg-light.rounded.p-4.mb-4", "Loading system health...") : null,
       this.model.error ? m(".alert.alert-danger.mb-4", this.model.error) : null,
       hasDiskSummary
-        ? m("div", [m(".row.g-4", [this._usagePanel(), this._nginxPanel()]), m(".row.g-4.mt-0", [this._historyPanel()])])
+        ? m("div", [
+            m(".row.g-4", [this._usagePanel(), this._nginxPanel()]),
+            m(".row.g-4.mt-0", [this._certificateDiagnosticsPanel()]),
+            m(".row.g-4.mt-0", [this._historyPanel()]),
+          ])
         : null,
       !hasDiskSummary && hasNginxSnapshot ? m(".row.g-4", [this._nginxPanel()]) : null,
+      !hasDiskSummary && !hasNginxSnapshot && hasCertificateDiagnostics
+        ? m(".row.g-4", [this._certificateDiagnosticsPanel()])
+        : null,
     ]);
   }
 }
