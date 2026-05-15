@@ -12,6 +12,10 @@ class AlertCode(StrEnum):
     SYSTEM_HEALTH_DISK_WARNING = 'system_health_disk_warning'
     SYSTEM_HEALTH_DISK_CRITICAL = 'system_health_disk_critical'
     SYSTEM_HEALTH_TELEMETRY_STALE = 'system_health_telemetry_stale'
+    SYSTEM_HEALTH_CERTIFICATE_ISSUANCE_FAILED = 'system_health_certificate_issuance_failed'
+    SYSTEM_HEALTH_CERTIFICATE_RENEWAL_WARNING = 'system_health_certificate_renewal_warning'
+    SYSTEM_HEALTH_CERTIFICATE_RENEWAL_ERROR = 'system_health_certificate_renewal_error'
+    SYSTEM_HEALTH_CERTIFICATE_EXPIRED = 'system_health_certificate_expired'
 
 
 class AlertSeverity(StrEnum):

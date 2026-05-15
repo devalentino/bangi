@@ -5,6 +5,7 @@ from src.auth import auth
 from src.container import container
 from src.core.blueprint import Blueprint
 from src.health.schemas import (
+    CertificateDiagnosticsResponseSchema,
     DiskUtilizationHistoryRequestSchema,
     DiskUtilizationHistoryResponseSchema,
     NginxValidationResponseSchema,
@@ -82,4 +83,33 @@ class NginxValidation(MethodView):
                 'sitesAvailableFiles': list(snapshot.sites_available_files or []),
                 'sitesEnabledRefs': list(snapshot.sites_enabled_refs or []),
             }
+        }
+
+
+@blueprint.route('/certificates')
+class CertificateDiagnostics(MethodView):
+    @blueprint.response(200, CertificateDiagnosticsResponseSchema)
+    @auth.login_required
+    def get(self):
+        diagnostics = container.get(HealthService).certificate_diagnostics()
+        return {
+            'content': [
+                {
+                    'domainId': diagnostic['domain_id'],
+                    'hostname': diagnostic['hostname'],
+                    'status': diagnostic['status'],
+                    'isARecordSet': diagnostic['is_a_record_set'],
+                    'expiresAt': (
+                        None if diagnostic['expires_at'] is None else int(diagnostic['expires_at'].timestamp())
+                    ),
+                    'lastAttemptedAt': (
+                        None
+                        if diagnostic['last_attempted_at'] is None
+                        else int(diagnostic['last_attempted_at'].timestamp())
+                    ),
+                    'failureCount': diagnostic['failure_count'],
+                    'failureReason': diagnostic['failure_reason'],
+                }
+                for diagnostic in diagnostics
+            ]
         }

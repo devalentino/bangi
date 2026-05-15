@@ -3,9 +3,11 @@ from decimal import Decimal
 from time import time as time_timestamp
 from typing import Annotated
 
-from peewee import fn
+from peewee import JOIN, Case, fn
 from wireup import Inject, injectable
 
+from src.domains.entities import Domain, DomainCertificate
+from src.domains.enums import DomainCertificateStatus
 from src.health.entities import (
     DiskUtilization,
     DiskUtilizationSummary,
@@ -20,10 +22,14 @@ class HealthService:
         stale_after_seconds: Annotated[int, Inject(config='DISK_UTILIZATION_STALE_AFTER_SECONDS')],
         warning_percent: Annotated[int, Inject(config='DISK_UTILIZATION_WARNING_PERCENT')],
         critical_percent: Annotated[int, Inject(config='DISK_UTILIZATION_CRITICAL_PERCENT')],
+        certificate_warning_days: Annotated[int, Inject(config='BANGI_CERTIFICATE_WARNING_DAYS')],
+        certificate_error_days: Annotated[int, Inject(config='BANGI_CERTIFICATE_ERROR_DAYS')],
     ):
         self.stale_after_seconds = stale_after_seconds
         self.warning_percent = warning_percent
         self.critical_percent = critical_percent
+        self.certificate_warning_days = certificate_warning_days
+        self.certificate_error_days = certificate_error_days
 
     def ingest_disk_utilization(
         self,
@@ -175,3 +181,44 @@ class HealthService:
             return None
 
         return snapshot
+
+    def certificate_diagnostics(self) -> list[dict]:
+        now = int(time_timestamp())
+        status_priority = Case(
+            None,
+            (
+                (DomainCertificate.status == DomainCertificateStatus.expired.value, 0),
+                (DomainCertificate.expires_at <= now, 0),
+                (DomainCertificate.status == DomainCertificateStatus.failed.value, 1),
+                (DomainCertificate.id.is_null(True), 2),
+            ),
+            3,
+        )
+
+        return list(
+            Domain.select(
+                Domain.id.alias('domain_id'),
+                Domain.hostname,
+                Domain.is_a_record_set,
+                DomainCertificate.id.alias('certificate_id'),
+                DomainCertificate.status,
+                DomainCertificate.expires_at,
+                DomainCertificate.last_attempted_at,
+                DomainCertificate.last_issued_at,
+                DomainCertificate.failure_count,
+                DomainCertificate.failure_reason,
+            )
+            .join(DomainCertificate, JOIN.LEFT_OUTER)
+            .where(
+                (Domain.is_disabled == False)
+                & (
+                    (Domain.is_a_record_set != True)
+                    | DomainCertificate.id.is_null(True)
+                    | (DomainCertificate.status == DomainCertificateStatus.failed.value)
+                    | (DomainCertificate.status == DomainCertificateStatus.expired.value)
+                    | (DomainCertificate.expires_at <= now)
+                )
+            )
+            .order_by(status_priority.asc(), Domain.hostname.asc())
+            .dicts()
+        )
