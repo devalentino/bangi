@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 import pytest
@@ -258,6 +259,47 @@ class TestDomains:
 
         assert response.status_code == 404, response.text
         assert response.json == {'message': 'Domain certificate does not exist'}
+
+    def test_get_domain_certificate_returns_full_payload_without_file_paths(
+        self, client, authorization, domain, write_to_db
+    ):
+        expires_at = int((datetime.now(timezone.utc) + timedelta(days=90)).timestamp())
+        last_attempted_at = 1778587200
+        last_issued_at = 1778587200
+        certificate = write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'active',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/campaign.example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/campaign.example.com/privkey.pem',
+                'issued_at': 1778583600,
+                'expires_at': expires_at,
+                'last_attempted_at': last_attempted_at,
+                'last_issued_at': last_issued_at,
+                'last_renewed_at': None,
+                'next_retry_at': None,
+                'failure_count': 0,
+                'failure_reason': None,
+            },
+        )
+
+        response = client.get(f'/api/v2/domains/{domain["id"]}/certificate', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'status': certificate['status'],
+            'ca': certificate['ca'],
+            'validationMethod': certificate['validation_method'],
+            'expiresAt': expires_at,
+            'lastAttemptedAt': last_attempted_at,
+            'lastIssuedAt': last_issued_at,
+            'lastRenewedAt': None,
+            'nextRetryAt': None,
+            'failureReason': None,
+        }
 
     def test_update_domain_resets_dns_when_hostname_changes(
         self, client, authorization, write_to_db, read_from_db, nginx_workspace_base_dir

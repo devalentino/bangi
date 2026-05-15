@@ -88,3 +88,18 @@ class NginxValidationSnapshotResponseSchema(Schema):
 
 class NginxValidationResponseSchema(Schema):
     content = fields.Nested(NginxValidationSnapshotResponseSchema, allow_none=True, required=True)
+
+
+class CertificateDiagnosticResponseSchema(Schema):
+    domainId = fields.Integer(required=True)
+    hostname = fields.String(required=True)
+    status = fields.String(allow_none=True, required=True)
+    isARecordSet = fields.Boolean(allow_none=True, required=True)
+    expiresAt = fields.Integer(allow_none=True, required=True)
+    lastAttemptedAt = fields.Integer(allow_none=True, required=True)
+    failureCount = fields.Integer(allow_none=True, required=True)
+    failureReason = fields.String(allow_none=True, required=True)
+
+
+class CertificateDiagnosticsResponseSchema(Schema):
+    content = fields.Nested(CertificateDiagnosticResponseSchema(many=True), required=True)
