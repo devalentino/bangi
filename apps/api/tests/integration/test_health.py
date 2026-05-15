@@ -355,6 +355,469 @@ class TestDiskUtilizationAlerts:
         }
 
 
+class TestCertificateHealthDiagnostics:
+    def test_returns_certificate_risk_states_for_enabled_domains(
+        self, client, authorization, write_to_db, campaign, timestamp
+    ):
+        missing_domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'missing-cert.example.com',
+                'purpose': 'dashboard',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        failed_issuance_domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'failed-issuance.example.com',
+                'purpose': 'campaign',
+                'campaign_id': campaign['id'],
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        failed_renewal_domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'failed-renewal.example.com',
+                'purpose': 'dashboard',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        expired_domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'expired.example.com',
+                'purpose': 'dashboard',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        dns_not_ready_domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'dns-not-ready.example.com',
+                'purpose': 'dashboard',
+                'campaign_id': None,
+                'is_a_record_set': False,
+                'is_disabled': False,
+            },
+        )
+        disabled_domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'disabled.example.com',
+                'purpose': 'dashboard',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': True,
+            },
+        )
+
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': failed_issuance_domain['id'],
+                'status': 'failed',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': None,
+                'private_key_path': None,
+                'issued_at': None,
+                'expires_at': None,
+                'last_attempted_at': timestamp - 600,
+                'last_issued_at': None,
+                'last_renewed_at': None,
+                'next_retry_at': timestamp + 600,
+                'failure_count': 1,
+                'failure_reason': 'ACME challenge failed',
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': failed_renewal_domain['id'],
+                'status': 'failed',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/failed-renewal.example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/failed-renewal.example.com/privkey.pem',
+                'issued_at': timestamp - 90 * 24 * 60 * 60,
+                'expires_at': timestamp + 10 * 24 * 60 * 60,
+                'last_attempted_at': timestamp - 300,
+                'last_issued_at': timestamp - 90 * 24 * 60 * 60,
+                'last_renewed_at': None,
+                'next_retry_at': timestamp + 600,
+                'failure_count': 2,
+                'failure_reason': 'renewal failed',
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': expired_domain['id'],
+                'status': 'expired',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/expired.example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/expired.example.com/privkey.pem',
+                'issued_at': timestamp - 90 * 24 * 60 * 60,
+                'expires_at': timestamp - 60,
+                'last_attempted_at': timestamp - 120,
+                'last_issued_at': timestamp - 90 * 24 * 60 * 60,
+                'last_renewed_at': timestamp - 30 * 24 * 60 * 60,
+                'next_retry_at': timestamp,
+                'failure_count': 0,
+                'failure_reason': None,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': disabled_domain['id'],
+                'status': 'failed',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': None,
+                'private_key_path': None,
+                'issued_at': None,
+                'expires_at': None,
+                'last_attempted_at': timestamp - 600,
+                'last_issued_at': None,
+                'last_renewed_at': None,
+                'next_retry_at': timestamp + 600,
+                'failure_count': 1,
+                'failure_reason': 'disabled domain failure',
+            },
+        )
+
+        response = client.get('/api/v2/health/certificates', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'domainId': expired_domain['id'],
+                    'hostname': 'expired.example.com',
+                    'status': 'expired',
+                    'isARecordSet': True,
+                    'expiresAt': timestamp - 60,
+                    'lastAttemptedAt': timestamp - 120,
+                    'failureCount': 0,
+                    'failureReason': None,
+                },
+                {
+                    'domainId': failed_issuance_domain['id'],
+                    'hostname': 'failed-issuance.example.com',
+                    'status': 'failed',
+                    'isARecordSet': True,
+                    'expiresAt': None,
+                    'lastAttemptedAt': timestamp - 600,
+                    'failureCount': 1,
+                    'failureReason': 'ACME challenge failed',
+                },
+                {
+                    'domainId': failed_renewal_domain['id'],
+                    'hostname': 'failed-renewal.example.com',
+                    'status': 'failed',
+                    'isARecordSet': True,
+                    'expiresAt': timestamp + 10 * 24 * 60 * 60,
+                    'lastAttemptedAt': timestamp - 300,
+                    'failureCount': 2,
+                    'failureReason': 'renewal failed',
+                },
+                {
+                    'domainId': dns_not_ready_domain['id'],
+                    'hostname': 'dns-not-ready.example.com',
+                    'status': None,
+                    'isARecordSet': False,
+                    'expiresAt': None,
+                    'lastAttemptedAt': None,
+                    'failureCount': None,
+                    'failureReason': None,
+                },
+                {
+                    'domainId': missing_domain['id'],
+                    'hostname': 'missing-cert.example.com',
+                    'status': None,
+                    'isARecordSet': True,
+                    'expiresAt': None,
+                    'lastAttemptedAt': None,
+                    'failureCount': None,
+                    'failureReason': None,
+                },
+            ]
+        }
+
+
+class TestCertificateAlerts:
+    def test_first_issuance_failure_does_not_create_alert(
+        self, client, authorization, write_to_db, campaign, timestamp
+    ):
+        domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'first-issue-failed.example.com',
+                'purpose': 'campaign',
+                'campaign_id': campaign['id'],
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'failed',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': None,
+                'private_key_path': None,
+                'issued_at': None,
+                'expires_at': None,
+                'last_attempted_at': timestamp - 60,
+                'last_issued_at': None,
+                'last_renewed_at': None,
+                'next_retry_at': timestamp + 600,
+                'failure_count': 1,
+                'failure_reason': 'ACME challenge failed',
+            },
+        )
+
+        response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {'content': []}
+
+    def test_repeated_first_issuance_failure_creates_warning_alert(
+        self, client, authorization, write_to_db, campaign, timestamp
+    ):
+        domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'repeated-first-issue-failed.example.com',
+                'purpose': 'campaign',
+                'campaign_id': campaign['id'],
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'failed',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': None,
+                'private_key_path': None,
+                'issued_at': None,
+                'expires_at': None,
+                'last_attempted_at': timestamp - 60,
+                'last_issued_at': None,
+                'last_renewed_at': None,
+                'next_retry_at': timestamp + 600,
+                'failure_count': 2,
+                'failure_reason': 'ACME rate limit',
+            },
+        )
+
+        response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'code': 'system_health_certificate_issuance_failed',
+                    'message': 'Certificate issuance failed repeatedly for repeated-first-issue-failed.example.com.',
+                    'severity': 'warning',
+                    'source': 'src.domains.alerts',
+                    'payload': {
+                        'domainId': domain['id'],
+                        'hostname': 'repeated-first-issue-failed.example.com',
+                        'status': 'failed',
+                        'expiresAt': None,
+                        'lastAttemptedAt': timestamp - 60,
+                        'failureCount': 2,
+                        'failureReason': 'ACME rate limit',
+                    },
+                }
+            ]
+        }
+
+    def test_failed_renewal_within_warning_window_creates_warning_alert(
+        self, client, authorization, write_to_db, timestamp
+    ):
+        domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'renewal-warning.example.com',
+                'purpose': 'dashboard',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'failed',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/renewal-warning.example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/renewal-warning.example.com/privkey.pem',
+                'issued_at': timestamp - 80 * 24 * 60 * 60,
+                'expires_at': timestamp + 10 * 24 * 60 * 60,
+                'last_attempted_at': timestamp - 60,
+                'last_issued_at': timestamp - 80 * 24 * 60 * 60,
+                'last_renewed_at': None,
+                'next_retry_at': timestamp + 600,
+                'failure_count': 1,
+                'failure_reason': 'ACME renewal failed',
+            },
+        )
+
+        response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'code': 'system_health_certificate_renewal_warning',
+                    'message': 'Certificate renewal failed for renewal-warning.example.com and expires within 14 days.',
+                    'severity': 'warning',
+                    'source': 'src.domains.alerts',
+                    'payload': {
+                        'domainId': domain['id'],
+                        'hostname': 'renewal-warning.example.com',
+                        'status': 'failed',
+                        'expiresAt': timestamp + 10 * 24 * 60 * 60,
+                        'lastAttemptedAt': timestamp - 60,
+                        'failureCount': 1,
+                        'failureReason': 'ACME renewal failed',
+                    },
+                }
+            ]
+        }
+
+    def test_failed_renewal_within_error_window_creates_error_alert(
+        self, client, authorization, write_to_db, timestamp
+    ):
+        domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'renewal-error.example.com',
+                'purpose': 'dashboard',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'failed',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/renewal-error.example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/renewal-error.example.com/privkey.pem',
+                'issued_at': timestamp - 80 * 24 * 60 * 60,
+                'expires_at': timestamp + 5 * 24 * 60 * 60,
+                'last_attempted_at': timestamp - 60,
+                'last_issued_at': timestamp - 80 * 24 * 60 * 60,
+                'last_renewed_at': None,
+                'next_retry_at': timestamp + 600,
+                'failure_count': 1,
+                'failure_reason': 'ACME renewal failed',
+            },
+        )
+
+        response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'code': 'system_health_certificate_renewal_error',
+                    'message': 'Certificate renewal failed for renewal-error.example.com and expires within 7 days.',
+                    'severity': 'error',
+                    'source': 'src.domains.alerts',
+                    'payload': {
+                        'domainId': domain['id'],
+                        'hostname': 'renewal-error.example.com',
+                        'status': 'failed',
+                        'expiresAt': timestamp + 5 * 24 * 60 * 60,
+                        'lastAttemptedAt': timestamp - 60,
+                        'failureCount': 1,
+                        'failureReason': 'ACME renewal failed',
+                    },
+                }
+            ]
+        }
+
+    def test_expired_certificate_creates_error_alert(self, client, authorization, write_to_db, timestamp):
+        domain = write_to_db(
+            'domain',
+            {
+                'hostname': 'expired-alert.example.com',
+                'purpose': 'dashboard',
+                'campaign_id': None,
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+        write_to_db(
+            'domain_certificate',
+            {
+                'domain_id': domain['id'],
+                'status': 'expired',
+                'ca': 'letsencrypt',
+                'validation_method': 'http-01-webroot',
+                'certificate_path': '/etc/nginx/bangi/certs/expired-alert.example.com/fullchain.pem',
+                'private_key_path': '/etc/nginx/bangi/certs/expired-alert.example.com/privkey.pem',
+                'issued_at': timestamp - 80 * 24 * 60 * 60,
+                'expires_at': timestamp - 60,
+                'last_attempted_at': timestamp - 120,
+                'last_issued_at': timestamp - 80 * 24 * 60 * 60,
+                'last_renewed_at': None,
+                'next_retry_at': timestamp,
+                'failure_count': 0,
+                'failure_reason': None,
+            },
+        )
+
+        response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'code': 'system_health_certificate_expired',
+                    'message': 'Certificate for expired-alert.example.com is expired.',
+                    'severity': 'error',
+                    'source': 'src.domains.alerts',
+                    'payload': {
+                        'domainId': domain['id'],
+                        'hostname': 'expired-alert.example.com',
+                        'status': 'expired',
+                        'expiresAt': timestamp - 60,
+                        'lastAttemptedAt': timestamp - 120,
+                        'failureCount': 0,
+                        'failureReason': None,
+                    },
+                }
+            ]
+        }
+
+
 class TestCleanupDiskUtilizationWorker:
     @pytest.fixture(autouse=True)
     def mock_cleanup_worker_settings(self, monkeypatch):
