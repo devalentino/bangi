@@ -19,7 +19,17 @@ from src.tracker.routes import blueprint as track_blueprint
 from src.tracker.routes import process_blueprint
 
 configure_logging()
-container.get(WorkerSupervisor)  # triggers WorkerSupervisor execution
+
+# Alerts and workers initialization
+from src.domains import alerts as domain_alerts  # noqa: E402, F401
+from src.domains import workers as domain_workers  # noqa: E402, F401
+from src.health import alerts as health_alerts  # noqa: E402, F401
+from src.health import workers as health_workers  # noqa: E402, F401
+from src.reports import workers as reports_workers  # noqa: E402, F401
+from src.tracker import workers as tracker_workers  # noqa: E402, F401
+
+# Background worker supervisor initialization
+container.get(WorkerSupervisor)
 
 
 class SimpleJSONProvider(DefaultJSONProvider):
