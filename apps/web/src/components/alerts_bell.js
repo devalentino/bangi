@@ -36,6 +36,15 @@ function alertIconClass(code) {
   }
 
   if (
+      code === "system_health_certificate_issuance_failed"
+      || code === "system_health_certificate_renewal_warning"
+      || code === "system_health_certificate_renewal_error"
+      || code === "system_health_certificate_expired"
+  ) {
+    return "fa fa-lock";
+  }
+
+  if (
       code === "facebook_pacs_business_portfolio_access_url_missing"
       || code === "facebook_pacs_business_portfolio_access_url_expiring_soon"
       || code === "facebook_pacs_business_portfolio_access_url_expired"
