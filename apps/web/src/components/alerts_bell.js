@@ -44,6 +44,10 @@ function alertIconClass(code) {
     return "fa fa-lock";
   }
 
+  if (code === "system_health_nginx_validation_failed") {
+    return "fa fa-server";
+  }
+
   if (
       code === "facebook_pacs_business_portfolio_access_url_missing"
       || code === "facebook_pacs_business_portfolio_access_url_expiring_soon"

@@ -16,6 +16,7 @@ class AlertCode(StrEnum):
     SYSTEM_HEALTH_CERTIFICATE_RENEWAL_WARNING = 'system_health_certificate_renewal_warning'
     SYSTEM_HEALTH_CERTIFICATE_RENEWAL_ERROR = 'system_health_certificate_renewal_error'
     SYSTEM_HEALTH_CERTIFICATE_EXPIRED = 'system_health_certificate_expired'
+    SYSTEM_HEALTH_NGINX_VALIDATION_FAILED = 'system_health_nginx_validation_failed'
 
 
 class AlertSeverity(StrEnum):
