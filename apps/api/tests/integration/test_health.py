@@ -922,3 +922,81 @@ class TestNginxValidationHealth:
                 ],
             }
         }
+
+    def test_returns_error_alert_when_latest_nginx_validation_snapshot_failed(
+        self, client, authorization, write_to_db, timestamp
+    ):
+        failed_snapshot = write_to_db(
+            'health_nginx_validation_snapshot',
+            {
+                'created_at': timestamp - 10,
+                'domain_id': 9,
+                'validation_status': 'failed',
+                'validation_error': 'nginx: [emerg] invalid number of arguments',
+                'sites_available_files': [
+                    'sites-available/example.com/20260510T010101Z-abc12345.conf',
+                    'sites-available/example.com/20260510T010202Z-def67890.conf',
+                ],
+                'sites_enabled_refs': [
+                    'sites-enabled/example.com.conf -> ../sites-available/example.com/20260510T010202Z-def67890.conf'
+                ],
+            },
+        )
+
+        response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'code': 'system_health_nginx_validation_failed',
+                    'message': (
+                        'Latest Nginx validation failed for domain 9. ' 'nginx: [emerg] invalid number of arguments'
+                    ),
+                    'severity': 'error',
+                    'source': 'src.health.alerts',
+                    'payload': {
+                        'domainId': failed_snapshot['domain_id'],
+                        'validationTimestamp': failed_snapshot['created_at'],
+                        'validationError': failed_snapshot['validation_error'],
+                    },
+                }
+            ]
+        }
+
+    def test_returns_no_nginx_validation_alert_when_latest_snapshot_succeeded(
+        self, client, authorization, write_to_db, timestamp
+    ):
+        write_to_db(
+            'health_nginx_validation_snapshot',
+            {
+                'created_at': timestamp - 120,
+                'domain_id': 9,
+                'validation_status': 'failed',
+                'validation_error': 'nginx: [emerg] bad config',
+                'sites_available_files': ['sites-available/example.com/old.conf'],
+                'sites_enabled_refs': ['sites-enabled/example.com.conf -> ../sites-available/example.com/old.conf'],
+            },
+        )
+        write_to_db(
+            'health_nginx_validation_snapshot',
+            {
+                'created_at': timestamp - 10,
+                'domain_id': 9,
+                'validation_status': 'success',
+                'validation_error': None,
+                'sites_available_files': ['sites-available/example.com/current.conf'],
+                'sites_enabled_refs': ['sites-enabled/example.com.conf -> ../sites-available/example.com/current.conf'],
+            },
+        )
+
+        response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {'content': []}
+
+    def test_returns_no_nginx_validation_alert_when_no_snapshot_exists(self, client, authorization):
+        response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+        assert response.status_code == 200, response.text
+        assert response.json == {'content': []}
