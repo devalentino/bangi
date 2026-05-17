@@ -2,6 +2,23 @@ from peewee import JOIN
 
 from src.alerts import Alert, AlertCode, AlertSeverity, register_alert_callback
 from src.core.entities import Campaign, Flow
+from src.core.services import IpLocator
+
+
+@register_alert_callback
+def collect_ip2location_alerts(container) -> list[Alert]:
+    ip_locator = container.get(IpLocator)
+    if ip_locator.is_configured():
+        return []
+
+    return [
+        Alert(
+            code=AlertCode.CORE_IP2LOCATION_DATABASE_MISSING,
+            message='Country targeting is unavailable until the IP2Location database is configured.',
+            severity=AlertSeverity.WARNING,
+            payload={'countryTargetingAvailable': False},
+        )
+    ]
 
 
 @register_alert_callback

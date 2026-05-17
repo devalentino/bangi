@@ -57,6 +57,18 @@ def mock_subprocess_run():
 
 
 @pytest.fixture(autouse=True)
+def ip2location_configured():
+    with mock.patch('src.core.services.Ip2LocationLocator.is_configured', return_value=True):
+        yield
+
+
+@pytest.fixture
+def ip2location_unavailable():
+    with mock.patch('src.core.services.Ip2LocationLocator.is_configured', return_value=False):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def assert_all_external_http_calls_are_mocked(respx_mock):
     yield
 

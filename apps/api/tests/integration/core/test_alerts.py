@@ -1,3 +1,28 @@
+import pytest
+
+
+@pytest.mark.usefixtures('ip2location_unavailable')
+def test_get_alerts__returns_ip2location_database_missing_alert(
+    client, authorization, campaign, set_default_flow_id, flow
+):
+    set_default_flow_id(campaign['id'], flow['id'])
+
+    response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [
+            {
+                'code': 'core_ip2location_database_missing',
+                'message': 'Country targeting is unavailable until the IP2Location database is configured.',
+                'severity': 'warning',
+                'source': 'src.core.alerts',
+                'payload': {'countryTargetingAvailable': False},
+            }
+        ]
+    }
+
+
 def test_get_alerts__returns_campaign_default_flow_configuration_alert(
     client, authorization, campaign, campaign_payload, write_to_db, set_default_flow_id
 ):

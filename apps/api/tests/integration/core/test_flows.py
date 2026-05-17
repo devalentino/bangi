@@ -587,6 +587,30 @@ def test_create_flow__rejects_rule_with_unsupported_term(client, authorization, 
     }
 
 
+@pytest.mark.usefixtures('ip2location_unavailable')
+def test_create_flow__rejects_country_rule_when_ip2location_is_unavailable(client, authorization, campaign, flow_name):
+    response = client.post(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+        data={
+            'name': flow_name,
+            'rule': 'country == "US"',
+            'actionType': 'redirect',
+            'redirectUrl': 'https://example.com',
+            'isEnabled': True,
+            'showOncePerVisitor': False,
+        },
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {'form': {'rule': ['country targeting is unavailable until IP2Location is configured.']}},
+        'status': 'Unprocessable Entity',
+    }
+
+
 @pytest.mark.parametrize('input_rule', ['', '   \n\t'])
 def test_create_flow__rejects_blank_rule_variations(client, authorization, campaign, input_rule):
     response = client.post(
@@ -664,6 +688,28 @@ def test_update_flow__rejects_blank_rule_variations(client, authorization, flow,
     assert response.json == {
         'code': 422,
         'errors': {'form': {'rule': ['rule cannot be blank.']}},
+        'status': 'Unprocessable Entity',
+    }
+
+
+@pytest.mark.usefixtures('ip2location_unavailable')
+def test_update_flow__rejects_country_rule_when_ip2location_is_unavailable(client, authorization, flow):
+    response = client.patch(
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+        data={
+            'rule': 'country == "US"',
+            'actionType': 'redirect',
+            'redirectUrl': 'https://example.org',
+            'showOncePerVisitor': False,
+        },
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {'form': {'rule': ['country targeting is unavailable until IP2Location is configured.']}},
         'status': 'Unprocessable Entity',
     }
 

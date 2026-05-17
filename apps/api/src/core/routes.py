@@ -1,4 +1,5 @@
 import humps
+import rule_engine
 from flask import request
 from flask.views import MethodView
 from marshmallow import ValidationError
@@ -8,6 +9,7 @@ from src.container import container
 from src.core.blueprint import Blueprint
 from src.core.enums import FlowActionType
 from src.core.exceptions import InvalidCampaignDefaultFlowError
+from src.core.models import Client
 from src.core.schemas import (
     CampaignCreateRequestSchema,
     CampaignListResponseSchema,
@@ -22,7 +24,7 @@ from src.core.schemas import (
     FlowUpdateRequestSchema,
     PaginationRequestSchema,
 )
-from src.core.services import CampaignService, FlowService
+from src.core.services import CampaignService, FlowService, IpLocator
 
 blueprint = Blueprint('core', __name__, description='Core')
 
@@ -36,6 +38,23 @@ def _campaign_summary(campaign_id, click_stats, total_click_count):
         'click_share': click_count / total_click_count if total_click_count else 0.0,
         'last_activity_at': int(last_activity_at.timestamp()) if last_activity_at else None,
     }
+
+
+def _validate_flow_rule_targeting(rule, location):
+    ip_locator = container.get(IpLocator)
+    if ip_locator.is_configured():
+        return None
+
+    try:
+        rule_engine.Rule(rule, context=Client.rule_engine_context(country_available=False))
+    except rule_engine.errors.SymbolResolutionError:
+        return {
+            'code': 422,
+            'errors': {location: {'rule': ['country targeting is unavailable until IP2Location is configured.']}},
+            'status': 'Unprocessable Entity',
+        }, 422
+
+    return None
 
 
 @blueprint.route('/campaigns')
@@ -183,6 +202,11 @@ class CampaignFlows(MethodView):
                 'status': 'Unprocessable Entity',
             }, 422
 
+        if flow_payload.get('rule') is not None:
+            targeting_error = _validate_flow_rule_targeting(flow_payload['rule'], 'form')
+            if targeting_error is not None:
+                return targeting_error
+
         flow_service = container.get(FlowService)
         flow_service.create(
             flow_payload['name'],
@@ -230,6 +254,11 @@ class Flow(MethodView):
                 'errors': {'form': {'landingArchive': e.messages}},
                 'status': 'Unprocessable Entity',
             }, 422
+
+        if flow_payload.get('rule') is not None:
+            targeting_error = _validate_flow_rule_targeting(flow_payload['rule'], 'form')
+            if targeting_error is not None:
+                return targeting_error
 
         flow_service = container.get(FlowService)
         flow_service.update(

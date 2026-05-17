@@ -5,6 +5,7 @@ class AlertCode(StrEnum):
     UNKNOWN = 'unknown'
     CORE_CAMPAIGN_DISCARD = 'core_campaign_discard'
     CORE_CAMPAIGN_DEFAULT_FLOW_CONFIGURATION = 'core_campaign_default_flow_configuration'
+    CORE_IP2LOCATION_DATABASE_MISSING = 'core_ip2location_database_missing'
     FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_MISSING = 'facebook_pacs_business_portfolio_access_url_missing'
     FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRED = 'facebook_pacs_business_portfolio_access_url_expired'
     FACEBOOK_PACS_BUSINESS_PORTFOLIO_ACCESS_URL_EXPIRING_SOON = (

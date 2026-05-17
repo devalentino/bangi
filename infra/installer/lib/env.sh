@@ -240,14 +240,49 @@ bangi_write_ops_environment() {
         IP2LOCATION_DOWNLOAD_TOKEN
     )
     local ip2location_download_token=""
+    local token_source_locked="false"
 
     declare -gA BANGI_ENV_VALUES=()
     bangi_env_load_file "${BANGI_OPS_ENV_FILE}" BANGI_ENV_VALUES
 
-    if [[ -z "${BANGI_ENV_VALUES[IP2LOCATION_DOWNLOAD_TOKEN]+x}" || -z "${BANGI_ENV_VALUES[IP2LOCATION_DOWNLOAD_TOKEN]}" ]]; then
-        ip2location_download_token="$(bangi_env_read_ip2location_token)"
-        bangi_env_set_if_missing BANGI_ENV_VALUES IP2LOCATION_DOWNLOAD_TOKEN "${ip2location_download_token}"
+    if [[ -n "${BANGI_ENV_VALUES[IP2LOCATION_DOWNLOAD_TOKEN]+x}" ]]; then
+        ip2location_download_token="${BANGI_ENV_VALUES[IP2LOCATION_DOWNLOAD_TOKEN]}"
     fi
+
+    if [[ -n "${IP2LOCATION_DOWNLOAD_TOKEN:-}" && ! -t 0 ]]; then
+        token_source_locked="true"
+    fi
+
+    if [[ -n "${ip2location_download_token}" && -f "${BANGI_SHARED_IP2LOCATION_DIR}/${BANGI_IP2LOCATION_DATABASE_FILE}" ]]; then
+        bangi_log "IP2Location database already installed"
+    else
+        while true; do
+            if [[ -z "${ip2location_download_token}" ]]; then
+                ip2location_download_token="$(bangi_env_read_ip2location_token)"
+            fi
+
+            if [[ -z "${ip2location_download_token}" ]]; then
+                bangi_log "IP2Location setup skipped; country-based flow validation will remain unavailable until the database is configured."
+                break
+            fi
+
+            bangi_log "Validating IP2Location download token"
+            if bangi_ip2location_download_database "${ip2location_download_token}"; then
+                bangi_log "IP2Location database installed"
+                break
+            fi
+
+            if [[ "${token_source_locked}" == "true" || ! -t 0 ]]; then
+                bangi_fatal "IP2Location download token is invalid or cannot download the expected database"
+            fi
+
+            bangi_log "IP2Location download token is invalid or cannot download the expected database. Enter a new token, or leave blank to skip IP2Location setup."
+            ip2location_download_token=""
+            IP2LOCATION_DOWNLOAD_TOKEN=""
+        done
+    fi
+
+    BANGI_ENV_VALUES[IP2LOCATION_DOWNLOAD_TOKEN]="${ip2location_download_token}"
 
     bangi_env_write_file "${BANGI_OPS_ENV_FILE}" "0600" "${ops_keys[@]}"
 }
