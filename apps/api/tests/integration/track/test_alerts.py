@@ -1,6 +1,13 @@
+import pytest
 from fixtures.utils import click_uuid
 
 
+@pytest.fixture
+def assign_default_flow_for_the_campaign(campaign, flow, set_default_flow_id):
+    set_default_flow_id(campaign['id'], flow['id'])
+
+
+@pytest.mark.usefixtures('assign_default_flow_for_the_campaign')
 def test_get_alerts__suppresses_discard_alert_when_1h_total_is_too_low(
     client, authorization, campaign, write_to_db, timestamp
 ):
@@ -36,6 +43,7 @@ def test_get_alerts__suppresses_discard_alert_when_1h_total_is_too_low(
     assert response.json == {'content': []}
 
 
+@pytest.mark.usefixtures('assign_default_flow_for_the_campaign')
 def test_get_alerts__returns_info_discard_alert(client, authorization, campaign, write_to_db, timestamp):
     for index in range(100):
         click = write_to_db(
@@ -92,6 +100,7 @@ def test_get_alerts__returns_info_discard_alert(client, authorization, campaign,
     }
 
 
+@pytest.mark.usefixtures('assign_default_flow_for_the_campaign')
 def test_get_alerts__returns_warning_discard_alert(client, authorization, campaign, write_to_db, timestamp):
     # Inside all windows: contributes to 5m, 1h, and 1d.
     for index in range(25):

@@ -51,6 +51,7 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
         'currency': request_payload['currency'],
         'status_mapper': mock.ANY,
         'expenses_distribution_parameter': None,
+        'default_flow_id': None,
         'created_at': mock.ANY,
     }
     assert json.loads(core_campaign['status_mapper']) == request_payload['statusMapper']
@@ -154,6 +155,7 @@ def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executo
         'currency': request_payload['currency'],
         'status_mapper': mock.ANY,
         'expenses_distribution_parameter': mock.ANY,
+        'default_flow_id': None,
         'created_at': mock.ANY,
     }
     assert json.loads(core_campaign['status_mapper']) == request_payload['statusMapper']
