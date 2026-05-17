@@ -1,6 +1,3 @@
-from pymysql import cursors
-
-
 def test_get_alerts__returns_campaign_default_flow_configuration_alert(
     client, authorization, campaign, campaign_payload, write_to_db, set_default_flow_id
 ):
