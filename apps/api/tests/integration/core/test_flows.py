@@ -371,7 +371,6 @@ def test_create_flow__redirect_action_success(client, authorization, campaign, r
 def test_create_flow__stores_show_once_per_visitor(client, authorization, campaign, read_from_db):
     request_payload = {
         'name': 'Show-once flow',
-        'rule': None,
         'actionType': 'redirect',
         'redirectUrl': 'https://example.com/show-once',
         'isEnabled': True,
