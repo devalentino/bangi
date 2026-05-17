@@ -27,6 +27,227 @@ def ip2location_mock(environment):
 
 
 class TestTrackRedirect:
+    def test_track_redirect__evaluates_current_flow_first_when_cookie_flow_is_valid(
+        self, client, campaign, domain, write_to_db, ip2location_mock
+    ):
+        write_to_db(
+            'flow',
+            {
+                'name': 'Higher priority fallback',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 20,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/higher',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        current_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Current repeatable flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/current',
+                'is_enabled': True,
+                'is_deleted': False,
+                'show_once_per_visitor': False,
+            },
+        )
+        cookie_row = write_to_db(
+            'domain_cookie',
+            {'domain_id': domain['id'], 'name': 'flow_id', 'opaque_name': 'sticky_flow'},
+        )
+        client.set_cookie(cookie_row['opaque_name'], str(current_flow['id']))
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == current_flow['redirect_url']
+
+    def test_track_redirect__skips_show_once_current_flow_after_visit(
+        self, client, campaign, domain, write_to_db, ip2location_mock
+    ):
+        write_to_db(
+            'flow',
+            {
+                'name': 'Already passed show-once flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 30,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/previous',
+                'is_enabled': True,
+                'is_deleted': False,
+                'show_once_per_visitor': True,
+            },
+        )
+        current_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Current show-once flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 20,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/current',
+                'is_enabled': True,
+                'is_deleted': False,
+                'show_once_per_visitor': True,
+            },
+        )
+        next_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Next repeatable flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/next',
+                'is_enabled': True,
+                'is_deleted': False,
+                'show_once_per_visitor': False,
+            },
+        )
+        cookie_row = write_to_db(
+            'domain_cookie',
+            {'domain_id': domain['id'], 'name': 'flow_id', 'opaque_name': 'sticky_flow'},
+        )
+        client.set_cookie(cookie_row['opaque_name'], str(current_flow['id']))
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == next_flow['redirect_url']
+
+    def test_track_redirect__skips_current_flow_when_rule_no_longer_matches(
+        self, client, campaign, domain, write_to_db, ip2location_mock
+    ):
+        current_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Current non-matching flow',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "US"',
+                'order_value': 20,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/current',
+                'is_enabled': True,
+                'is_deleted': False,
+                'show_once_per_visitor': False,
+            },
+        )
+        next_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Next matching flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/next',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        cookie_row = write_to_db(
+            'domain_cookie',
+            {'domain_id': domain['id'], 'name': 'flow_id', 'opaque_name': 'sticky_flow'},
+        )
+        client.set_cookie(cookie_row['opaque_name'], str(current_flow['id']))
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == next_flow['redirect_url']
+
+    def test_track_redirect__invalid_cookie_resets_to_first_visit_selection(
+        self, client, campaign, domain, write_to_db, ip2location_mock
+    ):
+        first_flow = write_to_db(
+            'flow',
+            {
+                'name': 'First flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 20,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/first',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        write_to_db(
+            'flow',
+            {
+                'name': 'Second flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/second',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        cookie_row = write_to_db(
+            'domain_cookie',
+            {'domain_id': domain['id'], 'name': 'flow_id', 'opaque_name': 'sticky_flow'},
+        )
+        client.set_cookie(cookie_row['opaque_name'], '100500')
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == first_flow['redirect_url']
+
+    def test_track_redirect__returns_no_match_when_remaining_progression_flows_are_blocked(
+        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
+    ):
+        current_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Current show-once flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 20,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/current',
+                'is_enabled': True,
+                'is_deleted': False,
+                'show_once_per_visitor': True,
+            },
+        )
+        write_to_db(
+            'flow',
+            {
+                'name': 'Remaining non-matching flow',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "US"',  # ip2location_mock resolves the request IP to MD
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/remaining',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        cookie_row = write_to_db(
+            'domain_cookie',
+            {'domain_id': domain['id'], 'name': 'flow_id', 'opaque_name': 'sticky_flow'},
+        )
+        click_id = uuid4()
+        client.set_cookie(cookie_row['opaque_name'], str(current_flow['id']))
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(click_id)})
+
+        assert response.status_code == 200, response.text
+        assert response.text == ''
+        assert read_from_db('track_discard')['click_id'] == click_id
+
     def test_track_redirect__tracks_discard_when_no_flow_matches(
         self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
     ):

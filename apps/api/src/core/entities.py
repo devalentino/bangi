@@ -58,3 +58,4 @@ class Flow(Entity):
     redirect_url = CharField(null=True)
     is_enabled = BooleanField(default=True)
     is_deleted = BooleanField(default=False)
+    show_once_per_visitor = BooleanField(default=False)

@@ -172,6 +172,26 @@ class CoreFlowView {
                           "Enabled",
                         ),
                       ]),
+                      m(".form-check.mt-3", [
+                        m("input.form-check-input", {
+                          type: "checkbox",
+                          id: "showOncePerVisitor",
+                          checked: this.model.form.showOncePerVisitor,
+                          onchange: function (event) {
+                            this.model.form.showOncePerVisitor =
+                              event.target.checked;
+                          }.bind(this),
+                        }),
+                        m(
+                          "label.form-check-label",
+                          { for: "showOncePerVisitor" },
+                          "Show only once per visitor",
+                        ),
+                        m(
+                          ".form-text",
+                          "After this visitor sees the flow, Bangi skips it when selecting their next landing.",
+                        ),
+                      ]),
                       m(
                         "button.btn.btn-primary.mt-3",
                         { type: "submit" },

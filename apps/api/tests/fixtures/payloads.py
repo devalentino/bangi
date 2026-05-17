@@ -61,4 +61,5 @@ def flow_payload(flow_name, flow_rule, flow_is_deleted):
         'redirect_url': 'https://example.com',
         'is_enabled': True,
         'is_deleted': flow_is_deleted,
+        'show_once_per_visitor': False,
     }
