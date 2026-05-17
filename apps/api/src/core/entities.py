@@ -47,6 +47,7 @@ class Campaign(Entity):
     currency = CharField(null=True, default=Currency.usd.value)
     status_mapper = JSONField(null=True)
     expenses_distribution_parameter = CharField(null=True)
+    default_flow_id = IntegerField(null=True)
 
 
 class Flow(Entity):

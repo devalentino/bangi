@@ -104,14 +104,22 @@ class Campaign(MethodView):
     @auth.login_required
     def patch(self, campaign_payload, campaignId):
         campaign_service = container.get(CampaignService)
-        campaign_service.update(
-            campaignId,
-            campaign_payload.get('name'),
-            campaign_payload.get('costModel'),
-            campaign_payload.get('costValue'),
-            campaign_payload.get('currency'),
-            campaign_payload.get('statusMapper'),
-        )
+        try:
+            campaign_service.update(
+                campaignId,
+                campaign_payload.get('name'),
+                campaign_payload.get('costModel'),
+                campaign_payload.get('costValue'),
+                campaign_payload.get('currency'),
+                campaign_payload.get('statusMapper'),
+                campaign_payload.get('defaultFlowId'),
+            )
+        except ValueError as e:
+            return {
+                'code': 422,
+                'errors': {'json': {'defaultFlowId': [str(e)]}},
+                'status': 'Unprocessable Entity',
+            }, 422
 
 
 @blueprint.route('/filters/campaigns')

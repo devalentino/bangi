@@ -97,7 +97,28 @@ class CampaignService:
         campaign.save()
         return campaign
 
-    def update(self, campaign_id, name=None, cost_model=None, cost_value=None, currency=None, status_mapper=None):
+    def _validate_default_flow(self, campaign_id, default_flow_id):
+        if default_flow_id is None:
+            return
+
+        try:
+            flow = Flow.get_by_id(default_flow_id)
+        except Flow.DoesNotExist as exc:
+            raise ValueError('defaultFlowId must reference a flow in this campaign.') from exc
+
+        if flow.campaign.id != campaign_id or flow.is_deleted:
+            raise ValueError('defaultFlowId must reference a flow in this campaign.')
+
+    def update(
+        self,
+        campaign_id,
+        name=None,
+        cost_model=None,
+        cost_value=None,
+        currency=None,
+        status_mapper=None,
+        default_flow_id=None,
+    ):
         try:
             campaign = Campaign.get_by_id(campaign_id)
         except Campaign.DoesNotExist as exc:
@@ -116,6 +137,8 @@ class CampaignService:
             campaign.currency = currency
 
         campaign.status_mapper = status_mapper
+        self._validate_default_flow(campaign_id, default_flow_id)
+        campaign.default_flow_id = default_flow_id
 
         campaign.save()
 
@@ -311,6 +334,7 @@ class FlowService:
         flow = self.get(flow_id, campaign_id)
         flow.is_deleted = True
         flow.save()
+        Campaign.update(default_flow_id=None).where(Campaign.default_flow_id == flow.id).execute()
 
     def bulk_update_order(self, campaign_id, order):
         # TODO: move to repo
@@ -329,12 +353,18 @@ class FlowService:
 
     def process_flows(self, campaign_id: int, client: Client, current_flow_id=None):
         flows = list(
-            Flow.select()
+            Flow.select(Flow, Campaign)
+            .join(Campaign)
             .where((Flow.campaign_id == campaign_id) & (Flow.is_enabled == True) & (Flow.is_deleted == False))
             .order_by(Flow.order_value.desc(), Flow.id.asc())
         )
-        current_index = None
+        default_flow = None
+        for flow in flows:
+            if flow.id == flow.campaign.default_flow_id:
+                default_flow = flow
+                break
 
+        current_index = None
         if current_flow_id is not None:
             for index, flow in enumerate(flows):
                 if flow.id == current_flow_id:
@@ -365,10 +395,13 @@ class FlowService:
                     break
 
         if matched_flow is None:
-            logger.warning(
-                'Failed to process flows', extra={'campaign_id': campaign_id, 'flows': [f.to_dict() for f in flows]}
-            )
-            return None, None, None
+            matched_flow = default_flow
+
+            if matched_flow is None:
+                logger.warning(
+                    'Failed to process flows', extra={'campaign_id': campaign_id, 'flows': [f.to_dict() for f in flows]}
+                )
+                return None, None, None
 
         if matched_flow.action_type == FlowActionType.redirect:
             return matched_flow.action_type, matched_flow.redirect_url, matched_flow.id

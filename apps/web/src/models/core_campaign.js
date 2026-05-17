@@ -11,11 +11,12 @@ class CoreCampaignModel {
     this.lastLoaded = null;
     this.form = {
       name: "",
-      costModel: "cpc",
+      costModel: "cpa",
       costValue: "",
       currency: "usd",
       statusMapperText: "",
       internalProcessUrl: "",
+      defaultFlowId: "",
     };
   }
 
@@ -28,6 +29,9 @@ class CoreCampaignModel {
       ? JSON.stringify(payload.statusMapper, null, 2)
       : "";
     this.form.internalProcessUrl = payload.internalProcessUrl || "";
+    this.form.defaultFlowId = payload.defaultFlowId == null
+      ? ""
+      : String(payload.defaultFlowId);
   }
 
   resetForm() {
@@ -127,13 +131,21 @@ class CoreCampaignModel {
       statusMapper = JSON.parse(statusMapperText);
     }
 
-    return {
+    let payload = {
       name: this.form.name.trim(),
       costModel: this.form.costModel,
       costValue: Number(this.form.costValue),
       currency: this.form.currency,
       statusMapper: statusMapper,
     };
+
+    if (this.campaignId !== "new") {
+      payload.defaultFlowId = this.form.defaultFlowId === ""
+        ? null
+        : Number(this.form.defaultFlowId);
+    }
+
+    return payload;
   }
 
   save() {

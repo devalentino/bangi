@@ -82,6 +82,7 @@ class CampaignUpdateRequestSchema(Schema):
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN)
     currency = fields.Enum(Currency)
     statusMapper = fields.Dict(required=True, allow_none=True)
+    defaultFlowId = fields.Integer(required=True, allow_none=True)
 
     @validates_schema
     def validate_status_mapper(self, data, **kwargs):
@@ -101,6 +102,7 @@ class CampaignResponseSchema(Schema):
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
     currency = fields.String(required=True)
     statusMapper = fields.Dict(allow_none=True)
+    defaultFlowId = fields.Integer(allow_none=True)
     internalProcessUrl = fields.String(allow_none=True)
     expensesDistributionParameter = fields.String(allow_none=True)
     summary = fields.Nested(CampaignSummaryResponseSchema(), required=True)

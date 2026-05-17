@@ -34,6 +34,7 @@ def test_create_campaign(client, authorization, campaign_payload, read_from_db):
         'cost_value': request_payload['costValue'],
         'currency': request_payload['currency'],
         'expenses_distribution_parameter': None,
+        'default_flow_id': None,
         'status_mapper': mock.ANY,
         'created_at': mock.ANY,
     }
@@ -95,6 +96,7 @@ def test_campaigns_list(client, authorization, environment, campaign_payload, wr
                 'costValue': campaign['cost_value'],
                 'currency': campaign['currency'],
                 'expensesDistributionParameter': campaign['expenses_distribution_parameter'],
+                'defaultFlowId': campaign['default_flow_id'],
                 'id': campaign['id'],
                 'name': campaign['name'],
                 'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{campaign["id"]}',
@@ -122,6 +124,7 @@ def test_get_campaign(client, authorization, campaign, environment):
         'costValue': campaign['cost_value'],
         'currency': campaign['currency'],
         'expensesDistributionParameter': campaign['expenses_distribution_parameter'],
+        'defaultFlowId': campaign['default_flow_id'],
         'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{campaign["id"]}',
         'summary': {
             'clickCount': 0,
@@ -154,7 +157,7 @@ def test_update_campaign(client, authorization, campaign, read_from_db, request_
     response = client.patch(
         f'/api/v2/core/campaigns/{campaign["id"]}',
         headers={'Authorization': authorization},
-        json={request_key: request_value, 'statusMapper': json.loads(campaign['status_mapper'])},
+        json={request_key: request_value, 'statusMapper': json.loads(campaign['status_mapper']), 'defaultFlowId': None},
     )
 
     assert response.status_code == 200, response.text
@@ -173,7 +176,12 @@ def test_update_campaign__requires_status_mapper(client, authorization, campaign
     assert response.status_code == 422, response.text
     assert response.json == {
         'code': 422,
-        'errors': {'json': {'statusMapper': ['Missing data for required field.']}},
+        'errors': {
+            'json': {
+                'defaultFlowId': ['Missing data for required field.'],
+                'statusMapper': ['Missing data for required field.'],
+            }
+        },
         'status': 'Unprocessable Entity',
     }
 
@@ -182,7 +190,7 @@ def test_update_campaign__accepts_null_status_mapper(client, authorization, camp
     response = client.patch(
         f'/api/v2/core/campaigns/{campaign["id"]}',
         headers={'Authorization': authorization},
-        json={'statusMapper': None},
+        json={'statusMapper': None, 'defaultFlowId': None},
     )
 
     assert response.status_code == 200, response.text
@@ -194,7 +202,7 @@ def test_update_campaign__validates_non_empty_status_mapper(client, authorizatio
     response = client.patch(
         f'/api/v2/core/campaigns/{campaign["id"]}',
         headers={'Authorization': authorization},
-        json={'statusMapper': {'parameter': 'state', 'mapping': {'maybe': 'unknown'}}},
+        json={'statusMapper': {'parameter': 'state', 'mapping': {'maybe': 'unknown'}}, 'defaultFlowId': None},
     )
 
     assert response.status_code == 422, response.text
@@ -207,6 +215,53 @@ def test_update_campaign__validates_non_empty_status_mapper(client, authorizatio
         },
         'status': 'Unprocessable Entity',
     }
+
+
+def test_update_campaign__sets_default_flow(client, authorization, campaign, flow, read_from_db):
+    response = client.patch(
+        f'/api/v2/core/campaigns/{campaign["id"]}',
+        headers={'Authorization': authorization},
+        json={'statusMapper': json.loads(campaign['status_mapper']), 'defaultFlowId': flow['id']},
+    )
+
+    assert response.status_code == 200, response.text
+    assert read_from_db('campaign')['default_flow_id'] == flow['id']
+
+
+def test_update_campaign__rejects_default_flow_from_another_campaign(
+    client, authorization, campaign, campaign_payload, flow, write_to_db
+):
+    other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Other campaign'})
+
+    response = client.patch(
+        f'/api/v2/core/campaigns/{other_campaign["id"]}',
+        headers={'Authorization': authorization},
+        json={'statusMapper': json.loads(other_campaign['status_mapper']), 'defaultFlowId': flow['id']},
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {'json': {'defaultFlowId': ['defaultFlowId must reference a flow in this campaign.']}},
+        'status': 'Unprocessable Entity',
+    }
+
+
+def test_delete_flow__clears_campaign_default_flow(client, authorization, campaign, flow, read_from_db):
+    setup_response = client.patch(
+        f'/api/v2/core/campaigns/{campaign["id"]}',
+        headers={'Authorization': authorization},
+        json={'statusMapper': json.loads(campaign['status_mapper']), 'defaultFlowId': flow['id']},
+    )
+    assert setup_response.status_code == 200, setup_response.text
+
+    response = client.delete(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 204, response.text
+    assert read_from_db('campaign')['default_flow_id'] is None
 
 
 def test_campaigns_list__returns_click_summary(
@@ -264,6 +319,7 @@ def test_campaigns_list__returns_click_summary(
                 'costModel': first_campaign['cost_model'],
                 'costValue': first_campaign['cost_value'],
                 'currency': first_campaign['currency'],
+                'defaultFlowId': first_campaign['default_flow_id'],
                 'expensesDistributionParameter': first_campaign['expenses_distribution_parameter'],
                 'id': first_campaign['id'],
                 'name': first_campaign['name'],
@@ -279,6 +335,7 @@ def test_campaigns_list__returns_click_summary(
                 'costModel': second_campaign['cost_model'],
                 'costValue': second_campaign['cost_value'],
                 'currency': second_campaign['currency'],
+                'defaultFlowId': second_campaign['default_flow_id'],
                 'expensesDistributionParameter': second_campaign['expenses_distribution_parameter'],
                 'id': second_campaign['id'],
                 'name': second_campaign['name'],
@@ -294,6 +351,7 @@ def test_campaigns_list__returns_click_summary(
                 'costModel': idle_campaign['cost_model'],
                 'costValue': idle_campaign['cost_value'],
                 'currency': idle_campaign['currency'],
+                'defaultFlowId': idle_campaign['default_flow_id'],
                 'expensesDistributionParameter': idle_campaign['expenses_distribution_parameter'],
                 'id': idle_campaign['id'],
                 'name': idle_campaign['name'],
@@ -339,6 +397,7 @@ def test_get_campaign__returns_click_summary(client, authorization, campaign, en
         'costModel': campaign['cost_model'],
         'costValue': campaign['cost_value'],
         'currency': campaign['currency'],
+        'defaultFlowId': campaign['default_flow_id'],
         'expensesDistributionParameter': campaign['expenses_distribution_parameter'],
         'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{campaign["id"]}',
         'summary': {
@@ -401,6 +460,7 @@ def test_campaigns_list__sorts_by_click_share(client, authorization, environment
                 'costModel': high_share_campaign['cost_model'],
                 'costValue': high_share_campaign['cost_value'],
                 'currency': high_share_campaign['currency'],
+                'defaultFlowId': high_share_campaign['default_flow_id'],
                 'expensesDistributionParameter': high_share_campaign['expenses_distribution_parameter'],
                 'id': high_share_campaign['id'],
                 'name': high_share_campaign['name'],
@@ -416,6 +476,7 @@ def test_campaigns_list__sorts_by_click_share(client, authorization, environment
                 'costModel': low_share_campaign['cost_model'],
                 'costValue': low_share_campaign['cost_value'],
                 'currency': low_share_campaign['currency'],
+                'defaultFlowId': low_share_campaign['default_flow_id'],
                 'expensesDistributionParameter': low_share_campaign['expenses_distribution_parameter'],
                 'id': low_share_campaign['id'],
                 'name': low_share_campaign['name'],
@@ -431,6 +492,7 @@ def test_campaigns_list__sorts_by_click_share(client, authorization, environment
                 'costModel': no_clicks_campaign['cost_model'],
                 'costValue': no_clicks_campaign['cost_value'],
                 'currency': no_clicks_campaign['currency'],
+                'defaultFlowId': no_clicks_campaign['default_flow_id'],
                 'expensesDistributionParameter': no_clicks_campaign['expenses_distribution_parameter'],
                 'id': no_clicks_campaign['id'],
                 'name': no_clicks_campaign['name'],
@@ -492,6 +554,7 @@ def test_campaigns_list__sorts_by_last_activity_at(client, authorization, enviro
                 'costModel': newest_campaign['cost_model'],
                 'costValue': newest_campaign['cost_value'],
                 'currency': newest_campaign['currency'],
+                'defaultFlowId': newest_campaign['default_flow_id'],
                 'expensesDistributionParameter': newest_campaign['expenses_distribution_parameter'],
                 'id': newest_campaign['id'],
                 'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{newest_campaign["id"]}',
@@ -503,6 +566,7 @@ def test_campaigns_list__sorts_by_last_activity_at(client, authorization, enviro
                 'costModel': older_campaign['cost_model'],
                 'costValue': older_campaign['cost_value'],
                 'currency': older_campaign['currency'],
+                'defaultFlowId': older_campaign['default_flow_id'],
                 'expensesDistributionParameter': older_campaign['expenses_distribution_parameter'],
                 'id': older_campaign['id'],
                 'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{older_campaign["id"]}',
@@ -514,6 +578,7 @@ def test_campaigns_list__sorts_by_last_activity_at(client, authorization, enviro
                 'costModel': no_activity_campaign['cost_model'],
                 'costValue': no_activity_campaign['cost_value'],
                 'currency': no_activity_campaign['currency'],
+                'defaultFlowId': no_activity_campaign['default_flow_id'],
                 'expensesDistributionParameter': no_activity_campaign['expenses_distribution_parameter'],
                 'id': no_activity_campaign['id'],
                 'internalProcessUrl': f'{environment["INTERNAL_PROCESS_BASE_URL"]}/{no_activity_campaign["id"]}',
