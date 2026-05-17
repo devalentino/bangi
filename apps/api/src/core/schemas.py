@@ -133,6 +133,7 @@ class FlowUpdateRequestSchema(Schema):
     actionType = fields.Enum(FlowActionType, required=True)
     redirectUrl = fields.Url(allow_none=True, load_default=None)
     isEnabled = fields.Boolean()
+    showOncePerVisitor = fields.Boolean(required=True)
 
     @validates_schema
     def validate_action(self, data, **kwargs):
@@ -186,6 +187,7 @@ class FlowResponseSchema(Schema):
     redirectUrl = fields.String(allow_none=True)
     landingPath = fields.String(allow_none=True)
     isEnabled = fields.Boolean(required=True)
+    showOncePerVisitor = fields.Boolean(required=True)
     rule = fields.String(required=True, allow_none=True)
 
 

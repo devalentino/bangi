@@ -254,6 +254,7 @@ class FlowService:
         action_type,
         redirect_url=None,
         is_enabled=True,
+        show_once_per_visitor=False,
         landing_archive=None,
     ):
         flow = Flow(
@@ -264,6 +265,7 @@ class FlowService:
             action_type=action_type,
             redirect_url=redirect_url,
             is_enabled=is_enabled,
+            show_once_per_visitor=show_once_per_visitor,
         )
         flow.save()
 
@@ -281,6 +283,7 @@ class FlowService:
         action_type=None,
         redirect_url=None,
         is_enabled=None,
+        show_once_per_visitor=None,
         landing_archive=None,
     ):
         flow = self.get(flow_id, campaign_id)
@@ -298,6 +301,9 @@ class FlowService:
 
         if is_enabled is not None:
             flow.is_enabled = is_enabled
+
+        if show_once_per_visitor is not None:
+            flow.show_once_per_visitor = show_once_per_visitor
 
         flow.save()
         return flow
@@ -322,23 +328,42 @@ class FlowService:
             Flow.select(fn.count(Flow.id)).where((Flow.is_deleted == False) & (Flow.campaign == campaign_id)).scalar()
         )
 
-    def process_flows(self, campaign_id: int, client: Client, cookie_value=None):
-        flows = (
+    def process_flows(self, campaign_id: int, client: Client, current_flow_id=None):
+        flows = list(
             Flow.select()
             .where((Flow.campaign_id == campaign_id) & (Flow.is_enabled == True) & (Flow.is_deleted == False))
             .order_by(Flow.order_value.desc(), Flow.id.asc())
         )
+        current_index = None
+
+        if current_flow_id is not None:
+            for index, flow in enumerate(flows):
+                if flow.id == current_flow_id:
+                    current_index = index
+                    break
 
         matched_flow = None
-        for flow in flows:
-            if flow.rule is None:
-                matched_flow = flow
-                break
+        if current_index is not None:
+            current_flow = flows[current_index]
+            if not current_flow.show_once_per_visitor:
+                if current_flow.rule is None:
+                    matched_flow = current_flow
+                else:
+                    rule = rule_engine.Rule(current_flow.rule, context=Client.rule_engine_context())
+                    if rule.matches(dataclasses.asdict(client)):
+                        matched_flow = current_flow
 
-            rule = rule_engine.Rule(flow.rule, context=Client.rule_engine_context())
-            if rule.matches(dataclasses.asdict(client)):
-                matched_flow = flow
-                break
+        if matched_flow is None:
+            start_index = current_index + 1 if current_index is not None else 0
+            for flow in flows[start_index:]:
+                if flow.rule is None:
+                    matched_flow = flow
+                    break
+
+                rule = rule_engine.Rule(flow.rule, context=Client.rule_engine_context())
+                if rule.matches(dataclasses.asdict(client)):
+                    matched_flow = flow
+                    break
 
         if matched_flow is None:
             logger.warning(

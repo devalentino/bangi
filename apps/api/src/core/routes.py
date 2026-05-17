@@ -182,6 +182,7 @@ class CampaignFlows(MethodView):
             flow_payload['actionType'],
             flow_payload.get('redirectUrl'),
             flow_payload.get('isEnabled', True),
+            flow_payload.get('showOncePerVisitor', False),
             landing_archive,
         )
 
@@ -230,6 +231,7 @@ class Flow(MethodView):
             flow_payload.get('actionType'),
             flow_payload.get('redirectUrl'),
             flow_payload.get('isEnabled'),
+            flow_payload.get('showOncePerVisitor'),
             landing_archive,
         )
 
