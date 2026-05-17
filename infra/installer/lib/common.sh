@@ -120,7 +120,13 @@ bangi_detect_existing_state() {
 }
 
 bangi_print_summary() {
+    declare -A runtime_values=()
     declare -A ops_values=()
+    local dashboard_host=""
+    local dashboard_url=""
+    local api_health_url=""
+    local dashboard_username=""
+    local dashboard_password=""
     local nginx_status="inactive"
     local cron_status="inactive"
     local firewall_status="not installed"
@@ -153,7 +159,30 @@ bangi_print_summary() {
     fi
     fallback_host="$(bangi_detect_public_host)"
 
+    bangi_env_load_file "${BANGI_RUNTIME_ENV_FILE}" runtime_values
+    dashboard_username="${runtime_values[BASIC_AUTHENTICATION_USERNAME]:-}"
+    dashboard_password="${runtime_values[BASIC_AUTHENTICATION_PASSWORD]:-}"
+    dashboard_host="${runtime_values[BANGI_PUBLIC_HOST_IP]:-}"
+    if [[ -z "${dashboard_host}" ]]; then
+        dashboard_host="${fallback_host}"
+    fi
+    if [[ -z "${dashboard_host}" ]]; then
+        dashboard_host="localhost"
+    fi
+    dashboard_url="http://${dashboard_host}"
+    api_health_url="${dashboard_url}/api/v2/health"
+
     bangi_log "Bangi installation completed for ${BANGI_RELEASE_TAG}"
+    printf '\n'
+    printf '============================================================\n'
+    printf '  BANGI DASHBOARD SIGN-IN\n'
+    printf '============================================================\n'
+    printf '  Dashboard URL: %s\n' "${dashboard_url}"
+    printf '  Username:      %s\n' "${dashboard_username}"
+    printf '  Password:      %s\n' "${dashboard_password}"
+    printf '============================================================\n'
+    printf '  API health URL: %s\n' "${api_health_url}"
+    printf '\n'
     printf '\nBangi deployment summary\n'
     printf '  Deployment bundle: %s\n' "${BANGI_RELEASE_DIR}"
     printf '  Active release: %s -> %s\n' "${BANGI_CURRENT_LINK}" "$(readlink "${BANGI_CURRENT_LINK}")"
