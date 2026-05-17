@@ -7,6 +7,7 @@ from src.auth import auth
 from src.container import container
 from src.core.blueprint import Blueprint
 from src.core.enums import FlowActionType
+from src.core.exceptions import InvalidCampaignDefaultFlowError
 from src.core.schemas import (
     CampaignCreateRequestSchema,
     CampaignListResponseSchema,
@@ -104,14 +105,22 @@ class Campaign(MethodView):
     @auth.login_required
     def patch(self, campaign_payload, campaignId):
         campaign_service = container.get(CampaignService)
-        campaign_service.update(
-            campaignId,
-            campaign_payload.get('name'),
-            campaign_payload.get('costModel'),
-            campaign_payload.get('costValue'),
-            campaign_payload.get('currency'),
-            campaign_payload.get('statusMapper'),
-        )
+        try:
+            campaign_service.update(
+                campaignId,
+                campaign_payload.get('name'),
+                campaign_payload.get('costModel'),
+                campaign_payload.get('costValue'),
+                campaign_payload.get('currency'),
+                campaign_payload.get('statusMapper'),
+                campaign_payload.get('defaultFlowId'),
+            )
+        except InvalidCampaignDefaultFlowError as e:
+            return {
+                'code': e.http_status_code,
+                'errors': {'json': {'defaultFlowId': [e.message]}},
+                'status': 'Unprocessable Entity',
+            }, e.http_status_code
 
 
 @blueprint.route('/filters/campaigns')

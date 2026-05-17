@@ -37,6 +37,9 @@ class Flows {
     this.onReorderCallback = vnode.attrs.onReorder;
     this.onDeleteCallback = vnode.attrs.onDelete;
     let campaignId = vnode.attrs.campaignId;
+    let defaultFlowId = vnode.attrs.defaultFlowId === ""
+      ? null
+      : Number(vnode.attrs.defaultFlowId);
 
     if (this.items.length === 0) {
       return m("div.text-muted", "No flows found.");
@@ -112,12 +115,20 @@ class Flows {
         isBusy: this.isDeleting,
         title: "Delete flow",
         body: this.deleteTarget
-          ? m(
-              "p.mb-0",
-              `Are you sure you want to delete \"${
-                this.deleteTarget.name || this.deleteTarget.id
-              }\"?`,
-            )
+          ? [
+              m(
+                "p.mb-0",
+                `Are you sure you want to delete \"${
+                  this.deleteTarget.name || this.deleteTarget.id
+                }\"?`,
+              ),
+              this.deleteTarget.id === defaultFlowId
+                ? m(
+                    "p.mt-3.mb-0.text-warning",
+                    "This flow is the campaign default. Deleting it will clear the campaign default flow.",
+                  )
+                : null,
+            ]
           : null,
         confirmText: this.isDeleting ? "Deleting..." : "Delete",
         cancelText: "Cancel",
@@ -136,7 +147,17 @@ class Flows {
 
           this.isDeleting = true;
           this.error = null;
-          this.onDeleteCallback(this.deleteTarget);
+          this.onDeleteCallback(this.deleteTarget)
+            .then(function () {
+              this.deleteTarget = null;
+            }.bind(this))
+            .catch(function () {
+              this.error = "Failed to delete flow.";
+            }.bind(this))
+            .finally(function () {
+              this.isDeleting = false;
+              m.redraw();
+            }.bind(this));
         }.bind(this),
       }),
     ]);

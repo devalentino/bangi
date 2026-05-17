@@ -248,6 +248,156 @@ class TestTrackRedirect:
         assert response.text == ''
         assert read_from_db('track_discard')['click_id'] == click_id
 
+    def test_track_redirect__uses_default_flow_when_no_normal_flow_matches(
+        self, client, authorization, campaign, domain, write_to_db, read_from_db, set_default_flow_id, ip2location_mock
+    ):
+        click_id = uuid4()
+        write_to_db(
+            'flow',
+            {
+                'name': 'US only',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "US"',
+                'order_value': 20,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/us',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        default_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Campaign default',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "US"',
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/default',
+                'is_enabled': True,
+                'is_deleted': False,
+                'show_once_per_visitor': True,
+            },
+        )
+        set_default_flow_id(campaign['id'], default_flow['id'])
+
+        cookie_row = write_to_db(
+            'domain_cookie',
+            {'domain_id': domain['id'], 'name': 'flow_id', 'opaque_name': 'sticky_flow'},
+        )
+        client.set_cookie(cookie_row['opaque_name'], str(default_flow['id']))
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(click_id)})
+
+        assert response.status_code == 302, response.text
+
+        # rules had not been evaluated for default flow, redirected despite MD IP address
+        assert response.headers['Location'] == default_flow['redirect_url']
+        assert read_from_db('track_discard') is None
+
+    def test_track_redirect__normal_match_takes_precedence_over_default_flow(
+        self, client, authorization, campaign, domain, write_to_db, set_default_flow_id, ip2location_mock
+    ):
+        normal_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Normal match',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 20,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/normal',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        default_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Campaign default',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/default',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        set_default_flow_id(campaign['id'], default_flow['id'])
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == normal_flow['redirect_url']
+
+    @pytest.mark.parametrize(
+        'default_flow_values',
+        [
+            {'is_enabled': False, 'is_deleted': False},
+            {'is_enabled': True, 'is_deleted': True},
+        ],
+    )
+    def test_track_redirect__does_not_use_unrunnable_default_flow(
+        self,
+        client,
+        authorization,
+        campaign,
+        domain,
+        write_to_db,
+        read_from_db,
+        set_default_flow_id,
+        ip2location_mock,
+        default_flow_values,
+    ):
+        click_id = uuid4()
+        default_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Unrunnable default',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/default',
+                **default_flow_values,
+            },
+        )
+        set_default_flow_id(campaign['id'], default_flow['id'])
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(click_id)})
+
+        assert response.status_code == 200, response.text
+        assert response.text == ''
+        assert read_from_db('track_discard')['click_id'] == click_id
+
+    def test_track_redirect__does_not_use_missing_default_flow(
+        self, client, domain, campaign_payload, write_to_db, read_from_db, ip2location_mock
+    ):
+        click_id = uuid4()
+        campaign_with_missing_default = write_to_db(
+            'campaign',
+            campaign_payload | {'name': 'Missing default campaign', 'default_flow_id': 100500},
+        )
+        write_to_db(
+            'domain',
+            {
+                'hostname': 'missing-default.example.com',
+                'purpose': 'campaign',
+                'campaign_id': campaign_with_missing_default['id'],
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+
+        response = client.get(
+            f'/process/{campaign_with_missing_default["id"]}', query_string={'clickId': str(click_id)}
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.text == ''
+        assert read_from_db('track_discard')['click_id'] == click_id
+
     def test_track_redirect__tracks_discard_when_no_flow_matches(
         self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
     ):

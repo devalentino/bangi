@@ -6,6 +6,11 @@ from unittest import mock
 import pytest
 
 
+@pytest.fixture
+def assign_default_flow_for_the_campaign(campaign, flow, set_default_flow_id):
+    set_default_flow_id(campaign['id'], flow['id'])
+
+
 def test_health(client):
     response = client.get('/api/v2/health')
     assert response.status_code == 200, response.text
@@ -557,6 +562,7 @@ class TestCertificateHealthDiagnostics:
 
 
 class TestCertificateAlerts:
+    @pytest.mark.usefixtures('assign_default_flow_for_the_campaign')
     def test_first_issuance_failure_does_not_create_alert(
         self, client, authorization, write_to_db, campaign, timestamp
     ):
@@ -595,6 +601,7 @@ class TestCertificateAlerts:
         assert response.status_code == 200, response.text
         assert response.json == {'content': []}
 
+    @pytest.mark.usefixtures('assign_default_flow_for_the_campaign')
     def test_repeated_first_issuance_failure_creates_warning_alert(
         self, client, authorization, write_to_db, campaign, timestamp
     ):

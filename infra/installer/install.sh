@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-BANGI_RELEASE_TAG="0.0.1a39"
+BANGI_RELEASE_TAG="0.0.1a40"
 BANGI_GITHUB_OWNER="devalentino"
 BANGI_GITHUB_REPO="bangi"
 BANGI_RAW_BASE_URL="https://raw.githubusercontent.com/${BANGI_GITHUB_OWNER}/${BANGI_GITHUB_REPO}/${BANGI_RELEASE_TAG}"
