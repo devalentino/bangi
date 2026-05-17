@@ -63,6 +63,7 @@ bangi_detect_existing_state() {
         "${BANGI_SHARED_MARIADB_DIR}"
         "${BANGI_SHARED_LANDINGS_DIR}"
         "${BANGI_SHARED_IP2LOCATION_DIR}"
+        "${BANGI_SHARED_FIREWALL_DIR}"
         "${BANGI_ROOT_DIR}/ops"
         "${BANGI_OPS_BIN_DIR}"
         "${BANGI_ETC_DIR}"
@@ -122,6 +123,7 @@ bangi_print_summary() {
     declare -A ops_values=()
     local nginx_status="inactive"
     local cron_status="inactive"
+    local firewall_status="not installed"
     local ip2location_status="not configured"
     local fallback_host=""
 
@@ -131,6 +133,14 @@ bangi_print_summary() {
 
     if systemctl is-active --quiet cron; then
         cron_status="active"
+    fi
+
+    if [[ -f "${BANGI_IPTABLES_RULES_FILE}" && -x "${BANGI_IPTABLES_APPLY_SCRIPT}" ]]; then
+        if iptables -C INPUT -j BANGI-INPUT 2>/dev/null; then
+            firewall_status="active; allowed inbound tcp 22, 80, 443"
+        else
+            firewall_status="installed; not active in current iptables INPUT chain"
+        fi
     fi
 
     bangi_env_load_file "${BANGI_OPS_ENV_FILE}" ops_values
@@ -153,12 +163,14 @@ bangi_print_summary() {
     bangi_compose ps || printf '    Unable to print Docker Compose service status.\n'
     printf '  Nginx status: %s; config test passed\n' "${nginx_status}"
     printf '  Cron status: %s; managed file %s installed\n' "${cron_status}" "${BANGI_CRON_FILE}"
+    printf '  Firewall status: %s; rules file %s\n' "${firewall_status}" "${BANGI_IPTABLES_RULES_FILE}"
     if [[ -n "${fallback_host}" ]]; then
         printf '  Fallback URL: http://%s\n' "${fallback_host}"
     fi
     printf '  IP2Location refresh: %s\n' "${ip2location_status}"
     printf '\nOperator next steps\n'
-    printf '  1. Review service health with: docker compose --project-name %s --project-directory %s -f %s ps\n' "${BANGI_COMPOSE_PROJECT_NAME}" "${BANGI_RELEASE_DIR}" "${BANGI_COMPOSE_FILE}"
-    printf '  2. Review Nginx and cron logs under /var/log/nginx and %s.\n' "${BANGI_LOG_DIR}"
-    printf '  3. Configure any required public domain or access URL separately from the installer.\n'
+    printf '  1. Manage the stack with: systemctl start|stop|restart bangi\n'
+    printf '  2. Review service health with: docker compose --project-name %s --project-directory %s -f %s ps\n' "${BANGI_COMPOSE_PROJECT_NAME}" "${BANGI_CURRENT_LINK}" "${BANGI_CURRENT_LINK}/compose.yml"
+    printf '  3. Review Nginx, bangi.service, and cron logs under /var/log/nginx, journalctl -u bangi, and %s.\n' "${BANGI_LOG_DIR}"
+    printf '  4. Configure any required public domain or access URL separately from the installer.\n'
 }
