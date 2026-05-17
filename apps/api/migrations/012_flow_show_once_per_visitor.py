@@ -13,10 +13,7 @@ with suppress(ImportError):
 def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     """Write your migrations here."""
 
-    migrator.add_fields(
-        'flow',
-        show_once_per_visitor=pw.BooleanField(default=False),
-    )
+    migrator.sql('ALTER TABLE flow ADD COLUMN show_once_per_visitor BOOLEAN NOT NULL DEFAULT FALSE')
 
 
 def rollback(migrator: Migrator, database: pw.Database, *, fake=False):
