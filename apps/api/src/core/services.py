@@ -33,6 +33,9 @@ class IpLocator(Protocol):
     def get_country(self, address):
         pass
 
+    def is_configured(self):
+        pass
+
 
 @injectable(as_type=IpLocator)
 class Ip2LocationLocator:
@@ -40,8 +43,11 @@ class Ip2LocationLocator:
         self.ip2location = None
         try:
             self.ip2location = IP2Location.IP2Location(ip2location_db_path)
-        except ValueError:
+        except (TypeError, ValueError):
             logger.warning('IP2Location database is not valid')
+
+    def is_configured(self):
+        return self.ip2location is not None
 
     def get_country(self, address):
         try:
@@ -165,9 +171,11 @@ class FlowService:
         self,
         landing_pages_base_path: Annotated[str, Inject(config='LANDING_PAGES_BASE_PATH')],
         landing_renderer_base_url: Annotated[str, Inject(config='LANDING_PAGE_RENDERER_BASE_URL')],
+        ip_locator: IpLocator,
     ):
         self.landing_pages_base_path = landing_pages_base_path
         self.landing_renderer_base_url = landing_renderer_base_url
+        self.ip_locator = ip_locator
 
     def _has_index_file(self, path):
         return any(os.path.isfile(os.path.join(path, name)) for name in ('index.html', 'index.php'))
@@ -356,6 +364,14 @@ class FlowService:
             Flow.select(fn.count(Flow.id)).where((Flow.is_deleted == False) & (Flow.campaign == campaign_id)).scalar()
         )
 
+    def _matches_rule(self, flow, client):
+        try:
+            rule = rule_engine.Rule(flow.rule, context=Client.rule_engine_context(self.ip_locator.is_configured()))
+            return rule.matches(dataclasses.asdict(client))
+        except rule_engine.errors.EngineError:
+            logger.warning('Skipping non-runnable flow', exc_info=True, extra={'flow_id': flow.id})
+            return False
+
     def process_flows(self, campaign_id: int, client: Client, current_flow_id=None):
         flows = list(
             Flow.select(Flow, Campaign)
@@ -382,10 +398,8 @@ class FlowService:
             if not current_flow.show_once_per_visitor:
                 if current_flow.rule is None:
                     matched_flow = current_flow
-                else:
-                    rule = rule_engine.Rule(current_flow.rule, context=Client.rule_engine_context())
-                    if rule.matches(dataclasses.asdict(client)):
-                        matched_flow = current_flow
+                elif self._matches_rule(current_flow, client):
+                    matched_flow = current_flow
 
         if matched_flow is None:
             start_index = current_index + 1 if current_index is not None else 0
@@ -393,9 +407,7 @@ class FlowService:
                 if flow.rule is None:
                     matched_flow = flow
                     break
-
-                rule = rule_engine.Rule(flow.rule, context=Client.rule_engine_context())
-                if rule.matches(dataclasses.asdict(client)):
+                if self._matches_rule(flow, client):
                     matched_flow = flow
                     break
 

@@ -622,6 +622,42 @@ class TestTrackRedirect:
         assert response.status_code == 200, response.text
         assert response.text == ''
 
+    @pytest.mark.usefixtures('ip2location_unavailable')
+    def test_track_redirect__skips_country_rule_flow_when_ip2location_is_unavailable(
+        self, client, campaign, domain, write_to_db
+    ):
+        write_to_db(
+            'flow',
+            {
+                'name': 'Country flow',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "MD"',
+                'order_value': 20,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/country',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        fallback_flow = write_to_db(
+            'flow',
+            {
+                'name': 'Fallback flow',
+                'campaign_id': campaign['id'],
+                'rule': None,
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/fallback',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+
+        response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == fallback_flow['redirect_url']
+
     def test_track_redirect__does_not_track_discard_when_flow_matches(
         self, client, campaign, domain, flow, read_from_db, ip2location_mock
     ):
