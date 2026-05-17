@@ -15,7 +15,12 @@ from wireup import Inject, injectable
 
 from src.core.entities import Campaign, Flow
 from src.core.enums import FlowActionType, SortOrder
-from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError, LandingPageUploadError
+from src.core.exceptions import (
+    CampaignDoesNotExistError,
+    DoesNotExistError,
+    InvalidCampaignDefaultFlowError,
+    LandingPageUploadError,
+)
 from src.core.models import Client
 from src.core.repositories import CampaignRepository
 from src.core.utils import log_execution_time
@@ -104,10 +109,10 @@ class CampaignService:
         try:
             flow = Flow.get_by_id(default_flow_id)
         except Flow.DoesNotExist as exc:
-            raise ValueError('defaultFlowId must reference a flow in this campaign.') from exc
+            raise InvalidCampaignDefaultFlowError() from exc
 
         if flow.campaign.id != campaign_id or flow.is_deleted:
-            raise ValueError('defaultFlowId must reference a flow in this campaign.')
+            raise InvalidCampaignDefaultFlowError()
 
     def update(
         self,

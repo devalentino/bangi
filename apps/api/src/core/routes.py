@@ -7,6 +7,7 @@ from src.auth import auth
 from src.container import container
 from src.core.blueprint import Blueprint
 from src.core.enums import FlowActionType
+from src.core.exceptions import InvalidCampaignDefaultFlowError
 from src.core.schemas import (
     CampaignCreateRequestSchema,
     CampaignListResponseSchema,
@@ -114,12 +115,12 @@ class Campaign(MethodView):
                 campaign_payload.get('statusMapper'),
                 campaign_payload.get('defaultFlowId'),
             )
-        except ValueError as e:
+        except InvalidCampaignDefaultFlowError as e:
             return {
-                'code': 422,
-                'errors': {'json': {'defaultFlowId': [str(e)]}},
+                'code': e.http_status_code,
+                'errors': {'json': {'defaultFlowId': [e.message]}},
                 'status': 'Unprocessable Entity',
-            }, 422
+            }, e.http_status_code
 
 
 @blueprint.route('/filters/campaigns')
