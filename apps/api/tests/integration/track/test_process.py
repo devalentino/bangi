@@ -249,7 +249,7 @@ class TestTrackRedirect:
         assert read_from_db('track_discard')['click_id'] == click_id
 
     def test_track_redirect__uses_default_flow_when_no_normal_flow_matches(
-        self, client, authorization, campaign, domain, write_to_db, read_from_db, ip2location_mock
+        self, client, authorization, campaign, domain, write_to_db, read_from_db, set_default_flow_id, ip2location_mock
     ):
         click_id = uuid4()
         write_to_db(
@@ -279,12 +279,8 @@ class TestTrackRedirect:
                 'show_once_per_visitor': True,
             },
         )
-        setup_response = client.patch(
-            f'/api/v2/core/campaigns/{campaign["id"]}',
-            headers={'Authorization': authorization},
-            json={'statusMapper': json.loads(campaign['status_mapper']), 'defaultFlowId': default_flow['id']},
-        )
-        assert setup_response.status_code == 200, setup_response.text
+        set_default_flow_id(campaign['id'], default_flow['id'])
+
         cookie_row = write_to_db(
             'domain_cookie',
             {'domain_id': domain['id'], 'name': 'flow_id', 'opaque_name': 'sticky_flow'},
@@ -298,7 +294,7 @@ class TestTrackRedirect:
         assert read_from_db('track_discard') is None
 
     def test_track_redirect__normal_match_takes_precedence_over_default_flow(
-        self, client, authorization, campaign, domain, write_to_db, ip2location_mock
+        self, client, authorization, campaign, domain, write_to_db, set_default_flow_id, ip2location_mock
     ):
         normal_flow = write_to_db(
             'flow',
@@ -326,12 +322,7 @@ class TestTrackRedirect:
                 'is_deleted': False,
             },
         )
-        setup_response = client.patch(
-            f'/api/v2/core/campaigns/{campaign["id"]}',
-            headers={'Authorization': authorization},
-            json={'statusMapper': json.loads(campaign['status_mapper']), 'defaultFlowId': default_flow['id']},
-        )
-        assert setup_response.status_code == 200, setup_response.text
+        set_default_flow_id(campaign['id'], default_flow['id'])
 
         response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(uuid4())})
 
@@ -346,7 +337,16 @@ class TestTrackRedirect:
         ],
     )
     def test_track_redirect__does_not_use_unrunnable_default_flow(
-        self, client, authorization, campaign, domain, write_to_db, read_from_db, ip2location_mock, default_flow_values
+        self,
+        client,
+        authorization,
+        campaign,
+        domain,
+        write_to_db,
+        read_from_db,
+        set_default_flow_id,
+        ip2location_mock,
+        default_flow_values,
     ):
         click_id = uuid4()
         default_flow = write_to_db(
@@ -361,12 +361,7 @@ class TestTrackRedirect:
                 **default_flow_values,
             },
         )
-        setup_response = client.patch(
-            f'/api/v2/core/campaigns/{campaign["id"]}',
-            headers={'Authorization': authorization},
-            json={'statusMapper': json.loads(campaign['status_mapper']), 'defaultFlowId': default_flow['id']},
-        )
-        assert setup_response.status_code == 200, setup_response.text
+        set_default_flow_id(campaign['id'], default_flow['id'])
 
         response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(click_id)})
 

@@ -247,13 +247,11 @@ def test_update_campaign__rejects_default_flow_from_another_campaign(
     }
 
 
-def test_delete_flow__clears_campaign_default_flow(client, authorization, campaign, flow, read_from_db):
-    setup_response = client.patch(
-        f'/api/v2/core/campaigns/{campaign["id"]}',
-        headers={'Authorization': authorization},
-        json={'statusMapper': json.loads(campaign['status_mapper']), 'defaultFlowId': flow['id']},
-    )
-    assert setup_response.status_code == 200, setup_response.text
+def test_delete_flow__clears_campaign_default_flow(
+    client, authorization, campaign, flow, read_from_db, set_default_flow_id
+):
+    set_default_flow_id(campaign['id'], flow['id'])
+    assert read_from_db('campaign', filters={'id': campaign['id']})['default_flow_id'] == flow['id']
 
     response = client.delete(
         f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',

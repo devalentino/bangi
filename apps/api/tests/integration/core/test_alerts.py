@@ -2,14 +2,11 @@ from pymysql import cursors
 
 
 def test_get_alerts__returns_campaign_default_flow_configuration_alert(
-    client, authorization, campaign, campaign_payload, write_to_db
+    client, authorization, campaign, campaign_payload, write_to_db, set_default_flow_id
 ):
     disabled_default_flow_campaign = write_to_db(
         'campaign',
-        campaign_payload | {
-            'name': 'Disabled default flow campaign',
-            'default_flow_id': 1,  # id of disabled_default_flow
-        },
+        campaign_payload | {'name': 'Disabled default flow campaign'},
     )
     disabled_default_flow = write_to_db(
         'flow',
@@ -25,7 +22,7 @@ def test_get_alerts__returns_campaign_default_flow_configuration_alert(
         },
     )
 
-    assert disabled_default_flow_campaign['default_flow_id'] == disabled_default_flow['id']
+    set_default_flow_id(disabled_default_flow_campaign['id'], disabled_default_flow['id'])
 
     response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
 
@@ -62,15 +59,9 @@ def test_get_alerts__returns_campaign_default_flow_configuration_alert(
 
 
 def test_get_alerts__does_not_return_campaign_default_flow_alert_when_default_is_runnable(
-    client, authorization, campaign_payload, write_to_db
+    client, authorization, campaign_payload, write_to_db, set_default_flow_id
 ):
-    campaign_with_default_flow = write_to_db(
-        'campaign',
-        campaign_payload | {
-            'name': 'Configured campaign',
-            'default_flow_id': 1,  # id of disabled_default_flow
-        },
-    )
+    campaign_with_default_flow = write_to_db('campaign', campaign_payload | {'name': 'Configured campaign'})
     default_flow = write_to_db(
         'flow',
         {
@@ -85,7 +76,7 @@ def test_get_alerts__does_not_return_campaign_default_flow_alert_when_default_is
         },
     )
 
-    assert campaign_with_default_flow['default_flow_id'] == default_flow['id']
+    set_default_flow_id(campaign_with_default_flow['id'], default_flow['id'])
 
     response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
 
