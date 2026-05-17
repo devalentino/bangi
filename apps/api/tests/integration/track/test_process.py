@@ -290,6 +290,8 @@ class TestTrackRedirect:
         response = client.get(f'/process/{campaign["id"]}', query_string={'clickId': str(click_id)})
 
         assert response.status_code == 302, response.text
+
+        # rules had not been evaluated for default flow, redirected despite MD IP address
         assert response.headers['Location'] == default_flow['redirect_url']
         assert read_from_db('track_discard') is None
 
