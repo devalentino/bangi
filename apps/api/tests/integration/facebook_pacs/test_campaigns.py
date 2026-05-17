@@ -190,4 +190,4 @@ def test_update_campaign__accepts_null_status_mapper(
 
     assert response.status_code == 200, response.text
     core_campaign = read_from_db('campaign', filters={'id': campaign_fa['core_campaign_id']})
-    assert core_campaign['status_mapper'] is None
+    assert json.loads(core_campaign['status_mapper']) is None

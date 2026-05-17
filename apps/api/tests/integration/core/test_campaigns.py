@@ -76,7 +76,7 @@ def test_create_campaign__accepts_null_status_mapper(client, authorization, camp
 
     assert response.status_code == 201, response.text
     campaign = read_from_db('campaign')
-    assert campaign['status_mapper'] is None
+    assert json.loads(campaign['status_mapper']) is None
 
 
 def test_campaigns_list(client, authorization, environment, campaign_payload, write_to_db):
@@ -187,7 +187,7 @@ def test_update_campaign__accepts_null_status_mapper(client, authorization, camp
 
     assert response.status_code == 200, response.text
     updated_campaign = read_from_db('campaign')
-    assert updated_campaign['status_mapper'] is None
+    assert json.loads(updated_campaign['status_mapper']) is None
 
 
 def test_update_campaign__validates_non_empty_status_mapper(client, authorization, campaign):
