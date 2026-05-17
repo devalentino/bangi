@@ -46,7 +46,7 @@ def _validate_flow_rule_targeting(rule, location):
         return None
 
     try:
-        rule_engine.Rule(rule, context=Client.rule_engine_context(country_available=False))
+        rule_engine.Rule(rule, context=Client.rule_engine_context(country_supported=False))
     except rule_engine.errors.SymbolResolutionError:
         return {
             'code': 422,

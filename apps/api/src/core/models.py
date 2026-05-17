@@ -31,8 +31,8 @@ class Client:
             return ast.DataType.UNDEFINED
 
     @classmethod
-    def rule_engine_context(cls, country_available=True):
+    def rule_engine_context(cls, country_supported=True):
         type_map = {field.name: cls._rule_data_type(field.type) for field in fields(Client)}
-        if not country_available:
+        if not country_supported:
             type_map.pop('country', None)
         return Context(type_resolver=type_map, default_value=None)
