@@ -17,6 +17,20 @@ The installer writes the token to `/etc/bangi/ops.env`, not to the application r
 
 The installer must run as root and validates Ubuntu 24.04 LTS before any package installation phase starts.
 
+## Host Firewall And Lifecycle
+
+The provisioner installs `iptables` and stores the canonical Bangi-managed firewall policy at `/opt/bangi/shared/firewall/iptables.rules`. The policy allows inbound TCP `22`, `80`, and `443`, allows established and loopback traffic, and drops other host inbound traffic. Production Compose keeps `web`, `api`, and `landing-renderer` bound to loopback so host Nginx remains the public edge.
+
+The installer also installs `/opt/bangi/ops/bin/apply-iptables` and `/etc/systemd/system/bangi.service`. `bangi.service` runs the apply command before starting Docker Compose, so firewall rules are reapplied on boot and before each stack start. Operators should manage the stack with:
+
+```bash
+sudo systemctl start bangi
+sudo systemctl stop bangi
+sudo systemctl restart bangi
+```
+
+If active `ufw` is detected, an interactive install explains the switch to Bangi-managed `iptables` and continues only after the operator types `yes`. Non-interactive installs fail unless `BANGI_DISABLE_UFW_CONFIRMED=true` is set.
+
 ## Host Operations From API Container
 
 The API container can run a small allowlist of host operations through the `bangi-ops` SSH dispatcher. This is intentionally restricted; arbitrary shell commands are not allowed.
@@ -67,6 +81,6 @@ For managed cron installation, verify:
 For release activation and final health verification, verify:
 
 - forcing any required health check to fail causes the installer to exit non-zero before `/opt/bangi/current` changes
-- successful health verification checks `docker compose ps`, MariaDB, direct backend health, `nginx -t`, local frontend HTTP, Nginx `/api/v2/health`, and managed cron content
+- successful health verification checks Bangi firewall installation, `docker compose ps`, MariaDB, direct backend health, `nginx -t`, local frontend HTTP, Nginx `/api/v2/health`, and managed cron content
 - after a successful run, `/opt/bangi/current` points to `/opt/bangi/${BANGI_RELEASE_TAG}`
-- the completion summary prints the deployment bundle path, runtime and operational environment paths, compose service status, Nginx status, cron status, detected fallback URL when public IP detection succeeds, IP2Location refresh status, and operator next steps
+- the completion summary prints the deployment bundle path, runtime and operational environment paths, compose service status, Nginx status, cron status, firewall status, detected fallback URL when public IP detection succeeds, IP2Location refresh status, and operator next steps

@@ -20,6 +20,7 @@ BANGI_INSTALLER_MODULES=(
     env.sh
     acme.sh
     ip2location.sh
+    firewall.sh
     compose.sh
     nginx.sh
     cron.sh
@@ -98,6 +99,8 @@ source "${INSTALLER_LIB_DIR}/env.sh"
 source "${INSTALLER_LIB_DIR}/acme.sh"
 # shellcheck source=infra/installer/lib/ip2location.sh
 source "${INSTALLER_LIB_DIR}/ip2location.sh"
+# shellcheck source=infra/installer/lib/firewall.sh
+source "${INSTALLER_LIB_DIR}/firewall.sh"
 # shellcheck source=infra/installer/lib/compose.sh
 source "${INSTALLER_LIB_DIR}/compose.sh"
 # shellcheck source=infra/installer/lib/nginx.sh
@@ -122,13 +125,15 @@ main() {
     bangi_write_environment
     bangi_install_acme
     bangi_install_ip2location_database
+    bangi_install_firewall
     bangi_install_ops_user
     bangi_install_compose
     bangi_install_nginx
     bangi_install_cron
-    bangi_start_compose
-    bangi_verify_health
     bangi_activate_release
+    bangi_install_bangi_service
+    bangi_start_bangi_service
+    bangi_verify_health
     bangi_print_summary
 }
 
