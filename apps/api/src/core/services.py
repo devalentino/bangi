@@ -115,8 +115,7 @@ class CampaignService:
         if currency:
             campaign.currency = currency
 
-        if status_mapper is not None:
-            campaign.status_mapper = status_mapper
+        campaign.status_mapper = status_mapper
 
         campaign.save()
 

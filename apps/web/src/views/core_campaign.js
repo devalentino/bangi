@@ -161,7 +161,14 @@ class CoreCampaignView {
                           id: "statusMapper",
                           rows: "4",
                           placeholder:
-                            '{"parameter":"state","mapping":{"approved":"APPROVED","rejected":"REJECTED"}}',
+                            '{\n'
+                            + '  "parameter": "state_on_the_cpa_side",\n'
+                            + '  "mapping": {\n'
+                            + '    "accept_on_the_cpa_side": "accept",\n'
+                            + '    "reject_on_the_cpa_side": "reject",\n'
+                            + '    "expect_on_the_cpa_ide": "expect"\n'
+                            + '  }\n'
+                            + '}',
                           class: "font-monospace",
                           value: this.campaignModel.form.statusMapperText,
                           oninput: function (event) {

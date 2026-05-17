@@ -69,7 +69,7 @@ class CampaignCreateRequestSchema(Schema):
     costModel = fields.Enum(CostModel, required=True)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
     currency = fields.Enum(Currency, required=True)
-    statusMapper = fields.Dict(required=True)
+    statusMapper = fields.Dict(required=True, allow_none=True)
 
     @validates_schema
     def validate_status_mapper(self, data, **kwargs):
@@ -81,7 +81,7 @@ class CampaignUpdateRequestSchema(Schema):
     costModel = fields.Enum(CostModel)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN)
     currency = fields.Enum(Currency)
-    statusMapper = fields.Dict(allow_none=True, load_default=None)
+    statusMapper = fields.Dict(required=True, allow_none=True)
 
     @validates_schema
     def validate_status_mapper(self, data, **kwargs):

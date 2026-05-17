@@ -18,7 +18,11 @@ def test_create_campaign(client, authorization, campaign_payload, read_from_db):
         'statusMapper': campaign_payload['status_mapper'],
     }
 
-    response = client.post('/api/v2/core/campaigns', headers={'Authorization': authorization}, json=request_payload)
+    response = client.post(
+        '/api/v2/core/campaigns',
+        headers={'Authorization': authorization},
+        json=request_payload,
+    )
 
     assert response.status_code == 201, response.text
 
@@ -35,6 +39,44 @@ def test_create_campaign(client, authorization, campaign_payload, read_from_db):
     }
 
     assert json.loads(campaign['status_mapper']) == request_payload['statusMapper']
+
+
+def test_create_campaign__without_status_mapper(client, authorization, campaign_payload, read_from_db):
+    request_payload = {
+        'name': campaign_payload['name'],
+        'costModel': campaign_payload['cost_model'],
+        'costValue': campaign_payload['cost_value'],
+        'currency': campaign_payload['currency'],
+    }
+
+    response = client.post(
+        '/api/v2/core/campaigns',
+        headers={'Authorization': authorization},
+        json=request_payload,
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {'json': {'statusMapper': ['Missing data for required field.']}},
+        'status': 'Unprocessable Entity',
+    }
+
+
+def test_create_campaign__accepts_null_status_mapper(client, authorization, campaign_payload, read_from_db):
+    request_payload = {
+        'name': campaign_payload['name'],
+        'costModel': campaign_payload['cost_model'],
+        'costValue': campaign_payload['cost_value'],
+        'currency': campaign_payload['currency'],
+        'statusMapper': None,
+    }
+
+    response = client.post('/api/v2/core/campaigns', headers={'Authorization': authorization}, json=request_payload)
+
+    assert response.status_code == 201, response.text
+    campaign = read_from_db('campaign')
+    assert campaign['status_mapper'] is None
 
 
 def test_campaigns_list(client, authorization, environment, campaign_payload, write_to_db):
@@ -112,13 +154,59 @@ def test_update_campaign(client, authorization, campaign, read_from_db, request_
     response = client.patch(
         f'/api/v2/core/campaigns/{campaign["id"]}',
         headers={'Authorization': authorization},
-        json={request_key: request_value},
+        json={request_key: request_value, 'statusMapper': json.loads(campaign['status_mapper'])},
     )
 
     assert response.status_code == 200, response.text
 
     campaign = read_from_db('campaign')
     assert campaign[db_key] == request_value
+
+
+def test_update_campaign__requires_status_mapper(client, authorization, campaign):
+    response = client.patch(
+        f'/api/v2/core/campaigns/{campaign["id"]}',
+        headers={'Authorization': authorization},
+        json={'name': 'Campaign updated'},
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {'json': {'statusMapper': ['Missing data for required field.']}},
+        'status': 'Unprocessable Entity',
+    }
+
+
+def test_update_campaign__accepts_null_status_mapper(client, authorization, campaign, read_from_db):
+    response = client.patch(
+        f'/api/v2/core/campaigns/{campaign["id"]}',
+        headers={'Authorization': authorization},
+        json={'statusMapper': None},
+    )
+
+    assert response.status_code == 200, response.text
+    updated_campaign = read_from_db('campaign')
+    assert updated_campaign['status_mapper'] is None
+
+
+def test_update_campaign__validates_non_empty_status_mapper(client, authorization, campaign):
+    response = client.patch(
+        f'/api/v2/core/campaigns/{campaign["id"]}',
+        headers={'Authorization': authorization},
+        json={'statusMapper': {'parameter': 'state', 'mapping': {'maybe': 'unknown'}}},
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {
+            'json': {
+                'statusMapper': ['statusMapper.mapping values must be one of: accept, expect, reject, trash.'],
+            },
+        },
+        'status': 'Unprocessable Entity',
+    }
 
 
 def test_campaigns_list__returns_click_summary(
