@@ -5,6 +5,8 @@ from unittest import mock
 
 import pytest
 
+UNIX_TIMESTAMP_YEAR_2100 = 4_102_444_800
+
 
 def _certificate_output(hostname):
     return (
@@ -96,6 +98,8 @@ class TestCertificateRenewalWorker:
             'sites_available_files': mock.ANY,
             'sites_enabled_refs': mock.ANY,
         }
+        assert isinstance(snapshots[-1]['created_at'], int)
+        assert snapshots[-1]['created_at'] < UNIX_TIMESTAMP_YEAR_2100
         assert json.loads(snapshots[-1]['sites_available_files']) != []
         assert json.loads(snapshots[-1]['sites_enabled_refs']) != []
 
