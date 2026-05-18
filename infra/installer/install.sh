@@ -15,6 +15,7 @@ BANGI_INSTALLER_MODULES=(
     common.sh
     os.sh
     paths.sh
+    swap.sh
     packages.sh
     assets.sh
     env.sh
@@ -89,6 +90,8 @@ bangi_bootstrap_installer_modules
 source "${INSTALLER_LIB_DIR}/os.sh"
 # shellcheck source=infra/installer/lib/paths.sh
 source "${INSTALLER_LIB_DIR}/paths.sh"
+# shellcheck source=infra/installer/lib/swap.sh
+source "${INSTALLER_LIB_DIR}/swap.sh"
 # shellcheck source=infra/installer/lib/packages.sh
 source "${INSTALLER_LIB_DIR}/packages.sh"
 # shellcheck source=infra/installer/lib/assets.sh
@@ -119,6 +122,7 @@ main() {
     bangi_log "Starting Bangi host provisioning for ${BANGI_RELEASE_TAG}"
     bangi_verify_inputs
     bangi_detect_existing_state
+    bangi_install_managed_swap
     bangi_install_packages
     bangi_create_paths
     bangi_fetch_assets
