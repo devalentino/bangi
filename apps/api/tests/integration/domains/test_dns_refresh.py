@@ -2,6 +2,8 @@ from time import sleep
 
 import pytest
 
+UNIX_TIMESTAMP_YEAR_2100 = 4_102_444_800
+
 
 @pytest.mark.usefixtures('dns_resolver_mock')
 class TestDnsRefreshWorker:
@@ -33,6 +35,8 @@ class TestDnsRefreshWorker:
         snapshot = read_from_db('health_nginx_validation_snapshot', filters={'domain_id': domain['id']})
 
         assert updated['is_a_record_set']
+        assert isinstance(snapshot['created_at'], int)
+        assert snapshot['created_at'] < UNIX_TIMESTAMP_YEAR_2100
         assert snapshot['validation_status'] == 'success'
         assert snapshot['validation_error'] is None
         assert snapshot['domain_id'] == domain['id']

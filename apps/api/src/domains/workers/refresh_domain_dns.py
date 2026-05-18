@@ -105,7 +105,7 @@ def _flush_nginx_validation_snapshots(database, snapshots: list[dict[str, object
         for snapshot in snapshots
     ]
 
-    placeholders = ', '.join(['(UTC_TIMESTAMP(), %s, %s, %s, %s, %s)'] * len(rows))
+    placeholders = ', '.join(['(UNIX_TIMESTAMP(), %s, %s, %s, %s, %s)'] * len(rows))
     params: list[object] = []
     for domain_id, validation_status, validation_error, sites_available_files, sites_enabled_refs in rows:
         params.extend([domain_id, validation_status, validation_error, sites_available_files, sites_enabled_refs])
