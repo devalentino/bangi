@@ -15,3 +15,8 @@ class DoesNotExistError(ApplicationError):
 
 class CampaignDoesNotExistError(DoesNotExistError):
     message = 'Campaign does not exist'
+
+
+class InvalidCampaignDefaultFlowError(ApplicationError):
+    http_status_code = 422
+    message = 'defaultFlowId must reference a flow in this campaign.'

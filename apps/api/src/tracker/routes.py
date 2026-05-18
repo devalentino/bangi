@@ -11,6 +11,7 @@ from src.domains.enums import DomainCookieName
 from src.domains.services import DomainCookieService, DomainService
 from src.tracker.schemas import (
     TrackClickRequestSchema,
+    TrackCurrentFlowCookieSchema,
     TrackLeadRequestSchema,
     TrackPostbackRequestSchema,
     TrackProcessRequestSchema,
@@ -90,8 +91,10 @@ class Process(MethodView):
             request.user_agent.string, request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
         )
         cookie_name = cookie_service.get_or_create_opaque_name(domain.id, DomainCookieName.flow_id)
-        cookie_value = request.cookies.get(cookie_name)
-        action_type, subject, flow_id = flow_service.process_flows(campaignId, client, cookie_value)
+        current_flow_payload = TrackCurrentFlowCookieSchema().load({'currentFlowId': request.cookies.get(cookie_name)})
+        action_type, subject, flow_id = flow_service.process_flows(
+            campaignId, client, current_flow_payload['currentFlowId']
+        )
 
         if action_type == FlowActionType.redirect:
             response = redirect(subject)

@@ -84,18 +84,16 @@ class FacebookPacsCampaignModel {
       return "Cost value must be a number.";
     }
 
-    if (!this.form.statusMapperText.trim()) {
-      return "Status mapper is required.";
-    }
+    if (this.form.statusMapperText.trim().length > 0) {
+      try {
+        let parsed = JSON.parse(this.form.statusMapperText);
 
-    try {
-      let parsed = JSON.parse(this.form.statusMapperText);
-
-      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return "Status mapper must be a JSON object.";
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+          return "Status mapper must be a JSON object.";
+        }
+      } catch (error) {
+        return "Status mapper must be valid JSON.";
       }
-    } catch (error) {
-      return "Status mapper must be valid JSON.";
     }
 
     if (!this.form.executorId) {
@@ -114,7 +112,12 @@ class FacebookPacsCampaignModel {
   }
 
   buildPayload() {
-    let statusMapper = JSON.parse(this.form.statusMapperText);
+    let statusMapper = null;
+    let statusMapperText = this.form.statusMapperText.trim();
+
+    if (statusMapperText.length > 0) {
+      statusMapper = JSON.parse(statusMapperText);
+    }
 
     return {
       name: this.form.name.trim(),

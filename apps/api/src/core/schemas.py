@@ -69,7 +69,7 @@ class CampaignCreateRequestSchema(Schema):
     costModel = fields.Enum(CostModel, required=True)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
     currency = fields.Enum(Currency, required=True)
-    statusMapper = fields.Dict(required=True)
+    statusMapper = fields.Dict(required=True, allow_none=True)
 
     @validates_schema
     def validate_status_mapper(self, data, **kwargs):
@@ -81,7 +81,8 @@ class CampaignUpdateRequestSchema(Schema):
     costModel = fields.Enum(CostModel)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN)
     currency = fields.Enum(Currency)
-    statusMapper = fields.Dict(allow_none=True, load_default=None)
+    statusMapper = fields.Dict(required=True, allow_none=True)
+    defaultFlowId = fields.Integer(required=True, allow_none=True)
 
     @validates_schema
     def validate_status_mapper(self, data, **kwargs):
@@ -101,6 +102,7 @@ class CampaignResponseSchema(Schema):
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
     currency = fields.String(required=True)
     statusMapper = fields.Dict(allow_none=True)
+    defaultFlowId = fields.Integer(allow_none=True)
     internalProcessUrl = fields.String(allow_none=True)
     expensesDistributionParameter = fields.String(allow_none=True)
     summary = fields.Nested(CampaignSummaryResponseSchema(), required=True)
@@ -133,6 +135,7 @@ class FlowUpdateRequestSchema(Schema):
     actionType = fields.Enum(FlowActionType, required=True)
     redirectUrl = fields.Url(allow_none=True, load_default=None)
     isEnabled = fields.Boolean()
+    showOncePerVisitor = fields.Boolean(required=True)
 
     @validates_schema
     def validate_action(self, data, **kwargs):
@@ -186,6 +189,7 @@ class FlowResponseSchema(Schema):
     redirectUrl = fields.String(allow_none=True)
     landingPath = fields.String(allow_none=True)
     isEnabled = fields.Boolean(required=True)
+    showOncePerVisitor = fields.Boolean(required=True)
     rule = fields.String(required=True, allow_none=True)
 
 

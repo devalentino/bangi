@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 from peewee import MySQLDatabase
 from peewee_migrate import Router
+from pymysql import cursors
 from pytest_mysql import factories
 
 mysql_in_docker = factories.mysql_noproc(
@@ -56,6 +57,18 @@ def mock_subprocess_run():
 
 
 @pytest.fixture(autouse=True)
+def ip2location_configured():
+    with mock.patch('src.core.services.Ip2LocationLocator.is_configured', return_value=True):
+        yield
+
+
+@pytest.fixture
+def ip2location_unavailable():
+    with mock.patch('src.core.services.Ip2LocationLocator.is_configured', return_value=False):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def assert_all_external_http_calls_are_mocked(respx_mock):
     yield
 
@@ -97,3 +110,14 @@ def environment():
     from src.container import container
 
     return container.params._ConfigStore__bag
+
+
+@pytest.fixture
+def set_default_flow_id(mysql):
+    def _set_default_flow_id(campaign_id, flow_id):
+        with mysql.cursor(cursors.DictCursor) as cur:
+            cur.execute('UPDATE campaign SET default_flow_id = %s WHERE id = %s', (flow_id, campaign_id))
+
+        mysql.commit()
+
+    return _set_default_flow_id

@@ -21,6 +21,7 @@ from src.tracker.routes import process_blueprint
 configure_logging()
 
 # Alerts and workers initialization
+from src.core import alerts as core_alerts  # noqa: E402, F401
 from src.domains import alerts as domain_alerts  # noqa: E402, F401
 from src.domains import workers as domain_workers  # noqa: E402, F401
 from src.health import alerts as health_alerts  # noqa: E402, F401

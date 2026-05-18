@@ -47,6 +47,7 @@ class Campaign(Entity):
     currency = CharField(null=True, default=Currency.usd.value)
     status_mapper = JSONField(null=True)
     expenses_distribution_parameter = CharField(null=True)
+    default_flow_id = IntegerField(null=True)
 
 
 class Flow(Entity):
@@ -58,3 +59,4 @@ class Flow(Entity):
     redirect_url = CharField(null=True)
     is_enabled = BooleanField(default=True)
     is_deleted = BooleanField(default=False)
+    show_once_per_visitor = BooleanField(default=False)

@@ -63,3 +63,7 @@
 .alerts-dropdown-item:last-child {
   border-bottom: 0 !important;
 }
+
+.health-certificate-table {
+  font-size: 12px;
+}

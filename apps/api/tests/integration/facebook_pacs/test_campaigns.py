@@ -51,6 +51,7 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
         'currency': request_payload['currency'],
         'status_mapper': mock.ANY,
         'expenses_distribution_parameter': None,
+        'default_flow_id': None,
         'created_at': mock.ANY,
     }
     assert json.loads(core_campaign['status_mapper']) == request_payload['statusMapper']
@@ -63,6 +64,35 @@ def test_create_campaign(client, authorization, ad_cabinet, executor, business_p
         'ad_cabinet_id': ad_cabinet['id'],
         'executor_id': executor['id'],
         'business_page_id': business_page['id'],
+    }
+
+
+def test_create_campaign__requires_status_mapper(
+    client,
+    authorization,
+    ad_cabinet,
+    executor,
+    business_page,
+):
+    request_payload = {
+        'name': 'pacs Campaign',
+        'costModel': 'cpm',
+        'costValue': 12,
+        'currency': 'eur',
+        'executorId': executor['id'],
+        'adCabinetId': ad_cabinet['id'],
+        'businessPageId': business_page['id'],
+    }
+
+    response = client.post(
+        '/api/v2/facebook/pacs/campaigns', headers={'Authorization': authorization}, json=request_payload
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json == {
+        'code': 422,
+        'errors': {'json': {'statusMapper': ['Missing data for required field.']}},
+        'status': 'Unprocessable Entity',
     }
 
 
@@ -125,9 +155,41 @@ def test_update_campaign(client, authorization, campaign_fa, ad_cabinet, executo
         'currency': request_payload['currency'],
         'status_mapper': mock.ANY,
         'expenses_distribution_parameter': mock.ANY,
+        'default_flow_id': None,
         'created_at': mock.ANY,
     }
     assert json.loads(core_campaign['status_mapper']) == request_payload['statusMapper']
 
     pacs_campaign = read_from_db('facebook_pacs_ad_campaign', filters={'id': campaign_fa['id']})
     assert pacs_campaign['business_page_id'] == new_business_page['id']
+
+
+def test_update_campaign__accepts_null_status_mapper(
+    client,
+    authorization,
+    campaign_fa,
+    ad_cabinet,
+    executor,
+    business_page,
+    read_from_db,
+):
+    request_payload = {
+        'name': 'Campaign Updated',
+        'costModel': 'cpa',
+        'costValue': 7,
+        'currency': 'usd',
+        'statusMapper': None,
+        'executorId': executor['id'],
+        'adCabinetId': ad_cabinet['id'],
+        'businessPageId': business_page['id'],
+    }
+
+    response = client.patch(
+        f'/api/v2/facebook/pacs/campaigns/{campaign_fa["id"]}',
+        headers={'Authorization': authorization},
+        json=request_payload,
+    )
+
+    assert response.status_code == 200, response.text
+    core_campaign = read_from_db('campaign', filters={'id': campaign_fa['core_campaign_id']})
+    assert json.loads(core_campaign['status_mapper']) is None
