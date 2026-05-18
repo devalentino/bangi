@@ -2,7 +2,6 @@ from time import sleep
 
 import pytest
 
-
 UNIX_TIMESTAMP_YEAR_2100 = 4_102_444_800
 
 
