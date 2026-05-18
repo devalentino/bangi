@@ -161,7 +161,14 @@ class CoreCampaignView {
                           id: "statusMapper",
                           rows: "4",
                           placeholder:
-                            '{"parameter":"state","mapping":{"approved":"APPROVED","rejected":"REJECTED"}}',
+                            '{\n'
+                            + '  "parameter": "state_on_the_cpa_side",\n'
+                            + '  "mapping": {\n'
+                            + '    "accept_on_the_cpa_side": "accept",\n'
+                            + '    "reject_on_the_cpa_side": "reject",\n'
+                            + '    "expect_on_the_cpa_ide": "expect"\n'
+                            + '  }\n'
+                            + '}',
                           class: "font-monospace",
                           value: this.campaignModel.form.statusMapperText,
                           oninput: function (event) {
@@ -174,6 +181,41 @@ class CoreCampaignView {
                           "JSON with parameter string and mapping object (string to string).",
                         ),
                       ]),
+                      isNew
+                        ? null
+                        : m(".mb-3", [
+                            m(
+                              "label.form-label",
+                              { for: "defaultFlowId" },
+                              "Default Flow",
+                            ),
+                            m(
+                              "select.form-select",
+                              {
+                                id: "defaultFlowId",
+                                value: this.campaignModel.form.defaultFlowId,
+                                onchange: function (event) {
+                                  this.campaignModel.form.defaultFlowId =
+                                    event.target.value;
+                                }.bind(this),
+                              },
+                              [
+                                m("option", { value: "" }, "No default flow"),
+                              ].concat(this.flowsModel.items.map(function (flow) {
+                                return m(
+                                  "option",
+                                  { value: String(flow.id) },
+                                  `${flow.name || flow.id}${
+                                    flow.isEnabled ? "" : " (disabled)"
+                                  }`,
+                                );
+                              })),
+                            ),
+                            m(
+                              ".form-text",
+                              "Served when no normal flow matches, even if the default flow rule would not match.",
+                            ),
+                          ]),
                       m(
                         "button.btn.btn-primary",
                         { type: "submit" },
@@ -216,6 +258,7 @@ class CoreCampaignView {
                   m(Flows, {
                     campaignId: this.campaignModel.campaignId,
                     flows: this.flowsModel.items,
+                    defaultFlowId: this.campaignModel.form.defaultFlowId,
                     onReorder: function (mapping) {
                       this.flowsModel.updateOrderBulk(
                         this.campaignModel.campaignId,
@@ -224,7 +267,8 @@ class CoreCampaignView {
                     }.bind(this),
                     onDelete: function (flow) {
                       return this.flowsModel.deleteFlow(flow.id).then(function () {
-                        this.flowsModel.fetch({
+                        this.campaignModel.fetch();
+                        return this.flowsModel.fetch({
                           page: 1,
                           pageSize: 1000,
                           sortBy: "orderValue",

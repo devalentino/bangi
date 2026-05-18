@@ -108,9 +108,26 @@ bangi_verify_cron_health() {
     fi
 }
 
-bangi_verify_health() {
-    bangi_log "Verifying Bangi host health before release activation"
+bangi_verify_firewall_health() {
+    bangi_log "Checking Bangi-managed firewall installation"
 
+    [[ -f "${BANGI_IPTABLES_RULES_FILE}" ]] \
+        || bangi_fatal "Bangi-managed iptables rules file is missing: ${BANGI_IPTABLES_RULES_FILE}"
+    [[ -x "${BANGI_IPTABLES_APPLY_SCRIPT}" ]] \
+        || bangi_fatal "Bangi-managed iptables apply command is missing or not executable: ${BANGI_IPTABLES_APPLY_SCRIPT}"
+    [[ -f "${BANGI_SYSTEMD_SERVICE_FILE}" ]] \
+        || bangi_fatal "Bangi systemd service file is missing: ${BANGI_SYSTEMD_SERVICE_FILE}"
+
+    grep -Fq "ExecStartPre=${BANGI_IPTABLES_APPLY_SCRIPT}" "${BANGI_SYSTEMD_SERVICE_FILE}" \
+        || bangi_fatal "bangi.service does not apply firewall policy before startup"
+    iptables -C INPUT -j BANGI-INPUT 2>/dev/null \
+        || bangi_fatal "Bangi-managed INPUT firewall chain is not active"
+}
+
+bangi_verify_health() {
+    bangi_log "Verifying Bangi host health"
+
+    bangi_verify_firewall_health
     bangi_verify_compose_services_running
     bangi_verify_mariadb_health
     bangi_verify_backend_health

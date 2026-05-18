@@ -15,7 +15,12 @@ from wireup import Inject, injectable
 
 from src.core.entities import Campaign, Flow
 from src.core.enums import FlowActionType, SortOrder
-from src.core.exceptions import CampaignDoesNotExistError, DoesNotExistError, LandingPageUploadError
+from src.core.exceptions import (
+    CampaignDoesNotExistError,
+    DoesNotExistError,
+    InvalidCampaignDefaultFlowError,
+    LandingPageUploadError,
+)
 from src.core.models import Client
 from src.core.repositories import CampaignRepository
 from src.core.utils import log_execution_time
@@ -28,6 +33,9 @@ class IpLocator(Protocol):
     def get_country(self, address):
         pass
 
+    def is_configured(self):
+        pass
+
 
 @injectable(as_type=IpLocator)
 class Ip2LocationLocator:
@@ -35,8 +43,11 @@ class Ip2LocationLocator:
         self.ip2location = None
         try:
             self.ip2location = IP2Location.IP2Location(ip2location_db_path)
-        except ValueError:
+        except (TypeError, ValueError):
             logger.warning('IP2Location database is not valid')
+
+    def is_configured(self):
+        return self.ip2location is not None
 
     def get_country(self, address):
         try:
@@ -97,7 +108,28 @@ class CampaignService:
         campaign.save()
         return campaign
 
-    def update(self, campaign_id, name=None, cost_model=None, cost_value=None, currency=None, status_mapper=None):
+    def _validate_default_flow(self, campaign_id, default_flow_id):
+        if default_flow_id is None:
+            return
+
+        try:
+            flow = Flow.get_by_id(default_flow_id)
+        except Flow.DoesNotExist as exc:
+            raise InvalidCampaignDefaultFlowError() from exc
+
+        if flow.campaign.id != campaign_id or flow.is_deleted:
+            raise InvalidCampaignDefaultFlowError()
+
+    def update(
+        self,
+        campaign_id,
+        name=None,
+        cost_model=None,
+        cost_value=None,
+        currency=None,
+        status_mapper=None,
+        default_flow_id=None,
+    ):
         try:
             campaign = Campaign.get_by_id(campaign_id)
         except Campaign.DoesNotExist as exc:
@@ -115,8 +147,9 @@ class CampaignService:
         if currency:
             campaign.currency = currency
 
-        if status_mapper is not None:
-            campaign.status_mapper = status_mapper
+        campaign.status_mapper = status_mapper
+        self._validate_default_flow(campaign_id, default_flow_id)
+        campaign.default_flow_id = default_flow_id
 
         campaign.save()
 
@@ -138,9 +171,11 @@ class FlowService:
         self,
         landing_pages_base_path: Annotated[str, Inject(config='LANDING_PAGES_BASE_PATH')],
         landing_renderer_base_url: Annotated[str, Inject(config='LANDING_PAGE_RENDERER_BASE_URL')],
+        ip_locator: IpLocator,
     ):
         self.landing_pages_base_path = landing_pages_base_path
         self.landing_renderer_base_url = landing_renderer_base_url
+        self.ip_locator = ip_locator
 
     def _has_index_file(self, path):
         return any(os.path.isfile(os.path.join(path, name)) for name in ('index.html', 'index.php'))
@@ -254,6 +289,7 @@ class FlowService:
         action_type,
         redirect_url=None,
         is_enabled=True,
+        show_once_per_visitor=False,
         landing_archive=None,
     ):
         flow = Flow(
@@ -264,6 +300,7 @@ class FlowService:
             action_type=action_type,
             redirect_url=redirect_url,
             is_enabled=is_enabled,
+            show_once_per_visitor=show_once_per_visitor,
         )
         flow.save()
 
@@ -281,6 +318,7 @@ class FlowService:
         action_type=None,
         redirect_url=None,
         is_enabled=None,
+        show_once_per_visitor=None,
         landing_archive=None,
     ):
         flow = self.get(flow_id, campaign_id)
@@ -299,6 +337,9 @@ class FlowService:
         if is_enabled is not None:
             flow.is_enabled = is_enabled
 
+        if show_once_per_visitor is not None:
+            flow.show_once_per_visitor = show_once_per_visitor
+
         flow.save()
         return flow
 
@@ -306,6 +347,7 @@ class FlowService:
         flow = self.get(flow_id, campaign_id)
         flow.is_deleted = True
         flow.save()
+        Campaign.update(default_flow_id=None).where(Campaign.default_flow_id == flow.id).execute()
 
     def bulk_update_order(self, campaign_id, order):
         # TODO: move to repo
@@ -322,29 +364,61 @@ class FlowService:
             Flow.select(fn.count(Flow.id)).where((Flow.is_deleted == False) & (Flow.campaign == campaign_id)).scalar()
         )
 
-    def process_flows(self, campaign_id: int, client: Client, cookie_value=None):
-        flows = (
-            Flow.select()
+    def _matches_rule(self, flow, client):
+        try:
+            rule = rule_engine.Rule(flow.rule, context=Client.rule_engine_context(self.ip_locator.is_configured()))
+            return rule.matches(dataclasses.asdict(client))
+        except rule_engine.errors.EngineError:
+            logger.warning('Skipping non-runnable flow', exc_info=True, extra={'flow_id': flow.id})
+            return False
+
+    def process_flows(self, campaign_id: int, client: Client, current_flow_id=None):
+        flows = list(
+            Flow.select(Flow, Campaign)
+            .join(Campaign)
             .where((Flow.campaign_id == campaign_id) & (Flow.is_enabled == True) & (Flow.is_deleted == False))
             .order_by(Flow.order_value.desc(), Flow.id.asc())
         )
+        default_flow = None
+        for flow in flows:
+            if flow.id == flow.campaign.default_flow_id:
+                default_flow = flow
+                break
+
+        current_index = None
+        if current_flow_id is not None:
+            for index, flow in enumerate(flows):
+                if flow.id == current_flow_id:
+                    current_index = index
+                    break
 
         matched_flow = None
-        for flow in flows:
-            if flow.rule is None:
-                matched_flow = flow
-                break
-
-            rule = rule_engine.Rule(flow.rule, context=Client.rule_engine_context())
-            if rule.matches(dataclasses.asdict(client)):
-                matched_flow = flow
-                break
+        if current_index is not None:
+            current_flow = flows[current_index]
+            if not current_flow.show_once_per_visitor:
+                if current_flow.rule is None:
+                    matched_flow = current_flow
+                elif self._matches_rule(current_flow, client):
+                    matched_flow = current_flow
 
         if matched_flow is None:
-            logger.warning(
-                'Failed to process flows', extra={'campaign_id': campaign_id, 'flows': [f.to_dict() for f in flows]}
-            )
-            return None, None, None
+            start_index = current_index + 1 if current_index is not None else 0
+            for flow in flows[start_index:]:
+                if flow.rule is None:
+                    matched_flow = flow
+                    break
+                if self._matches_rule(flow, client):
+                    matched_flow = flow
+                    break
+
+        if matched_flow is None:
+            matched_flow = default_flow
+
+            if matched_flow is None:
+                logger.warning(
+                    'Failed to process flows', extra={'campaign_id': campaign_id, 'flows': [f.to_dict() for f in flows]}
+                )
+                return None, None, None
 
         if matched_flow.action_type == FlowActionType.redirect:
             return matched_flow.action_type, matched_flow.redirect_url, matched_flow.id

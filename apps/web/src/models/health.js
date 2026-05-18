@@ -7,6 +7,8 @@ class HealthModel {
     this.history = [];
     this.nginxSnapshot = null;
     this.nginxError = null;
+    this.certificateDiagnostics = [];
+    this.certificateError = null;
     this.error = null;
     this.isLoading = false;
   }
@@ -18,6 +20,8 @@ class HealthModel {
     this.error = null;
     this.nginxSnapshot = null;
     this.nginxError = null;
+    this.certificateDiagnostics = [];
+    this.certificateError = null;
 
     let diskPromise = api
       .request({
@@ -58,7 +62,25 @@ class HealthModel {
         }.bind(this),
       );
 
-    return Promise.all([diskPromise, nginxPromise]).finally(
+    let certificatePromise = api
+      .request({
+        method: "GET",
+        url: `${config.backendApiBaseUrl}/health/certificates`,
+      })
+      .then(
+        function (payload) {
+          this.certificateDiagnostics = payload.content || [];
+          this.certificateError = null;
+        }.bind(this),
+      )
+      .catch(
+        function () {
+          this.certificateDiagnostics = [];
+          this.certificateError = "Failed to load certificate diagnostics.";
+        }.bind(this),
+      );
+
+    return Promise.all([diskPromise, nginxPromise, certificatePromise]).finally(
       function () {
         this.isLoading = false;
       }.bind(this),

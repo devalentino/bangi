@@ -88,7 +88,7 @@ class FacebookPacsCampaignRequestSchema(Schema):
     costModel = fields.Enum(CostModel, required=True)
     costValue = fields.Decimal(places=2, rounding=decimal.ROUND_DOWN, required=True)
     currency = fields.Enum(Currency, required=True)
-    statusMapper = fields.Dict(required=True)
+    statusMapper = fields.Dict(required=True, allow_none=True)
     executorId = fields.Integer(required=True)
     adCabinetId = fields.Integer(required=True)
     businessPageId = fields.Integer(required=True)

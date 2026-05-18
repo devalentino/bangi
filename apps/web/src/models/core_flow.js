@@ -19,6 +19,7 @@ class CoreFlowModel {
       landingPath: null,
       orderValue: null,
       isEnabled: true,
+      showOncePerVisitor: false,
     };
   }
 
@@ -29,7 +30,8 @@ class CoreFlowModel {
     this.form.redirectUrl = payload.redirectUrl || "";
     this.form.landingArchive = null;
     this.form.landingPath = payload.landingPath || "";
-    this.form.isEnabled = payload.isEnabled || true;
+    this.form.isEnabled = payload.isEnabled ?? true;
+    this.form.showOncePerVisitor = payload.showOncePerVisitor || false;
   }
 
   resetForm() {
@@ -101,6 +103,7 @@ class CoreFlowModel {
           ? this.form.redirectUrl.trim() || null
           : null,
       isEnabled: this.form.isEnabled,
+      showOncePerVisitor: this.form.showOncePerVisitor,
     };
   }
 
