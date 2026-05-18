@@ -131,6 +131,7 @@ bangi_print_summary() {
     local cron_status="inactive"
     local firewall_status="not installed"
     local ip2location_status="not configured"
+    local swap_status="unknown"
     local fallback_host=""
 
     if systemctl is-active --quiet nginx; then
@@ -147,6 +148,12 @@ bangi_print_summary() {
         else
             firewall_status="installed; not active in current iptables INPUT chain"
         fi
+    fi
+
+    if [[ -n "${BANGI_SWAP_INSTALL_STATUS:-}" && "${BANGI_SWAP_INSTALL_STATUS}" != "not checked" ]]; then
+        swap_status="${BANGI_SWAP_INSTALL_STATUS}"
+    elif declare -F bangi_swap_active_summary >/dev/null; then
+        swap_status="$(bangi_swap_active_summary)"
     fi
 
     bangi_env_load_file "${BANGI_OPS_ENV_FILE}" ops_values
@@ -193,6 +200,7 @@ bangi_print_summary() {
     printf '  Nginx status: %s; config test passed\n' "${nginx_status}"
     printf '  Cron status: %s; managed file %s installed\n' "${cron_status}" "${BANGI_CRON_FILE}"
     printf '  Firewall status: %s; rules file %s\n' "${firewall_status}" "${BANGI_IPTABLES_RULES_FILE}"
+    printf '  Swap status: %s\n' "${swap_status}"
     if [[ -n "${fallback_host}" ]]; then
         printf '  Fallback URL: http://%s\n' "${fallback_host}"
     fi

@@ -17,6 +17,14 @@ The installer writes the token to `/etc/bangi/ops.env`, not to the application r
 
 The installer must run as root and validates Ubuntu 24.04 LTS before any package installation phase starts.
 
+## Managed Swap
+
+Before package installation, the provisioner checks active host swap. If active swap already exists, the installer leaves it unchanged and reports the detected swap status in the completion summary.
+
+When no active swap exists and host memory is at or below `2 GB`, the installer creates a Bangi-managed `1G` swap file at `/swapfile`, secures it with `0600` permissions, enables it immediately, persists it in `/etc/fstab`, and writes Bangi swap tuning to `/etc/sysctl.d/99-bangi-swap.conf`.
+
+Hosts above the memory threshold do not receive managed swap by default. Operators can force managed swap creation by running the installer with `BANGI_SWAP_FORCE=true`.
+
 ## Host Firewall And Lifecycle
 
 The provisioner installs `iptables` and stores the canonical Bangi-managed firewall policy at `/opt/bangi/shared/firewall/iptables.rules`. The policy allows inbound TCP `22`, `80`, and `443`, allows established and loopback traffic, and drops other host inbound traffic. Production Compose keeps `web`, `api`, and `landing-renderer` bound to loopback so host Nginx remains the public edge.
@@ -71,6 +79,14 @@ For the installer skeleton, verify:
 - running on a non-Ubuntu 24.04 host fails before package installation
 - running on Ubuntu 24.04 as root reaches the installer phase orchestration
 
+For managed swap installation, verify:
+
+- on a fresh Ubuntu 24.04 host with no active swap and `2 GB` RAM or less, the installer creates `/swapfile`, sets permissions to `0600`, enables it in `swapon --show`, and writes a single `/swapfile none swap sw 0 0` entry to `/etc/fstab`
+- rerunning the installer does not duplicate the `/etc/fstab` entry or duplicate sysctl configuration in `/etc/sysctl.d/99-bangi-swap.conf`
+- on a host with existing active swap, the installer does not modify the existing swap device or file and reports it in the completion summary
+- on a host above `2 GB` RAM with no active swap, the installer does not create `/swapfile` unless `BANGI_SWAP_FORCE=true` is set
+- after reboot, `swapon --show` includes `/swapfile` when Bangi-managed swap was created
+
 For managed cron installation, verify:
 
 - `/etc/cron.d/bangi` exists after installer completion and contains a single Bangi-managed file body
@@ -83,4 +99,4 @@ For release activation and final health verification, verify:
 - forcing any required health check to fail causes the installer to exit non-zero before `/opt/bangi/current` changes
 - successful health verification checks Bangi firewall installation, `docker compose ps`, MariaDB, direct backend health, `nginx -t`, local frontend HTTP, Nginx `/api/v2/health`, and managed cron content
 - after a successful run, `/opt/bangi/current` points to `/opt/bangi/${BANGI_RELEASE_TAG}`
-- the completion summary prints the deployment bundle path, runtime and operational environment paths, compose service status, Nginx status, cron status, firewall status, detected fallback URL when public IP detection succeeds, IP2Location refresh status, and operator next steps
+- the completion summary prints the deployment bundle path, runtime and operational environment paths, compose service status, Nginx status, cron status, firewall status, swap status, detected fallback URL when public IP detection succeeds, IP2Location refresh status, and operator next steps
