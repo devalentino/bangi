@@ -94,7 +94,7 @@ def _flush_nginx_validation_snapshot(database, domain_id: int, snapshot) -> None
         (
             'INSERT INTO health_nginx_validation_snapshot '
             '(created_at, domain_id, validation_status, validation_error, sites_available_files, sites_enabled_refs) '
-            'VALUES (UTC_TIMESTAMP(), %s, %s, %s, %s, %s)'
+            'VALUES (UNIX_TIMESTAMP(), %s, %s, %s, %s, %s)'
         ),
         (
             domain_id,
