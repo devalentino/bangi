@@ -1,3 +1,5 @@
+import logging
+import time
 from uuid import uuid4
 
 from flask import make_response, redirect, request
@@ -6,8 +8,9 @@ from flask.views import MethodView
 from src.container import container
 from src.core.blueprint import Blueprint
 from src.core.enums import FlowActionType
-from src.core.services import ClientService, FlowService
+from src.core.services import HEADER_EXCLUSIONS, ClientService, FlowService
 from src.domains.enums import DomainCookieName
+from src.domains.exceptions import DomainCookieDecodeError, EncryptionKeyDoesNotExistError
 from src.domains.services import DomainCookieService, DomainService
 from src.tracker.schemas import (
     TrackClickRequestSchema,
@@ -20,6 +23,9 @@ from src.tracker.services import TrackService
 
 blueprint = Blueprint('tracker', __name__, description='Tracker')
 process_blueprint = Blueprint('process', __name__, description='Tracker Process')
+FLOW_STICKY_TTL_SECONDS = 60 * 60 * 24
+COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
+logger = logging.getLogger(__name__)
 
 
 @blueprint.route('/click')
@@ -90,27 +96,87 @@ class Process(MethodView):
         client = client_service.client_info(
             request.user_agent.string, request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
         )
-        cookie_name = cookie_service.get_or_create_opaque_name(domain.id, DomainCookieName.flow_id)
-        current_flow_payload = TrackCurrentFlowCookieSchema().load({'currentFlowId': request.cookies.get(cookie_name)})
+        flow_id_cookie_name = cookie_service.get_or_create_opaque_name(domain.id, DomainCookieName.flow_id)
+        flow_timestamp_cookie_name = cookie_service.get_or_create_opaque_name(
+            domain.id,
+            DomainCookieName.flow_timestamp,
+        )
+        current_flow_payload = TrackCurrentFlowCookieSchema().load(
+            {'currentFlowId': request.cookies.get(flow_id_cookie_name)}
+        )
+        now = int(time.time())
+        flow_timestamp_cookie_value = request.cookies.get(flow_timestamp_cookie_name)
+        sticky_started_at_payload = None
+        if flow_timestamp_cookie_value is not None:
+            try:
+                sticky_started_at_payload = cookie_service.open_cookie_value(
+                    domain.id,
+                    DomainCookieName.flow_timestamp,
+                    flow_timestamp_cookie_value,
+                )
+            except (DomainCookieDecodeError, EncryptionKeyDoesNotExistError):
+                logger.warning(
+                    'Failed to decode flow timestamp cookie',
+                    exc_info=True,
+                    extra={'domain_id': domain.id, 'cookie_name': DomainCookieName.flow_timestamp.value},
+                )
+        sticky_started_at = (
+            int.from_bytes(sticky_started_at_payload, byteorder='big', signed=False)
+            if sticky_started_at_payload is not None and len(sticky_started_at_payload) == 8
+            else None
+        )
+        flow_stickiness_not_expired = (
+            sticky_started_at is not None
+            and sticky_started_at <= now
+            and now - sticky_started_at < FLOW_STICKY_TTL_SECONDS
+        )
         action_type, subject, flow_id = flow_service.process_flows(
-            campaignId, client, current_flow_payload['currentFlowId']
+            campaignId,
+            client,
+            current_flow_payload['currentFlowId'],
+            force_stickiness=flow_stickiness_not_expired,
+            render_request={
+                'method': request.method,
+                'query_string': request.query_string,
+                'headers': request.headers.items(),
+                'body': request.get_data(),
+            },
         )
 
         if action_type == FlowActionType.redirect:
             response = redirect(subject)
         elif action_type == FlowActionType.render:
-            response = make_response(subject)
+            response = make_response(subject.content, subject.status_code)
+            for name, value in subject.headers.multi_items():
+                header_name = name.lower()
+                if header_name in HEADER_EXCLUSIONS:
+                    continue
+                if header_name == 'set-cookie':
+                    response.headers.add(name, value)
+                else:
+                    response.headers.set(name, value)
         else:
             track_click_service.track_discard(click_id, campaignId, client)
             return make_response('')
 
         if flow_id is not None:
             response.set_cookie(
-                cookie_name,
+                flow_id_cookie_name,
                 str(flow_id),
                 httponly=True,
                 path='/',
-                max_age=60 * 60 * 24 * 365,
+                max_age=COOKIE_MAX_AGE_SECONDS,
+            )
+            response.set_cookie(
+                flow_timestamp_cookie_name,
+                cookie_service.seal_cookie_value(
+                    domain.id,
+                    DomainCookieName.flow_timestamp,
+                    now.to_bytes(8, byteorder='big', signed=False),
+                ),
+                httponly=True,
+                path='/',
+                max_age=COOKIE_MAX_AGE_SECONDS,
             )
 
         return response

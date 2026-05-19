@@ -23,20 +23,42 @@ server {
     ssl_certificate ${certificate_path};
     ssl_certificate_key ${private_key_path};
 
-    set $$bangi_campaign_upstream "http://127.0.0.1:8000/process/${campaign_id}";
+    set $$bangi_campaign_upstream "http://127.0.0.1:8000/process/${campaign_id}$$is_args$$args";
     if ($$cookie_${flow_id_cookie_name} != "") {
-        set $$bangi_campaign_upstream "http://127.0.0.1:8081/$$cookie_${flow_id_cookie_name}/";
+        set $$bangi_campaign_upstream "http://127.0.0.1:8081/$$cookie_${flow_id_cookie_name}/$$is_args$$args";
     }
 
     location = / {
+        if ($$request_method != GET) {
+            return 405;
+        }
+
+        proxy_pass_request_headers on;
+        proxy_pass_request_body on;
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $$host;
+        proxy_set_header X-Forwarded-Proto $$scheme;
         proxy_pass $$bangi_campaign_upstream;
     }
 
     location / {
+        if ($$request_method != GET) {
+            return 405;
+        }
+
         if ($$cookie_${flow_id_cookie_name} = "") {
             return 404;
         }
 
-        proxy_pass http://127.0.0.1:8081/$$cookie_${flow_id_cookie_name}/;
+        proxy_pass_request_headers on;
+        proxy_pass_request_body on;
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $$host;
+        proxy_set_header X-Forwarded-Proto $$scheme;
+        proxy_pass http://127.0.0.1:8081/$$cookie_${flow_id_cookie_name}$$request_uri;
     }
 }
