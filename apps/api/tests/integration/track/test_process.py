@@ -940,7 +940,11 @@ class TestTrackLanding:
     def landing_render_mock(self, flow, environment, landing_page_content, respx_mock):
         assert environment["LANDING_PAGE_RENDERER_BASE_URL"] is not None, 'LANDING_PAGE_RENDERER_BASE_URL is not set'
         return respx_mock.get(f'{environment["LANDING_PAGE_RENDERER_BASE_URL"]}/{flow["id"]}/').mock(
-            httpx.Response(status_code=200, text=landing_page_content)
+            httpx.Response(
+                status_code=200,
+                text=landing_page_content,
+                headers={'Content-Type': 'text/html; charset=utf-8'},
+            )
         )
 
     def test_track_landing(self, client, campaign, domain, flow, read_from_db, ip2location_mock, landing_render_mock):
@@ -985,6 +989,56 @@ class TestTrackLanding:
             'status': request_payload['status'],
             'tid': request_payload['tid'],
         }
+
+    def test_track_landing__proxies_request_and_response_exchange(
+        self, client, campaign, domain, flow, environment, ip2location_mock, respx_mock
+    ):
+        renderer_body = b'rendered payload'
+        query_string = [('tag', 'one'), ('tag', 'two'), ('empty', '')]
+        request_headers = {'X-Landing-Header': 'forward-me'}
+        response_status_code = 307
+        response_headers = {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Location': '/next-step',
+            'X-Renderer-Meta': 'preserved',
+            'Set-Cookie': 'renderer_session=abc; Path=/; HttpOnly',
+            'Connection': 'close',
+            'Content-Length': '9999',
+        }
+        renderer_route = respx_mock.get(
+            f'{environment["LANDING_PAGE_RENDERER_BASE_URL"]}/{flow["id"]}/?tag=one&tag=two&empty='
+        ).mock(
+            httpx.Response(
+                status_code=response_status_code,
+                content=renderer_body,
+                headers=response_headers,
+            )
+        )
+        client.set_cookie('visitor', 'cookie-value')
+
+        response = client.get(
+            f'/process/{campaign["id"]}',
+            query_string=query_string,
+            headers=request_headers,
+        )
+
+        assert response.status_code == response_status_code, response.text
+
+        assert renderer_route.called
+        assert response.data == renderer_body
+        assert response.headers['Content-Type'] == response_headers['Content-Type']
+        assert response.headers['Location'] == response_headers['Location']
+        assert response.headers['X-Renderer-Meta'] == response_headers['X-Renderer-Meta']
+        assert response.headers['Set-Cookie'] == response_headers['Set-Cookie']
+        assert 'Connection' not in response.headers
+        assert response.headers['Content-Length'] == str(len(renderer_body))
+
+        renderer_request = renderer_route.calls[0].request
+        assert renderer_request.method == 'GET'
+        assert str(renderer_request.url).endswith(f'/{flow["id"]}/?tag=one&tag=two&empty=')
+        assert renderer_request.headers['X-Landing-Header'] == request_headers['X-Landing-Header']
+        assert 'visitor=cookie-value' in renderer_request.headers['Cookie']
+        assert renderer_request.content == b''
 
     def test_track_landing__sets_domain_sticky_cookie_on_first_visit(
         self, client, campaign, domain, environment, write_to_db, read_from_db, ip2location_mock, respx_mock

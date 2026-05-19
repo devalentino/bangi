@@ -8,7 +8,7 @@ from flask.views import MethodView
 from src.container import container
 from src.core.blueprint import Blueprint
 from src.core.enums import FlowActionType
-from src.core.services import ClientService, FlowService
+from src.core.services import HEADER_EXCLUSIONS, ClientService, FlowService
 from src.domains.enums import DomainCookieName
 from src.domains.exceptions import DomainCookieDecodeError, EncryptionKeyDoesNotExistError
 from src.domains.services import DomainCookieService, DomainService
@@ -135,12 +135,26 @@ class Process(MethodView):
             client,
             current_flow_payload['currentFlowId'],
             force_stickiness=flow_stickiness_not_expired,
+            render_request={
+                'method': request.method,
+                'query_string': request.query_string,
+                'headers': request.headers.items(),
+                'body': request.get_data(),
+            },
         )
 
         if action_type == FlowActionType.redirect:
             response = redirect(subject)
         elif action_type == FlowActionType.render:
-            response = make_response(subject)
+            response = make_response(subject.content, subject.status_code)
+            for name, value in subject.headers.multi_items():
+                header_name = name.lower()
+                if header_name in HEADER_EXCLUSIONS:
+                    continue
+                if header_name == 'set-cookie':
+                    response.headers.add(name, value)
+                else:
+                    response.headers.set(name, value)
         else:
             track_click_service.track_discard(click_id, campaignId, client)
             return make_response('')
