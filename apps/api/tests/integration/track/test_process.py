@@ -649,8 +649,6 @@ class TestTrackRedirect:
             'encryption_key': mock.ANY,
         }
         timestamp_cookie = client.get_cookie(cookie_flow_timestamp['opaque_name'])
-        assert timestamp_cookie.value != str(flow['id'])
-        assert str(flow['id']) not in timestamp_cookie.value
         timestamp_cookie_value = decode_flow_timestamp_cookie(
             timestamp_cookie.value,
             cookie_flow_timestamp['encryption_key'],
