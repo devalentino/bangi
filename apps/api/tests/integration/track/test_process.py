@@ -940,7 +940,11 @@ class TestTrackLanding:
     def landing_render_mock(self, flow, environment, landing_page_content, respx_mock):
         assert environment["LANDING_PAGE_RENDERER_BASE_URL"] is not None, 'LANDING_PAGE_RENDERER_BASE_URL is not set'
         return respx_mock.get(f'{environment["LANDING_PAGE_RENDERER_BASE_URL"]}/{flow["id"]}/').mock(
-            httpx.Response(status_code=200, text=landing_page_content)
+            httpx.Response(
+                status_code=200,
+                text=landing_page_content,
+                headers={'Content-Type': 'text/html; charset=utf-8'},
+            )
         )
 
     def test_track_landing(self, client, campaign, domain, flow, read_from_db, ip2location_mock, landing_render_mock):
