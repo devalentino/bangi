@@ -14,6 +14,14 @@ class DomainCertificateDoesNotExistError(DoesNotExistError):
     message = 'Domain certificate does not exist'
 
 
+class EncryptionKeyDoesNotExistError(DoesNotExistError):
+    message = 'Encryption key does not exist'
+
+
+class DomainCookieDecodeError(ApplicationError):
+    message = 'Domain cookie decode failed'
+
+
 class CampaignAlreadyBoundError(ApplicationError):
     http_status_code = 400
     message = 'Campaign is already attached to a domain'

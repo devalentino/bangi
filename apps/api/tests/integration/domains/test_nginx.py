@@ -442,6 +442,7 @@ class TestDomainNginxConfigurations:
             'domain_id': domain['id'],
             'name': 'flow_id',
             'opaque_name': mock.ANY,
+            'encryption_key': None,
         }
 
         assert len(versioned_configs) == 1
@@ -600,6 +601,7 @@ class TestDomainNginxConfigurations:
             'domain_id': domain['id'],
             'name': 'flow_id',
             'opaque_name': mock.ANY,
+            'encryption_key': None,
         }
 
         assert len(versioned_configs) == 1
