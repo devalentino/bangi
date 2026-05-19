@@ -1,4 +1,6 @@
 import base64
+import functools
+import gc
 import os
 import pathlib
 from unittest import mock
@@ -71,6 +73,21 @@ def ip2location_unavailable():
 @pytest.fixture(autouse=True)
 def assert_all_external_http_calls_are_mocked(respx_mock):
     yield
+
+
+@pytest.fixture(autouse=True)
+def clear_lru_caches():
+    gc.collect()
+    for cached_object in gc.get_objects():
+        if isinstance(cached_object, functools._lru_cache_wrapper):
+            cached_object.cache_clear()
+
+    yield
+
+    gc.collect()
+    for cached_object in gc.get_objects():
+        if isinstance(cached_object, functools._lru_cache_wrapper):
+            cached_object.cache_clear()
 
 
 @pytest.fixture(autouse=True)

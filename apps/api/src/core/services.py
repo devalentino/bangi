@@ -26,6 +26,17 @@ from src.core.repositories import CampaignRepository
 from src.core.utils import log_execution_time
 
 logger = logging.getLogger(__name__)
+HEADER_EXCLUSIONS = {
+    'connection',
+    'content-length',
+    'keep-alive',
+    'proxy-authenticate',
+    'proxy-authorization',
+    'te',
+    'trailer',
+    'transfer-encoding',
+    'upgrade',
+}
 
 
 @injectable
@@ -252,9 +263,18 @@ class FlowService:
         return landing_dir
 
     @log_execution_time
-    def _render_landing_page(self, flow_id):
-        response = httpx.get(f'{self.landing_renderer_base_url}/{flow_id}/')
-        return response.text
+    def _render_landing_page(self, flow_id, method, query_string, headers, body):
+        url = f'{self.landing_renderer_base_url}/{flow_id}/'
+        if query_string:
+            url = f'{url}?{query_string.decode("ascii")}'
+
+        return httpx.request(
+            method,
+            url,
+            headers=[(name, value) for name, value in headers if name.lower() not in HEADER_EXCLUSIONS],
+            content=body,
+            follow_redirects=False,
+        )
 
     def get(self, id, campaign_id):
         try:
@@ -372,7 +392,14 @@ class FlowService:
             logger.warning('Skipping non-runnable flow', exc_info=True, extra={'flow_id': flow.id})
             return False
 
-    def process_flows(self, campaign_id: int, client: Client, current_flow_id=None):
+    def process_flows(
+        self,
+        campaign_id: int,
+        client: Client,
+        current_flow_id=None,
+        force_stickiness=False,
+        render_request=None,
+    ):
         flows = list(
             Flow.select(Flow, Campaign)
             .join(Campaign)
@@ -395,7 +422,7 @@ class FlowService:
         matched_flow = None
         if current_index is not None:
             current_flow = flows[current_index]
-            if not current_flow.show_once_per_visitor:
+            if not current_flow.show_once_per_visitor or force_stickiness:
                 if current_flow.rule is None:
                     matched_flow = current_flow
                 elif self._matches_rule(current_flow, client):
@@ -423,6 +450,10 @@ class FlowService:
         if matched_flow.action_type == FlowActionType.redirect:
             return matched_flow.action_type, matched_flow.redirect_url, matched_flow.id
         elif matched_flow.action_type == FlowActionType.render:
-            return matched_flow.action_type, self._render_landing_page(matched_flow.id), matched_flow.id
+            return (
+                matched_flow.action_type,
+                self._render_landing_page(matched_flow.id, **render_request),
+                matched_flow.id,
+            )
 
         return None, None, matched_flow.id

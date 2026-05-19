@@ -8,6 +8,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Protocol
 from uuid import uuid4
@@ -20,6 +21,7 @@ from wireup import Inject, injectable
 from src.core.entities import Campaign
 from src.core.enums import SortOrder
 from src.core.exceptions import CampaignDoesNotExistError
+from src.core.utils import base62_decode, base62_encode, decrypt_bytes, encrypt_bytes
 from src.domains.entities import Domain, DomainCertificate, DomainCookie
 from src.domains.enums import (
     DomainCertificateCa,
@@ -33,7 +35,9 @@ from src.domains.exceptions import (
     DashboardDomainCannotAttachCampaignError,
     DomainAlreadyExistsError,
     DomainCertificateDoesNotExistError,
+    DomainCookieDecodeError,
     DomainDoesNotExistError,
+    EncryptionKeyDoesNotExistError,
 )
 from src.health.services import HealthService
 
@@ -62,27 +66,71 @@ class AcmeExecutionSnapshot:
 
 @injectable
 class DomainCookieService:
-    def get_or_create_opaque_name(self, domain_id: int, name: DomainCookieName) -> str:
-        cookie_name = name.value
-        cookie = DomainCookie.get_or_none((DomainCookie.domain == domain_id) & (DomainCookie.name == cookie_name))
-        if cookie is not None:
-            return cookie.opaque_name
+    _ENCRYPTED_COOKIE_NAMES = frozenset({DomainCookieName.flow_timestamp})
 
+    def get_or_create_opaque_name(self, domain_id: int, name: DomainCookieName) -> str:
+        return self._get_or_create_cookie(domain_id, name).opaque_name
+
+    def seal_cookie_value(self, domain_id: int, name: DomainCookieName, value: bytes) -> str:
+        cookie = self._get_cookie(domain_id, name)
+        if cookie is None or not cookie.encryption_key:
+            raise EncryptionKeyDoesNotExistError()
+
+        encrypted_value = encrypt_bytes(value, bytes.fromhex(cookie.encryption_key))
+        return base62_encode(encrypted_value)
+
+    def open_cookie_value(
+        self,
+        domain_id: int,
+        name: DomainCookieName,
+        encoded_value: str,
+    ) -> bytes | None:
+        cookie = self._get_cookie(domain_id, name)
+        if cookie is None or not cookie.encryption_key:
+            raise EncryptionKeyDoesNotExistError()
+
+        try:
+            encrypted_value = base62_decode(encoded_value)
+        except ValueError:
+            raise DomainCookieDecodeError()
+
+        decrypted_value = decrypt_bytes(encrypted_value, bytes.fromhex(cookie.encryption_key))
+        if decrypted_value is None:
+            raise DomainCookieDecodeError()
+
+        return decrypted_value
+
+    @lru_cache
+    def _get_cookie(self, domain_id: int, name: DomainCookieName) -> DomainCookie | None:
+        return DomainCookie.get_or_none((DomainCookie.domain == domain_id) & (DomainCookie.name == name.value))
+
+    def _get_or_create_cookie(self, domain_id: int, name: DomainCookieName) -> DomainCookie:
+        cookie = self._get_cookie(domain_id, name)
+        if cookie is not None:
+            return cookie
+
+        cookie_name = name.value
         while True:
             opaque_name = self._generate_opaque_name()
+            encryption_key = secrets.token_hex(32) if name in self._ENCRYPTED_COOKIE_NAMES else None
             try:
-                cookie = DomainCookie.create(domain=domain_id, name=cookie_name, opaque_name=opaque_name)
-            except IntegrityError:
-                # Another request may have created the logical cookie row already.
-                # Re-read first; if it still does not exist, the random opaque name likely collided.
-                cookie = DomainCookie.get_or_none(
-                    (DomainCookie.domain == domain_id) & (DomainCookie.name == cookie_name)
+                cookie = DomainCookie.create(
+                    domain=domain_id,
+                    name=cookie_name,
+                    opaque_name=opaque_name,
+                    encryption_key=encryption_key,
                 )
+                self._get_cookie.cache_clear()
+                self._get_cookie(domain_id, name)
+            except IntegrityError:
+                self._get_cookie.cache_clear()
+                # A concurrent create may have inserted this logical cookie; otherwise the opaque name collided.
+                cookie = self._get_cookie(domain_id, name)
                 if cookie is not None:
-                    return cookie.opaque_name
+                    return cookie
                 continue
 
-            return cookie.opaque_name
+            return cookie
 
     @staticmethod
     def _generate_opaque_name() -> str:

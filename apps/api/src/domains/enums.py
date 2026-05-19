@@ -8,6 +8,7 @@ class DomainPurpose(str, Enum):
 
 class DomainCookieName(str, Enum):
     flow_id = 'flow_id'
+    flow_timestamp = 'flow_timestamp'
 
 
 class DomainSortBy(str, Enum):

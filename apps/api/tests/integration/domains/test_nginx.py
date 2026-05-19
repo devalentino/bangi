@@ -45,6 +45,7 @@ def expected_dashboard_http_config(hostname):
         f'{expected_acme_location()}'
         '\n'
         '    location /api/ {\n'
+        '        client_max_body_size 10m;\n'
         '        proxy_pass http://127.0.0.1:8000;\n'
         '    }\n'
         '\n'
@@ -83,6 +84,7 @@ def expected_dashboard_https_config(hostname, certificate_path, private_key_path
         f'    ssl_certificate_key {private_key_path};\n'
         '\n'
         '    location /api/ {\n'
+        '        client_max_body_size 10m;\n'
         '        proxy_pass http://127.0.0.1:8000;\n'
         '    }\n'
         '\n'
@@ -97,6 +99,18 @@ def expected_dashboard_https_config(hostname, certificate_path, private_key_path
     )
 
 
+def expected_campaign_proxy_headers():
+    return (
+        '        proxy_pass_request_headers on;\n'
+        '        proxy_pass_request_body on;\n'
+        '        proxy_set_header Host $host;\n'
+        '        proxy_set_header X-Real-IP $remote_addr;\n'
+        '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n'
+        '        proxy_set_header X-Forwarded-Host $host;\n'
+        '        proxy_set_header X-Forwarded-Proto $scheme;\n'
+    )
+
+
 def expected_campaign_http_config(hostname, campaign_id, flow_id_cookie_name):
     return (
         '# Managed by Bangi. Campaign domain.\n'
@@ -107,21 +121,31 @@ def expected_campaign_http_config(hostname, campaign_id, flow_id_cookie_name):
         '\n'
         f'{expected_acme_location()}'
         '\n'
-        f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}";\n'
+        f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}$is_args$args";\n'
         f'    if ($cookie_{flow_id_cookie_name} != "") {{\n'
-        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/";\n'
+        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/$is_args$args";\n'
         '    }\n'
         '\n'
         '    location = / {\n'
+        '        if ($request_method != GET) {\n'
+        '            return 405;\n'
+        '        }\n'
+        '\n'
+        f'{expected_campaign_proxy_headers()}'
         '        proxy_pass $bangi_campaign_upstream;\n'
         '    }\n'
         '\n'
         '    location / {\n'
+        '        if ($request_method != GET) {\n'
+        '            return 405;\n'
+        '        }\n'
+        '\n'
         f'        if ($cookie_{flow_id_cookie_name} = "") {{\n'
         '            return 404;\n'
         '        }\n'
         '\n'
-        f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/;\n'
+        f'{expected_campaign_proxy_headers()}'
+        f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}$request_uri;\n'
         '    }\n'
         '}\n'
     )
@@ -150,21 +174,31 @@ def expected_campaign_https_config(hostname, campaign_id, flow_id_cookie_name, c
         f'    ssl_certificate {certificate_path};\n'
         f'    ssl_certificate_key {private_key_path};\n'
         '\n'
-        f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}";\n'
+        f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}$is_args$args";\n'
         f'    if ($cookie_{flow_id_cookie_name} != "") {{\n'
-        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/";\n'
+        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/$is_args$args";\n'
         '    }\n'
         '\n'
         '    location = / {\n'
+        '        if ($request_method != GET) {\n'
+        '            return 405;\n'
+        '        }\n'
+        '\n'
+        f'{expected_campaign_proxy_headers()}'
         '        proxy_pass $bangi_campaign_upstream;\n'
         '    }\n'
         '\n'
         '    location / {\n'
+        '        if ($request_method != GET) {\n'
+        '            return 405;\n'
+        '        }\n'
+        '\n'
         f'        if ($cookie_{flow_id_cookie_name} = "") {{\n'
         '            return 404;\n'
         '        }\n'
         '\n'
-        f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/;\n'
+        f'{expected_campaign_proxy_headers()}'
+        f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}$request_uri;\n'
         '    }\n'
         '}\n'
     )
@@ -442,6 +476,7 @@ class TestDomainNginxConfigurations:
             'domain_id': domain['id'],
             'name': 'flow_id',
             'opaque_name': mock.ANY,
+            'encryption_key': None,
         }
 
         assert len(versioned_configs) == 1
@@ -600,6 +635,7 @@ class TestDomainNginxConfigurations:
             'domain_id': domain['id'],
             'name': 'flow_id',
             'opaque_name': mock.ANY,
+            'encryption_key': None,
         }
 
         assert len(versioned_configs) == 1
