@@ -372,7 +372,7 @@ class FlowService:
             logger.warning('Skipping non-runnable flow', exc_info=True, extra={'flow_id': flow.id})
             return False
 
-    def process_flows(self, campaign_id: int, client: Client, current_flow_id=None):
+    def process_flows(self, campaign_id: int, client: Client, current_flow_id=None, force_stickiness=False):
         flows = list(
             Flow.select(Flow, Campaign)
             .join(Campaign)
@@ -395,7 +395,7 @@ class FlowService:
         matched_flow = None
         if current_index is not None:
             current_flow = flows[current_index]
-            if not current_flow.show_once_per_visitor:
+            if not current_flow.show_once_per_visitor or force_stickiness:
                 if current_flow.rule is None:
                     matched_flow = current_flow
                 elif self._matches_rule(current_flow, client):

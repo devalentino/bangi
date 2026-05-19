@@ -19,6 +19,7 @@ class DomainCookie(Entity):
     domain = ForeignKeyField(Domain, on_delete='CASCADE')
     name = CharField(max_length=64)
     opaque_name = CharField(max_length=64)
+    encryption_key = CharField(max_length=64, null=True)
 
     class Meta:
         table_name = 'domain_cookie'
