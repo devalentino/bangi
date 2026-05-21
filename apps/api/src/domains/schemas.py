@@ -50,6 +50,7 @@ class DomainUpsertRequestSchema(Schema):
 
 class DomainCreateRequestSchema(DomainUpsertRequestSchema):
     purpose = fields.Enum(DomainPurpose, by_value=True, required=True)
+    campaignId = fields.Integer(allow_none=True, load_default=None)
     isDisabled = fields.Boolean(load_default=False)
 
 
