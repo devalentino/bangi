@@ -263,7 +263,7 @@ class FlowService:
         return landing_dir
 
     @log_execution_time
-    def _render_landing_page(self, flow_id, method, query_string, headers, body):
+    def render_landing_page(self, flow_id, method, query_string, headers, body):
         url = f'{self.landing_renderer_base_url}/{flow_id}/'
         if query_string:
             url = f'{url}?{query_string.decode("ascii")}'

@@ -153,7 +153,7 @@ class Process(MethodView):
         if flow is not None and flow.action_type == FlowActionType.redirect:
             response = redirect(flow.redirect_url)
         elif flow is not None and flow.action_type == FlowActionType.render:
-            subject = flow_service._render_landing_page(
+            subject = flow_service.render_landing_page(
                 flow.id,
                 method=request.method,
                 query_string=request.query_string,
