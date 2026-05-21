@@ -69,9 +69,23 @@ Allowed commands:
 
 Unsupported commands return `Unsupported Bangi ops command`.
 
+## Landing Renderer Path
+
+The production stack mounts landing assets into the renderer at `/var/www/html/landings`, and new installs set `LANDING_PAGE_RENDERER_BASE_URL=http://landing-renderer/landings` in `/opt/bangi/shared/env/.env`.
+
+For existing installs created with `LANDING_PAGE_RENDERER_BASE_URL=http://landing-renderer`, update `/opt/bangi/shared/env/.env` to:
+
+```bash
+LANDING_PAGE_RENDERER_BASE_URL=http://landing-renderer/landings
+```
+
+Then restart the API or stack so API renderer requests use `/landings/{flow_id}/`.
+
+Campaign domain Nginx configs also proxy sticky-flow renderer requests through `/landings/{flow_id}`. Existing campaign configs generated before this fix must be republished or regenerated and reloaded after deploying the updated templates.
+
 ## Manual Verification
 
-Installer behavior is verified manually on host environments for the MVP. Automated installer test coverage is out of scope.
+Host-level installer behavior is verified manually on host environments for the MVP.
 
 For the installer skeleton, verify:
 
