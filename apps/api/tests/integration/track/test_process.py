@@ -450,6 +450,17 @@ class TestTrackRedirect:
         # rules had not been evaluated for default flow, redirected despite MD IP address
         assert response.headers['Location'] == default_flow['redirect_url']
         assert read_from_db('track_discard') is None
+        click = read_from_db('track_click')
+        assert json.loads(click['parameters']) == {
+            'tracker_browser_family': 'Other',
+            'tracker_country': 'MD',
+            'tracker_device_family': 'Other',
+            'tracker_flow_name': default_flow['name'],
+            'tracker_is_bot': False,
+            'tracker_is_default_flow': True,
+            'tracker_is_mobile': False,
+            'tracker_os_family': 'Other',
+        }
 
     def test_track_redirect__normal_match_takes_precedence_over_default_flow(
         self, client, authorization, campaign, domain, write_to_db, set_default_flow_id, ip2location_mock
@@ -586,8 +597,16 @@ class TestTrackRedirect:
             'id': mock.ANY,
             'click_id': click_id,
             'campaign_id': campaign['id'],
-            'parameters': '{}',
+            'parameters': mock.ANY,
             'created_at': mock.ANY,
+        }
+        assert json.loads(click['parameters']) == {
+            'tracker_browser_family': 'Mobile Safari',
+            'tracker_country': 'MD',
+            'tracker_device_family': 'iPhone',
+            'tracker_is_bot': False,
+            'tracker_is_mobile': True,
+            'tracker_os_family': 'iOS',
         }
 
         discard = read_from_db('track_discard')
@@ -617,6 +636,7 @@ class TestTrackRedirect:
             'rejected_status': 'reject,fail,trash,error',
             'return': 'OK',
             'from': 'terraleads.com',
+            'country': 'incoming',
         }
 
         started_at = int(time.time())
@@ -667,6 +687,7 @@ class TestTrackRedirect:
         }
 
         assert json.loads(click['parameters']) == {
+            'country': request_payload['country'],
             'from': request_payload['from'],
             'lead_status': request_payload['lead_status'],
             'offer_id': request_payload['offer_id'],
@@ -676,6 +697,61 @@ class TestTrackRedirect:
             'sale_status': request_payload['sale_status'],
             'status': request_payload['status'],
             'tid': request_payload['tid'],
+            'tracker_browser_family': 'Other',
+            'tracker_country': 'MD',
+            'tracker_device_family': 'Other',
+            'tracker_flow_name': flow['name'],
+            'tracker_is_bot': False,
+            'tracker_is_default_flow': False,
+            'tracker_is_mobile': False,
+            'tracker_os_family': 'Other',
+        }
+
+    def test_track_redirect__persists_matched_flow_and_client_context(
+        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
+    ):
+        ip2location_mock.get_country_short.return_value = 'FR'
+        france_flow = write_to_db(
+            'flow',
+            {
+                'name': 'France flow',
+                'campaign_id': campaign['id'],
+                'rule': 'country == "FR"',
+                'order_value': 10,
+                'action_type': 'redirect',
+                'redirect_url': 'https://example.com/fr',
+                'is_enabled': True,
+                'is_deleted': False,
+            },
+        )
+        click_id = uuid4()
+
+        response = client.get(
+            f'/process/{campaign["id"]}',
+            query_string={'clickId': str(click_id), 'country': 'incoming'},
+            headers={'User-Agent': MOBILE_SAFARI_USER_AGENT},
+        )
+
+        assert response.status_code == 302, response.text
+        assert response.headers['Location'] == france_flow['redirect_url']
+        click = read_from_db('track_click')
+        assert click == {
+            'id': mock.ANY,
+            'click_id': click_id,
+            'campaign_id': campaign['id'],
+            'parameters': mock.ANY,
+            'created_at': mock.ANY,
+        }
+        assert json.loads(click['parameters']) == {
+            'country': 'incoming',
+            'tracker_browser_family': 'Mobile Safari',
+            'tracker_country': 'FR',
+            'tracker_device_family': 'iPhone',
+            'tracker_flow_name': france_flow['name'],
+            'tracker_is_bot': False,
+            'tracker_is_default_flow': False,
+            'tracker_is_mobile': True,
+            'tracker_os_family': 'iOS',
         }
 
     def test_track_redirect__matches_flow_without_rule(self, client, campaign, domain, write_to_db, ip2location_mock):
@@ -876,10 +952,18 @@ class TestTrackRedirect:
             'id': mock.ANY,
             'click_id': mock.ANY,
             'campaign_id': campaign['id'],
-            'parameters': '{}',
+            'parameters': mock.ANY,
             'created_at': mock.ANY,
         }
         assert isinstance(click['click_id'], UUID)
+        assert json.loads(click['parameters']) == {
+            'tracker_browser_family': 'Mobile Safari',
+            'tracker_country': 'MD',
+            'tracker_device_family': 'iPhone',
+            'tracker_is_bot': False,
+            'tracker_is_mobile': True,
+            'tracker_os_family': 'iOS',
+        }
 
         discard = read_from_db('track_discard')
         assert discard['click_id'] == click['click_id']
@@ -988,6 +1072,14 @@ class TestTrackLanding:
             'sale_status': request_payload['sale_status'],
             'status': request_payload['status'],
             'tid': request_payload['tid'],
+            'tracker_browser_family': 'Other',
+            'tracker_country': 'MD',
+            'tracker_device_family': 'Other',
+            'tracker_flow_name': flow['name'],
+            'tracker_is_bot': False,
+            'tracker_is_default_flow': False,
+            'tracker_is_mobile': False,
+            'tracker_os_family': 'Other',
         }
 
     def test_track_landing__proxies_request_and_response_exchange(
