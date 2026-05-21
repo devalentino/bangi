@@ -398,7 +398,6 @@ class FlowService:
         client: Client,
         current_flow_id=None,
         force_stickiness=False,
-        render_request=None,
     ):
         flows = list(
             Flow.select(Flow, Campaign)
@@ -445,15 +444,6 @@ class FlowService:
                 logger.warning(
                     'Failed to process flows', extra={'campaign_id': campaign_id, 'flows': [f.to_dict() for f in flows]}
                 )
-                return None, None, None
+                return None
 
-        if matched_flow.action_type == FlowActionType.redirect:
-            return matched_flow.action_type, matched_flow.redirect_url, matched_flow.id
-        elif matched_flow.action_type == FlowActionType.render:
-            return (
-                matched_flow.action_type,
-                self._render_landing_page(matched_flow.id, **render_request),
-                matched_flow.id,
-            )
-
-        return None, None, matched_flow.id
+        return matched_flow

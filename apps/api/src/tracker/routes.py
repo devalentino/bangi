@@ -91,8 +91,6 @@ class Process(MethodView):
         if click_id is None:
             click_id = uuid4()
 
-        track_click_service.track_click(click_id, campaign_id=campaignId, parameters=process_payload)
-
         client = client_service.client_info(
             request.user_agent.string, request.environ.get('HTTP_X_REAL_IP', request.remote_addr)
         )
@@ -130,22 +128,38 @@ class Process(MethodView):
             and sticky_started_at <= now
             and now - sticky_started_at < FLOW_STICKY_TTL_SECONDS
         )
-        action_type, subject, flow_id = flow_service.process_flows(
+        flow = flow_service.process_flows(
             campaignId,
             client,
             current_flow_payload['currentFlowId'],
             force_stickiness=flow_stickiness_not_expired,
-            render_request={
-                'method': request.method,
-                'query_string': request.query_string,
-                'headers': request.headers.items(),
-                'body': request.get_data(),
-            },
         )
+        process_payload |= {
+            'tracker_country': client.country,
+            'tracker_browser_family': client.browser_family,
+            'tracker_device_family': client.device_family,
+            'tracker_os_family': client.os_family,
+            'tracker_is_mobile': client.is_mobile,
+            'tracker_is_bot': client.is_bot,
+        }
+        if flow is not None:
+            process_payload |= {
+                'tracker_flow_name': flow.name,
+                'tracker_is_default_flow': flow.id == flow.campaign.default_flow_id,
+            }
 
-        if action_type == FlowActionType.redirect:
-            response = redirect(subject)
-        elif action_type == FlowActionType.render:
+        track_click_service.track_click(click_id, campaign_id=campaignId, parameters=process_payload)
+
+        if flow is not None and flow.action_type == FlowActionType.redirect:
+            response = redirect(flow.redirect_url)
+        elif flow is not None and flow.action_type == FlowActionType.render:
+            subject = flow_service._render_landing_page(
+                flow.id,
+                method=request.method,
+                query_string=request.query_string,
+                headers=request.headers.items(),
+                body=request.get_data(),
+            )
             response = make_response(subject.content, subject.status_code)
             for name, value in subject.headers.multi_items():
                 header_name = name.lower()
@@ -159,24 +173,23 @@ class Process(MethodView):
             track_click_service.track_discard(click_id, campaignId, client)
             return make_response('')
 
-        if flow_id is not None:
-            response.set_cookie(
-                flow_id_cookie_name,
-                str(flow_id),
-                httponly=True,
-                path='/',
-                max_age=COOKIE_MAX_AGE_SECONDS,
-            )
-            response.set_cookie(
-                flow_timestamp_cookie_name,
-                cookie_service.seal_cookie_value(
-                    domain.id,
-                    DomainCookieName.flow_timestamp,
-                    now.to_bytes(8, byteorder='big', signed=False),
-                ),
-                httponly=True,
-                path='/',
-                max_age=COOKIE_MAX_AGE_SECONDS,
-            )
+        response.set_cookie(
+            flow_id_cookie_name,
+            str(flow.id),
+            httponly=True,
+            path='/',
+            max_age=COOKIE_MAX_AGE_SECONDS,
+        )
+        response.set_cookie(
+            flow_timestamp_cookie_name,
+            cookie_service.seal_cookie_value(
+                domain.id,
+                DomainCookieName.flow_timestamp,
+                now.to_bytes(8, byteorder='big', signed=False),
+            ),
+            httponly=True,
+            path='/',
+            max_age=COOKIE_MAX_AGE_SECONDS,
+        )
 
         return response
