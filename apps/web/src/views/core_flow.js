@@ -135,11 +135,6 @@ class CoreFlowView {
                                       event.target.files[0] || null;
                                   }.bind(this),
                                 }),
-                                m("label.form-label mt-3", "Landing path"),
-                                m(
-                                  "div.form-control-plaintext",
-                                  this.model.form.landingPath || "-",
-                                ),
                               ],
                         ]),
                       ]),

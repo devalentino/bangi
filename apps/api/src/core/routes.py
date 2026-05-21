@@ -7,7 +7,6 @@ from marshmallow import ValidationError
 from src.auth import auth
 from src.container import container
 from src.core.blueprint import Blueprint
-from src.core.enums import FlowActionType
 from src.core.exceptions import InvalidCampaignDefaultFlowError
 from src.core.models import Client
 from src.core.schemas import (
@@ -175,11 +174,6 @@ class CampaignFlows(MethodView):
                     | {
                         'campaign_id': f.campaign.id,
                         'campaign_name': f.campaign.name,
-                        'landing_path': (
-                            f'{container.config.get("LANDING_PAGES_BASE_PATH")}/{f.id}'
-                            if f.action_type == FlowActionType.render
-                            else None
-                        ),
                     }
                 )
                 for f in flows
@@ -232,11 +226,6 @@ class Flow(MethodView):
             | {
                 'campaign_id': flow.campaign.id,
                 'campaign_name': flow.campaign.name,
-                'landing_path': (
-                    f'{container.config.get("LANDING_PAGES_BASE_PATH")}/{flow.id}'
-                    if flow.action_type == FlowActionType.render
-                    else None
-                ),
             }
         )
 
