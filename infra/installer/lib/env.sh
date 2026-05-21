@@ -202,7 +202,7 @@ bangi_write_runtime_environment() {
     bangi_env_set_if_missing BANGI_ENV_VALUES BASIC_AUTHENTICATION_PASSWORD "$(bangi_env_secret)"
     bangi_env_set_if_missing BANGI_ENV_VALUES LANDING_PAGES_BASE_PATH "${BANGI_SHARED_LANDINGS_DIR}"
     bangi_env_set_if_missing BANGI_ENV_VALUES IP2LOCATION_DB_PATH "${BANGI_SHARED_IP2LOCATION_DIR}/IP2LOCATION-LITE-DB1.IPV6.BIN"
-    bangi_env_set_if_missing BANGI_ENV_VALUES LANDING_PAGE_RENDERER_BASE_URL "http://landing-renderer"
+    bangi_env_set_if_missing BANGI_ENV_VALUES LANDING_PAGE_RENDERER_BASE_URL "http://landing-renderer/landings"
     bangi_env_set_if_missing BANGI_ENV_VALUES BANGI_PUBLIC_HOST_IP "$(bangi_detect_public_host)"
     bangi_env_set_if_missing BANGI_ENV_VALUES BANGI_ACME_ENABLED "true"
     bangi_env_set_if_missing BANGI_ENV_VALUES BANGI_ACME_CA "letsencrypt"
