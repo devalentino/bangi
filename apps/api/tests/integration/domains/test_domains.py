@@ -38,6 +38,96 @@ class TestDomains:
         }
         assert read_from_db('domain_certificate') is None
 
+    def test_create_campaign_domain_persists_campaign_binding(self, client, authorization, campaign, read_from_db):
+        response = client.post(
+            '/api/v2/domains',
+            headers={'Authorization': authorization},
+            json={
+                'hostname': 'campaign.example.com',
+                'purpose': 'campaign',
+                'campaignId': campaign['id'],
+                'isDisabled': False,
+            },
+        )
+
+        assert response.status_code == 201, response.text
+        assert response.json == {
+            'id': mock.ANY,
+            'hostname': 'campaign.example.com',
+            'purpose': 'campaign',
+            'campaignId': campaign['id'],
+            'campaignName': campaign['name'],
+            'isARecordSet': None,
+            'isDisabled': False,
+            'certificateStatus': None,
+        }
+
+        domain = read_from_db('domain')
+        assert domain == {
+            'id': mock.ANY,
+            'created_at': mock.ANY,
+            'hostname': 'campaign.example.com',
+            'purpose': 'campaign',
+            'campaign_id': campaign['id'],
+            'is_a_record_set': None,
+            'is_disabled': False,
+        }
+
+    def test_create_dashboard_domain_rejects_campaign_binding(self, client, authorization, campaign):
+        response = client.post(
+            '/api/v2/domains',
+            headers={'Authorization': authorization},
+            json={
+                'hostname': 'dashboard.example.com',
+                'purpose': 'dashboard',
+                'campaignId': campaign['id'],
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert response.json == {'message': 'Dashboard domains cannot be attached to campaigns'}
+
+    def test_create_campaign_domain_rejects_invalid_campaign(self, client, authorization):
+        response = client.post(
+            '/api/v2/domains',
+            headers={'Authorization': authorization},
+            json={
+                'hostname': 'campaign.example.com',
+                'purpose': 'campaign',
+                'campaignId': 100500,
+            },
+        )
+
+        assert response.status_code == 404, response.text
+        assert response.json == {'message': 'Campaign does not exist'}
+
+    def test_create_campaign_domain_rejects_duplicate_campaign_binding(
+        self, client, authorization, campaign, write_to_db
+    ):
+        write_to_db(
+            'domain',
+            {
+                'hostname': 'existing.example.com',
+                'purpose': 'campaign',
+                'campaign_id': campaign['id'],
+                'is_a_record_set': True,
+                'is_disabled': False,
+            },
+        )
+
+        response = client.post(
+            '/api/v2/domains',
+            headers={'Authorization': authorization},
+            json={
+                'hostname': 'campaign.example.com',
+                'purpose': 'campaign',
+                'campaignId': campaign['id'],
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert response.json == {'message': 'Campaign is already attached to a domain'}
+
     def test_list_domains_returns_campaign_and_dashboard_domains(self, client, authorization, campaign, write_to_db):
         for index in range(19):
             write_to_db(
