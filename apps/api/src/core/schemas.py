@@ -187,7 +187,6 @@ class FlowResponseSchema(Schema):
     orderValue = fields.Integer(required=True)
     actionType = fields.String(required=True)
     redirectUrl = fields.String(allow_none=True)
-    landingPath = fields.String(allow_none=True)
     isEnabled = fields.Boolean(required=True)
     showOncePerVisitor = fields.Boolean(required=True)
     rule = fields.String(required=True, allow_none=True)

@@ -83,7 +83,6 @@ def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
                 'orderValue': index + 1,
                 'actionType': 'redirect',
                 'redirectUrl': f'https://example.com/{index}',
-                'landingPath': None,
                 'isEnabled': True,
                 'showOncePerVisitor': False,
             }
@@ -144,7 +143,6 @@ def test_flows_list__filters_by_campaign(client, authorization, campaign, campai
                 'orderValue': index + 1,
                 'actionType': 'redirect',
                 'redirectUrl': f'https://example.com/{index}',
-                'landingPath': None,
                 'isEnabled': True,
                 'showOncePerVisitor': False,
             }
@@ -215,7 +213,6 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
                 'orderValue': third['order_value'],
                 'actionType': third['action_type'],
                 'redirectUrl': third['redirect_url'],
-                'landingPath': mock.ANY,
                 'isEnabled': third['is_enabled'],
                 'showOncePerVisitor': False,
             },
@@ -228,7 +225,6 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
                 'orderValue': first['order_value'],
                 'actionType': first['action_type'],
                 'redirectUrl': first['redirect_url'],
-                'landingPath': mock.ANY,
                 'isEnabled': first['is_enabled'],
                 'showOncePerVisitor': False,
             },
@@ -241,7 +237,6 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
                 'orderValue': second['order_value'],
                 'actionType': second['action_type'],
                 'redirectUrl': second['redirect_url'],
-                'landingPath': mock.ANY,
                 'isEnabled': second['is_enabled'],
                 'showOncePerVisitor': False,
             },
@@ -279,6 +274,47 @@ def test_flows_list__filter_out_deleted(client, authorization, campaign, flow_ru
     }
 
 
+def test_flows_list__render_action_response_format(client, authorization, campaign, flow_rule, write_to_db):
+    flow = write_to_db(
+        'flow',
+        {
+            'name': 'Render Flow',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 1,
+            'action_type': 'render',
+            'redirect_url': None,
+            'is_enabled': True,
+            'is_deleted': False,
+            'show_once_per_visitor': False,
+        },
+    )
+
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [
+            {
+                'id': flow['id'],
+                'name': flow['name'],
+                'campaignId': flow['campaign_id'],
+                'campaignName': campaign['name'],
+                'rule': flow_rule,
+                'orderValue': flow['order_value'],
+                'actionType': flow['action_type'],
+                'redirectUrl': None,
+                'isEnabled': True,
+                'showOncePerVisitor': False,
+            }
+        ],
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
+    }
+
+
 def test_get_flow(client, authorization, campaign, flow):
     response = client.get(
         f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
@@ -295,8 +331,43 @@ def test_get_flow(client, authorization, campaign, flow):
         'orderValue': flow['order_value'],
         'actionType': flow['action_type'],
         'redirectUrl': flow['redirect_url'],
-        'landingPath': None,
         'isEnabled': bool(flow['is_enabled']),
+        'showOncePerVisitor': False,
+    }
+
+
+def test_get_flow__render_action_response_format(client, authorization, campaign, flow_rule, write_to_db):
+    flow = write_to_db(
+        'flow',
+        {
+            'name': 'Render Flow',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 1,
+            'action_type': 'render',
+            'redirect_url': None,
+            'is_enabled': True,
+            'is_deleted': False,
+            'show_once_per_visitor': False,
+        },
+    )
+
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'id': flow['id'],
+        'name': flow['name'],
+        'campaignId': flow['campaign_id'],
+        'campaignName': campaign['name'],
+        'rule': flow_rule,
+        'orderValue': flow['order_value'],
+        'actionType': flow['action_type'],
+        'redirectUrl': None,
+        'isEnabled': True,
         'showOncePerVisitor': False,
     }
 
@@ -766,7 +837,6 @@ def test_get_flow__without_rule(client, authorization, campaign, write_to_db):
         'orderValue': flow['order_value'],
         'actionType': flow['action_type'],
         'redirectUrl': flow['redirect_url'],
-        'landingPath': None,
         'isEnabled': bool(flow['is_enabled']),
         'showOncePerVisitor': False,
     }
@@ -803,7 +873,6 @@ def test_get_flow__returns_show_once_per_visitor(client, authorization, campaign
         'orderValue': flow['order_value'],
         'actionType': flow['action_type'],
         'redirectUrl': flow['redirect_url'],
-        'landingPath': None,
         'isEnabled': True,
         'showOncePerVisitor': True,
     }
