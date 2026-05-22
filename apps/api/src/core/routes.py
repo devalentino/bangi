@@ -174,6 +174,7 @@ class CampaignFlows(MethodView):
                     | {
                         'campaign_id': f.campaign.id,
                         'campaign_name': f.campaign.name,
+                        'has_landing_page': flow_service.has_landing_page(f.id),
                     }
                 )
                 for f in flows
@@ -226,6 +227,7 @@ class Flow(MethodView):
             | {
                 'campaign_id': flow.campaign.id,
                 'campaign_name': flow.campaign.name,
+                'has_landing_page': flow_service.has_landing_page(flow.id),
             }
         )
 
@@ -234,9 +236,15 @@ class Flow(MethodView):
     @auth.login_required
     def patch(self, flow_payload, campaignId, flowId):
         landing_archive = request.files.get('landingArchive')
+        flow_service = container.get(FlowService)
+        flow = flow_service.get(flowId, campaignId)
 
         try:
-            FlowUpdateRequestSchema.validate_render_action_type(flow_payload, landing_archive)
+            FlowUpdateRequestSchema.validate_render_action_type(
+                flow_payload,
+                landing_archive,
+                has_landing_page=flow_service.has_landing_page(flow.id),
+            )
         except ValidationError as e:
             return {
                 'code': 422,
@@ -249,7 +257,6 @@ class Flow(MethodView):
             if targeting_error is not None:
                 return targeting_error
 
-        flow_service = container.get(FlowService)
         flow_service.update(
             flowId,
             campaignId,

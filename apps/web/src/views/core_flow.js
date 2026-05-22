@@ -122,6 +122,18 @@ class CoreFlowView {
                                 }),
                               ]
                             : [
+                                this.model.form.hasLandingPage
+                                  ? m(".alert.alert-info.mb-3", [
+                                      m(
+                                        ".fw-semibold",
+                                        "Landing page already uploaded",
+                                      ),
+                                      m(
+                                        ".small.mt-1",
+                                        "Upload a new archive only if you want to replace it.",
+                                      ),
+                                    ])
+                                  : null,
                                 m(
                                   "label.form-label",
                                   { for: "renderFile" },

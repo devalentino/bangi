@@ -262,6 +262,13 @@ class FlowService:
 
         return landing_dir
 
+    def has_landing_page(self, flow_id):
+        if not self.landing_pages_base_path:
+            return False
+
+        landing_dir = os.path.join(self.landing_pages_base_path, str(flow_id))
+        return os.path.isdir(landing_dir) and self._has_index_file(landing_dir)
+
     @log_execution_time
     def render_landing_page(self, flow_id, method, query_string, headers, body):
         url = f'{self.landing_renderer_base_url}/{flow_id}/'
@@ -351,7 +358,7 @@ class FlowService:
             flow.action_type = action_type
             flow.redirect_url = redirect_url
 
-            if action_type == FlowActionType.render:
+            if action_type == FlowActionType.render and landing_archive is not None:
                 self._store_landing_archive(flow.id, landing_archive)
 
         if is_enabled is not None:

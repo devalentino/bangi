@@ -16,6 +16,7 @@ class CoreFlowModel {
       actionType: "redirect",
       redirectUrl: null,
       landingArchive: null,
+      hasLandingPage: false,
       orderValue: null,
       isEnabled: true,
       showOncePerVisitor: false,
@@ -28,6 +29,7 @@ class CoreFlowModel {
     this.form.actionType = payload.actionType || "redirect";
     this.form.redirectUrl = payload.redirectUrl || "";
     this.form.landingArchive = null;
+    this.form.hasLandingPage = payload.hasLandingPage || false;
     this.form.isEnabled = payload.isEnabled ?? true;
     this.form.showOncePerVisitor = payload.showOncePerVisitor || false;
   }
@@ -82,7 +84,11 @@ class CoreFlowModel {
       }
     }
 
-    if (this.form.actionType === "render" && !this.form.landingArchive) {
+    if (
+      this.form.actionType === "render" &&
+      !this.form.hasLandingPage &&
+      !this.form.landingArchive
+    ) {
       return "Landing archive is required.";
     }
 
