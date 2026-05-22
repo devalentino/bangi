@@ -3,6 +3,7 @@ import functools
 import gc
 import os
 import pathlib
+import shutil
 from unittest import mock
 
 import pytest
@@ -25,9 +26,13 @@ def public_ip():
     return '203.0.113.10'
 
 
-@pytest.fixture(autouse=True, scope='session')
+@pytest.fixture(autouse=True)
 def landing_pages_base_path(tmpdir_factory):
-    return str(tmpdir_factory.mktemp('landings'))
+    landing_pages_path = tmpdir_factory.mktemp('landings')
+
+    yield str(landing_pages_path)
+
+    shutil.rmtree(landing_pages_path, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True, scope='session')
