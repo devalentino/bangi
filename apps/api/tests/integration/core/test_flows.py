@@ -1,5 +1,6 @@
 import io
 import pathlib
+import shutil
 import zipfile
 from unittest import mock
 
@@ -47,6 +48,42 @@ def _zip_bytes_without_index():
         zip_file.writestr('archive/js/script.js', 'console.log("ok");')
     archive.seek(0)
     return archive
+
+
+@pytest.fixture
+def existing_landing_path(flow, landing_pages_base_path):
+    landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
+    landing_path.mkdir()
+    (landing_path / 'index.html').write_text('<html>existing</html>')
+
+    yield landing_path
+
+    shutil.rmtree(landing_path, ignore_errors=True)
+
+
+@pytest.fixture
+def render_flow_with_landing(campaign, flow_rule, landing_pages_base_path, write_to_db):
+    flow = write_to_db(
+        'flow',
+        {
+            'name': 'Render Flow',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 1,
+            'action_type': 'render',
+            'redirect_url': None,
+            'is_enabled': True,
+            'is_deleted': False,
+            'show_once_per_visitor': False,
+        },
+    )
+    landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
+    landing_path.mkdir()
+    (landing_path / 'index.html').write_text('<html></html>')
+
+    yield flow
+
+    shutil.rmtree(landing_path, ignore_errors=True)
 
 
 def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
@@ -343,27 +380,8 @@ def test_get_flow(client, authorization, campaign, flow):
     }
 
 
-def test_get_flow__render_action_response_format(
-    client, authorization, campaign, flow_rule, landing_pages_base_path, write_to_db
-):
-    flow = write_to_db(
-        'flow',
-        {
-            'name': 'Render Flow',
-            'campaign_id': campaign['id'],
-            'rule': flow_rule,
-            'order_value': 1,
-            'action_type': 'render',
-            'redirect_url': None,
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
-        },
-    )
-    landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
-    landing_path.mkdir()
-    (landing_path / 'index.html').write_text('<html></html>')
-
+def test_get_flow__render_action_response_format(client, authorization, campaign, render_flow_with_landing):
+    flow = render_flow_with_landing
     response = client.get(
         f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
         headers={'Authorization': authorization},
@@ -954,12 +972,8 @@ def test_update_flow__render_action_success(
 
 
 def test_update_flow__render_action_keeps_existing_landing_without_upload(
-    client, authorization, flow, read_from_db, flow_rule, landing_pages_base_path
+    client, authorization, flow, read_from_db, flow_rule, existing_landing_path
 ):
-    landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
-    landing_path.mkdir()
-    (landing_path / 'index.html').write_text('<html>existing</html>')
-
     request_payload = {
         'name': 'Updated render flow',
         'rule': flow_rule,
@@ -991,16 +1005,13 @@ def test_update_flow__render_action_keeps_existing_landing_without_upload(
         'is_deleted': False,
         'show_once_per_visitor': False,
     }
-    assert (landing_path / 'index.html').read_text() == '<html>existing</html>'
+    assert (existing_landing_path / 'index.html').read_text() == '<html>existing</html>'
 
 
 def test_update_flow__render_action_replaces_existing_landing_when_uploaded(
-    client, authorization, flow, landing_pages_base_path
+    client, authorization, flow, existing_landing_path
 ):
-    landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
-    landing_path.mkdir()
-    (landing_path / 'index.html').write_text('<html>existing</html>')
-    (landing_path / 'stale.txt').write_text('remove me')
+    (existing_landing_path / 'stale.txt').write_text('remove me')
     uploaded_index_html = '<html>new landing</html>'
 
     response = client.patch(
@@ -1018,8 +1029,8 @@ def test_update_flow__render_action_replaces_existing_landing_when_uploaded(
     )
 
     assert response.status_code == 200, response.text
-    assert (landing_path / 'index.html').read_text() == uploaded_index_html
-    assert not (landing_path / 'stale.txt').exists()
+    assert (existing_landing_path / 'index.html').read_text() == uploaded_index_html
+    assert not (existing_landing_path / 'stale.txt').exists()
 
 
 def test_update_flow__requires_redirect_url_for_redirect_action(client, authorization, flow):
