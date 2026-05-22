@@ -1,6 +1,5 @@
 import io
 import pathlib
-import shutil
 import zipfile
 from unittest import mock
 
@@ -58,8 +57,6 @@ def existing_landing_path(flow, landing_pages_base_path):
 
     yield landing_path
 
-    shutil.rmtree(landing_path, ignore_errors=True)
-
 
 @pytest.fixture
 def render_flow_with_landing(campaign, flow_rule, landing_pages_base_path, write_to_db):
@@ -82,8 +79,6 @@ def render_flow_with_landing(campaign, flow_rule, landing_pages_base_path, write
     (landing_path / 'index.html').write_text('<html></html>')
 
     yield flow
-
-    shutil.rmtree(landing_path, ignore_errors=True)
 
 
 def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
@@ -380,7 +375,7 @@ def test_get_flow(client, authorization, campaign, flow):
     }
 
 
-def test_get_flow__render_action_response_format(client, authorization, campaign, render_flow_with_landing):
+def test_get_flow__render_action_response_format(client, authorization, campaign, flow_rule, render_flow_with_landing):
     flow = render_flow_with_landing
     response = client.get(
         f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
