@@ -6,10 +6,10 @@ from unittest import mock
 import pytest
 
 
-def _zip_bytes():
+def _zip_bytes(index_html='<html></html>'):
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, 'w') as zip_file:
-        zip_file.writestr('index.html', '<html></html>')
+        zip_file.writestr('index.html', index_html)
     archive.seek(0)
     return archive
 
@@ -49,6 +49,38 @@ def _zip_bytes_without_index():
     return archive
 
 
+@pytest.fixture
+def existing_landing_path(flow, landing_pages_base_path):
+    landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
+    landing_path.mkdir()
+    (landing_path / 'index.html').write_text('<html>existing</html>')
+
+    yield landing_path
+
+
+@pytest.fixture
+def render_flow_with_landing(campaign, flow_rule, landing_pages_base_path, write_to_db):
+    flow = write_to_db(
+        'flow',
+        {
+            'name': 'Render Flow',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 1,
+            'action_type': 'render',
+            'redirect_url': None,
+            'is_enabled': True,
+            'is_deleted': False,
+            'show_once_per_visitor': False,
+        },
+    )
+    landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
+    landing_path.mkdir()
+    (landing_path / 'index.html').write_text('<html></html>')
+
+    yield flow
+
+
 def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
     for index in range(25):
         write_to_db(
@@ -83,9 +115,9 @@ def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
                 'orderValue': index + 1,
                 'actionType': 'redirect',
                 'redirectUrl': f'https://example.com/{index}',
-                'landingPath': None,
                 'isEnabled': True,
                 'showOncePerVisitor': False,
+                'hasLandingPage': False,
             }
             for index in range(20)
         ],
@@ -144,9 +176,9 @@ def test_flows_list__filters_by_campaign(client, authorization, campaign, campai
                 'orderValue': index + 1,
                 'actionType': 'redirect',
                 'redirectUrl': f'https://example.com/{index}',
-                'landingPath': None,
                 'isEnabled': True,
                 'showOncePerVisitor': False,
+                'hasLandingPage': False,
             }
             for index in range(3)
         ],
@@ -215,9 +247,9 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
                 'orderValue': third['order_value'],
                 'actionType': third['action_type'],
                 'redirectUrl': third['redirect_url'],
-                'landingPath': mock.ANY,
                 'isEnabled': third['is_enabled'],
                 'showOncePerVisitor': False,
+                'hasLandingPage': False,
             },
             {
                 'id': first['id'],
@@ -228,9 +260,9 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
                 'orderValue': first['order_value'],
                 'actionType': first['action_type'],
                 'redirectUrl': first['redirect_url'],
-                'landingPath': mock.ANY,
                 'isEnabled': first['is_enabled'],
                 'showOncePerVisitor': False,
+                'hasLandingPage': False,
             },
             {
                 'id': second['id'],
@@ -241,9 +273,9 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
                 'orderValue': second['order_value'],
                 'actionType': second['action_type'],
                 'redirectUrl': second['redirect_url'],
-                'landingPath': mock.ANY,
                 'isEnabled': second['is_enabled'],
                 'showOncePerVisitor': False,
+                'hasLandingPage': False,
             },
         ],
         'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'orderValue', 'sortOrder': 'desc', 'total': 3},
@@ -279,6 +311,48 @@ def test_flows_list__filter_out_deleted(client, authorization, campaign, flow_ru
     }
 
 
+def test_flows_list__render_action_response_format(client, authorization, campaign, flow_rule, write_to_db):
+    flow = write_to_db(
+        'flow',
+        {
+            'name': 'Render Flow',
+            'campaign_id': campaign['id'],
+            'rule': flow_rule,
+            'order_value': 1,
+            'action_type': 'render',
+            'redirect_url': None,
+            'is_enabled': True,
+            'is_deleted': False,
+            'show_once_per_visitor': False,
+        },
+    )
+
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': [
+            {
+                'id': flow['id'],
+                'name': flow['name'],
+                'campaignId': flow['campaign_id'],
+                'campaignName': campaign['name'],
+                'rule': flow_rule,
+                'orderValue': flow['order_value'],
+                'actionType': flow['action_type'],
+                'redirectUrl': None,
+                'isEnabled': True,
+                'showOncePerVisitor': False,
+                'hasLandingPage': False,
+            }
+        ],
+        'pagination': {'page': 1, 'pageSize': 20, 'sortBy': 'id', 'sortOrder': 'asc', 'total': 1},
+    }
+
+
 def test_get_flow(client, authorization, campaign, flow):
     response = client.get(
         f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
@@ -295,9 +369,32 @@ def test_get_flow(client, authorization, campaign, flow):
         'orderValue': flow['order_value'],
         'actionType': flow['action_type'],
         'redirectUrl': flow['redirect_url'],
-        'landingPath': None,
         'isEnabled': bool(flow['is_enabled']),
         'showOncePerVisitor': False,
+        'hasLandingPage': False,
+    }
+
+
+def test_get_flow__render_action_response_format(client, authorization, campaign, flow_rule, render_flow_with_landing):
+    flow = render_flow_with_landing
+    response = client.get(
+        f'/api/v2/core/campaigns/{campaign["id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'id': flow['id'],
+        'name': flow['name'],
+        'campaignId': flow['campaign_id'],
+        'campaignName': campaign['name'],
+        'rule': flow_rule,
+        'orderValue': flow['order_value'],
+        'actionType': flow['action_type'],
+        'redirectUrl': None,
+        'isEnabled': True,
+        'showOncePerVisitor': False,
+        'hasLandingPage': True,
     }
 
 
@@ -766,9 +863,9 @@ def test_get_flow__without_rule(client, authorization, campaign, write_to_db):
         'orderValue': flow['order_value'],
         'actionType': flow['action_type'],
         'redirectUrl': flow['redirect_url'],
-        'landingPath': None,
         'isEnabled': bool(flow['is_enabled']),
         'showOncePerVisitor': False,
+        'hasLandingPage': False,
     }
 
 
@@ -803,9 +900,9 @@ def test_get_flow__returns_show_once_per_visitor(client, authorization, campaign
         'orderValue': flow['order_value'],
         'actionType': flow['action_type'],
         'redirectUrl': flow['redirect_url'],
-        'landingPath': None,
         'isEnabled': True,
         'showOncePerVisitor': True,
+        'hasLandingPage': False,
     }
 
 
@@ -867,6 +964,68 @@ def test_update_flow__render_action_success(
         'show_once_per_visitor': False,
     }
     assert (pathlib.Path(expected_landing_path) / 'index.html').exists()
+
+
+def test_update_flow__render_action_keeps_existing_landing_without_upload(
+    client, authorization, flow, read_from_db, flow_rule, existing_landing_path
+):
+    request_payload = {
+        'name': 'Updated render flow',
+        'rule': flow_rule,
+        'actionType': 'render',
+        'isEnabled': True,
+        'showOncePerVisitor': False,
+    }
+
+    response = client.patch(
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+        data=request_payload,
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 200, response.text
+
+    updated = read_from_db('flow', filters={'id': flow['id']})
+    assert updated == {
+        'id': flow['id'],
+        'name': request_payload['name'],
+        'created_at': mock.ANY,
+        'campaign_id': flow['campaign_id'],
+        'rule': request_payload['rule'],
+        'order_value': flow['order_value'],
+        'action_type': request_payload['actionType'],
+        'redirect_url': None,
+        'is_enabled': request_payload['isEnabled'],
+        'is_deleted': False,
+        'show_once_per_visitor': False,
+    }
+    assert (existing_landing_path / 'index.html').read_text() == '<html>existing</html>'
+
+
+def test_update_flow__render_action_replaces_existing_landing_when_uploaded(
+    client, authorization, flow, existing_landing_path
+):
+    (existing_landing_path / 'stale.txt').write_text('remove me')
+    uploaded_index_html = '<html>new landing</html>'
+
+    response = client.patch(
+        f'/api/v2/core/campaigns/{flow["campaign_id"]}/flows/{flow["id"]}',
+        headers={'Authorization': authorization},
+        data={
+            'name': flow['name'],
+            'rule': flow['rule'],
+            'actionType': 'render',
+            'isEnabled': True,
+            'landingArchive': (_zip_bytes(uploaded_index_html), 'landing.zip'),
+            'showOncePerVisitor': False,
+        },
+        content_type='multipart/form-data',
+    )
+
+    assert response.status_code == 200, response.text
+    assert (existing_landing_path / 'index.html').read_text() == uploaded_index_html
+    assert not (existing_landing_path / 'stale.txt').exists()
 
 
 def test_update_flow__requires_redirect_url_for_redirect_action(client, authorization, flow):

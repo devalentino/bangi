@@ -291,13 +291,21 @@ class DomainService:
     def count(self):
         return Domain.select(fn.count(Domain.id)).scalar()
 
-    def create(self, hostname, purpose, is_disabled=False):
+    def create(self, hostname, purpose, campaign_id=None, is_disabled=False):
         if Domain.select(fn.count(Domain.id)).where(Domain.hostname == hostname).scalar():
             raise DomainAlreadyExistsError()
+
+        campaign = None
+        if campaign_id is not None:
+            if purpose == DomainPurpose.dashboard:
+                raise DashboardDomainCannotAttachCampaignError()
+            self._ensure_campaign_is_available(campaign_id, None)
+            campaign = self._get_campaign(campaign_id)
 
         domain = Domain(
             hostname=hostname,
             purpose=purpose.value,
+            campaign=campaign,
             is_disabled=is_disabled,
             is_a_record_set=None,
         )

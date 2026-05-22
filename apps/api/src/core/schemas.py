@@ -162,11 +162,11 @@ class FlowUpdateRequestSchema(Schema):
             raise ValidationError('rule error', field_name='rule')
 
     @classmethod
-    def validate_render_action_type(cls, flow_payload, landing_archive):
+    def validate_render_action_type(cls, flow_payload, landing_archive, has_landing_page=False):
         if flow_payload.get('actionType') == FlowActionType.render:
-            if landing_archive is None:
+            if landing_archive is None and not has_landing_page:
                 raise ValidationError('landingArchive is required for render action.', field_name='landingArchive')
-            if not landing_archive.filename.endswith('.zip'):
+            if landing_archive is not None and not landing_archive.filename.endswith('.zip'):
                 raise ValidationError('landingArchive must be a .zip file.', field_name='landingArchive')
             return
 
@@ -187,10 +187,10 @@ class FlowResponseSchema(Schema):
     orderValue = fields.Integer(required=True)
     actionType = fields.String(required=True)
     redirectUrl = fields.String(allow_none=True)
-    landingPath = fields.String(allow_none=True)
     isEnabled = fields.Boolean(required=True)
     showOncePerVisitor = fields.Boolean(required=True)
     rule = fields.String(required=True, allow_none=True)
+    hasLandingPage = fields.Boolean(required=True)
 
 
 class FlowListResponseSchema(Schema):
