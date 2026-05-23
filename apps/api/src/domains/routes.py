@@ -42,7 +42,12 @@ class Domains(MethodView):
     @auth.login_required
     def post(self, payload):
         domain_service = container.get(DomainService)
-        domain = domain_service.create(payload['hostname'], payload['purpose'], payload.get('isDisabled', False))
+        domain = domain_service.create(
+            payload['hostname'],
+            payload['purpose'],
+            campaign_id=payload.get('campaignId'),
+            is_disabled=payload.get('isDisabled', False),
+        )
         return humps.camelize(
             {
                 'id': domain.id,

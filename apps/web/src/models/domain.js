@@ -128,10 +128,6 @@ class DomainModel {
       purpose: this.form.purpose,
     };
 
-    if (this.domainId === "new") {
-      return payload;
-    }
-
     if (this.form.campaignId === "") {
       payload.campaignId = null;
     } else {

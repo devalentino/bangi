@@ -123,7 +123,8 @@ def expected_campaign_http_config(hostname, campaign_id, flow_id_cookie_name):
         '\n'
         f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}$is_args$args";\n'
         f'    if ($cookie_{flow_id_cookie_name} != "") {{\n'
-        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/$is_args$args";\n'
+        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/landings/'
+        f'$cookie_{flow_id_cookie_name}/$is_args$args";\n'
         '    }\n'
         '\n'
         '    location = / {\n'
@@ -145,7 +146,7 @@ def expected_campaign_http_config(hostname, campaign_id, flow_id_cookie_name):
         '        }\n'
         '\n'
         f'{expected_campaign_proxy_headers()}'
-        f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}$request_uri;\n'
+        f'        proxy_pass http://127.0.0.1:8081/landings/$cookie_{flow_id_cookie_name}$request_uri;\n'
         '    }\n'
         '}\n'
     )
@@ -176,7 +177,8 @@ def expected_campaign_https_config(hostname, campaign_id, flow_id_cookie_name, c
         '\n'
         f'    set $bangi_campaign_upstream "http://127.0.0.1:8000/process/{campaign_id}$is_args$args";\n'
         f'    if ($cookie_{flow_id_cookie_name} != "") {{\n'
-        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}/$is_args$args";\n'
+        f'        set $bangi_campaign_upstream "http://127.0.0.1:8081/landings/'
+        f'$cookie_{flow_id_cookie_name}/$is_args$args";\n'
         '    }\n'
         '\n'
         '    location = / {\n'
@@ -198,7 +200,7 @@ def expected_campaign_https_config(hostname, campaign_id, flow_id_cookie_name, c
         '        }\n'
         '\n'
         f'{expected_campaign_proxy_headers()}'
-        f'        proxy_pass http://127.0.0.1:8081/$cookie_{flow_id_cookie_name}$request_uri;\n'
+        f'        proxy_pass http://127.0.0.1:8081/landings/$cookie_{flow_id_cookie_name}$request_uri;\n'
         '    }\n'
         '}\n'
     )
@@ -438,6 +440,42 @@ class TestDomainNginxConfigurations:
 
         assert len(versioned_configs) == 1
         assert versioned_configs[0].read_text(encoding='utf-8') == expected_disabled_config(hostname)
+
+    def test_campaign_domain_created_with_campaign_writes_campaign_config(
+        self,
+        client,
+        authorization,
+        campaign,
+        nginx_workspace_base_dir,
+        read_from_db,
+    ):
+        hostname = 'campaign-created-with-binding.example.com'
+        response = client.post(
+            '/api/v2/domains',
+            headers={'Authorization': authorization},
+            json={'hostname': hostname, 'purpose': 'campaign', 'campaignId': campaign['id'], 'isDisabled': False},
+        )
+
+        assert response.status_code == 201, response.text
+        available_dir = Path(nginx_workspace_base_dir) / 'sites-available' / hostname
+        versioned_configs = sorted(available_dir.glob('*.conf'))
+        domain = read_from_db('domain', filters={'hostname': hostname})
+        cookie_row = read_from_db('domain_cookie', filters={'domain_id': domain['id'], 'name': 'flow_id'})
+        assert cookie_row == {
+            'id': mock.ANY,
+            'created_at': mock.ANY,
+            'domain_id': domain['id'],
+            'name': 'flow_id',
+            'opaque_name': mock.ANY,
+            'encryption_key': None,
+        }
+
+        assert len(versioned_configs) == 1
+        assert versioned_configs[0].read_text(encoding='utf-8') == expected_campaign_http_config(
+            hostname,
+            campaign['id'],
+            cookie_row['opaque_name'],
+        )
 
     def test_campaign_domain_exists_campaign_got_attached_writes_campaign_config(
         self,

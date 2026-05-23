@@ -262,8 +262,15 @@ class FlowService:
 
         return landing_dir
 
+    def has_landing_page(self, flow_id):
+        if not self.landing_pages_base_path:
+            return False
+
+        landing_dir = os.path.join(self.landing_pages_base_path, str(flow_id))
+        return os.path.isdir(landing_dir) and self._has_index_file(landing_dir)
+
     @log_execution_time
-    def _render_landing_page(self, flow_id, method, query_string, headers, body):
+    def render_landing_page(self, flow_id, method, query_string, headers, body):
         url = f'{self.landing_renderer_base_url}/{flow_id}/'
         if query_string:
             url = f'{url}?{query_string.decode("ascii")}'
@@ -351,7 +358,7 @@ class FlowService:
             flow.action_type = action_type
             flow.redirect_url = redirect_url
 
-            if action_type == FlowActionType.render:
+            if action_type == FlowActionType.render and landing_archive is not None:
                 self._store_landing_archive(flow.id, landing_archive)
 
         if is_enabled is not None:
@@ -398,7 +405,6 @@ class FlowService:
         client: Client,
         current_flow_id=None,
         force_stickiness=False,
-        render_request=None,
     ):
         flows = list(
             Flow.select(Flow, Campaign)
@@ -445,15 +451,6 @@ class FlowService:
                 logger.warning(
                     'Failed to process flows', extra={'campaign_id': campaign_id, 'flows': [f.to_dict() for f in flows]}
                 )
-                return None, None, None
+                return None
 
-        if matched_flow.action_type == FlowActionType.redirect:
-            return matched_flow.action_type, matched_flow.redirect_url, matched_flow.id
-        elif matched_flow.action_type == FlowActionType.render:
-            return (
-                matched_flow.action_type,
-                self._render_landing_page(matched_flow.id, **render_request),
-                matched_flow.id,
-            )
-
-        return None, None, matched_flow.id
+        return matched_flow
