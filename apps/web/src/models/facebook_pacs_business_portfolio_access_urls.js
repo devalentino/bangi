@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class FacebookPacsBusinessPortfolioAccessUrlsModel {
   constructor(businessPortfolioId) {
@@ -31,7 +32,7 @@ class FacebookPacsBusinessPortfolioAccessUrlsModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load access URLs.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("facebook.accessUrls") });
         this.isLoading = false;
       }.bind(this));
   }

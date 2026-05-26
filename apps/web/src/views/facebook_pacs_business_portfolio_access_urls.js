@@ -1,6 +1,7 @@
 let m = require("mithril");
 let FacebookPacsBusinessPortfolioAccessUrlsModel = require("../models/facebook_pacs_business_portfolio_access_urls");
 let Pagination = require("../components/pagination");
+let i18n = require("../i18n");
 
 class FacebookPacsBusinessPortfolioAccessUrlsView {
   constructor() {
@@ -23,7 +24,7 @@ class FacebookPacsBusinessPortfolioAccessUrlsView {
   }
 
   handleDelete(accessUrlId) {
-    if (!window.confirm("Delete this access URL?")) {
+    if (!window.confirm(i18n.t("facebook.accessUrls.deleteConfirm"))) {
       return;
     }
 
@@ -33,7 +34,7 @@ class FacebookPacsBusinessPortfolioAccessUrlsView {
         this.model.fetch();
       }.bind(this))
       .catch(function () {
-        this.model.error = "Failed to delete access URL.";
+        this.model.error = i18n.t("facebook.accessUrls.deleteFailed");
       }.bind(this));
   }
 
@@ -46,18 +47,18 @@ class FacebookPacsBusinessPortfolioAccessUrlsView {
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
               [
-                m("h6.mb-0", "Business Portfolio Access URLs"),
+                m("h6.mb-0", i18n.t("facebook.accessUrls.title")),
                 m(
                   "a.btn.btn-primary.btn-sm",
                   {
                     href: `#!/facebook/pacs/business-portfolios/${this.businessPortfolioId}/access-urls/new`,
                   },
-                  "New Access URL",
+                  i18n.t("facebook.accessUrls.new"),
                 ),
               ],
             ),
             this.model.isLoading
-              ? m("div", "Loading access URLs...")
+              ? m("div", i18n.t("facebook.accessUrls.loading"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -68,9 +69,9 @@ class FacebookPacsBusinessPortfolioAccessUrlsView {
                       m(
                         "thead",
                         m("tr", [
-                          m("th", { scope: "col" }, "URL"),
-                          m("th", { scope: "col" }, "Email"),
-                          m("th", { scope: "col" }, "Expires At"),
+                          m("th", { scope: "col" }, i18n.t("common.url")),
+                          m("th", { scope: "col" }, i18n.t("common.email")),
+                          m("th", { scope: "col" }, i18n.t("facebook.accessUrls.expiresAt")),
                           m("th", { scope: "col" }, ""),
                         ]),
                       ),
@@ -81,7 +82,7 @@ class FacebookPacsBusinessPortfolioAccessUrlsView {
                               m(
                                 "td.text-center",
                                 { colspan: 4 },
-                                "No access URLs found.",
+                                i18n.t("facebook.accessUrls.notFound"),
                               ),
                             ])
                           : this.model.items.map(function (accessUrl) {
@@ -98,8 +99,8 @@ class FacebookPacsBusinessPortfolioAccessUrlsView {
                                       "button.btn.btn-link.btn-sm.p-0",
                                       {
                                         type: "button",
-                                        title: "Copy full URL",
-                                        "aria-label": "Copy full URL",
+                                        title: i18n.t("facebook.accessUrls.copyFull"),
+                                        "aria-label": i18n.t("facebook.accessUrls.copyFull"),
                                         onclick: function () {
                                             navigator.clipboard.writeText(accessUrl.url);
                                         }.bind(this),
@@ -119,8 +120,8 @@ class FacebookPacsBusinessPortfolioAccessUrlsView {
                                       onclick: function () {
                                         this.handleDelete(accessUrl.id);
                                       }.bind(this),
-                                      title: "Delete access URL",
-                                      "aria-label": "Delete access URL",
+                                      title: i18n.t("facebook.accessUrls.delete"),
+                                      "aria-label": i18n.t("facebook.accessUrls.delete"),
                                     },
                                     m("i", { class: "fa fa-trash" }),
                                   ),

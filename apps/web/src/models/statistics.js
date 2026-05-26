@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class StatisticsFilter {
   constructor() {
@@ -52,7 +53,7 @@ class StatisticsModel {
       }.bind(this))
       .catch(function () {
         this.campaigns = [];
-        this.campaignError = "Failed to load campaigns.";
+        this.campaignError = i18n.t("messages.failedLoad", { entity: i18n.t("entities.campaigns") });
       }.bind(this));
   }
 

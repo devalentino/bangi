@@ -1,6 +1,7 @@
 let m = require("mithril");
 let FacebookPacsCampaignsModel = require("../models/facebook_pacs_campaigns");
 let Pagination = require("../components/pagination");
+let i18n = require("../i18n");
 
 class FacebookPacsCampaignsView {
   constructor() {
@@ -20,16 +21,16 @@ class FacebookPacsCampaignsView {
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
               [
-                m("h6.mb-0", "Facebook PACS Campaigns"),
+                m("h6.mb-0", i18n.t("facebook.campaigns.title")),
                 m(
                   "a.btn.btn-primary.btn-sm",
                   { href: "#!/facebook/pacs/campaigns/new" },
-                  "New Campaign",
+                  i18n.t("facebook.campaigns.new"),
                 ),
               ],
             ),
             this.model.isLoading
-              ? m("div", "Loading campaigns...")
+              ? m("div", i18n.t("common.loading.campaigns"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -40,11 +41,11 @@ class FacebookPacsCampaignsView {
                       m(
                         "thead",
                         m("tr", [
-                          m("th", { scope: "col" }, "ID"),
-                          m("th", { scope: "col" }, "Name"),
-                          m("th", { scope: "col" }, "Executor"),
-                          m("th", { scope: "col" }, "Ad Cabinet"),
-                          m("th", { scope: "col" }, "Business Page"),
+                          m("th", { scope: "col" }, i18n.t("common.id")),
+                          m("th", { scope: "col" }, i18n.t("common.name")),
+                          m("th", { scope: "col" }, i18n.t("facebook.executor")),
+                          m("th", { scope: "col" }, i18n.t("facebook.adCabinet")),
+                          m("th", { scope: "col" }, i18n.t("facebook.businessPage")),
                         ]),
                       ),
                       m(
@@ -54,7 +55,7 @@ class FacebookPacsCampaignsView {
                               m(
                                 "td.text-center",
                                 { colspan: 5 },
-                                "No campaigns found.",
+                                i18n.t("campaigns.notFound"),
                               ),
                             ])
                           : this.model.items.map(function (campaign) {

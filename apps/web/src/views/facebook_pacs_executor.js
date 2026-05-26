@@ -1,5 +1,6 @@
 let m = require("mithril");
 let FacebookPacsExecutorModel = require("../models/facebook_pacs_executor");
+let i18n = require("../i18n");
 
 class FacebookPacsExecutorView {
   constructor() {
@@ -21,9 +22,9 @@ class FacebookPacsExecutorView {
       m(".row.g-4", [
         m(".col-12.col-xl-6", [
           m(".bg-light.rounded.h-100.p-4", [
-            m("h6.mb-4", isNew ? "New Executor" : "Executor Modification"),
+            m("h6.mb-4", isNew ? i18n.t("facebook.executors.new") : i18n.t("facebook.executors.modify")),
             this.model.isLoading
-              ? m("div", "Loading executor...")
+              ? m("div", i18n.t("facebook.executors.loadingOne"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -45,11 +46,11 @@ class FacebookPacsExecutorView {
                     },
                     [
                       m(".mb-3", [
-                        m("label.form-label", { for: "executorName" }, "Name"),
+                        m("label.form-label", { for: "executorName" }, i18n.t("common.name")),
                         m("input.form-control", {
                           type: "text",
                           id: "executorName",
-                          placeholder: "Executor name",
+                          placeholder: i18n.t("facebook.executors.namePlaceholder"),
                           value: this.model.form.name,
                           oninput: function (event) {
                             this.model.form.name = event.target.value;
@@ -68,18 +69,18 @@ class FacebookPacsExecutorView {
                         m(
                           "label.form-check-label",
                           { for: "executorIsBanned" },
-                          "Banned",
+                          i18n.t("common.banned"),
                         ),
                       ]),
                       m(
                         "button.btn.btn-primary",
                         { type: "submit" },
-                        "Save changes",
+                        i18n.t("common.saveChanges"),
                       ),
                       m(
                         "button.btn.btn-secondary.ms-2",
                         { type: "reset" },
-                        "Reset",
+                        i18n.t("common.reset"),
                       ),
                     ],
                   ),

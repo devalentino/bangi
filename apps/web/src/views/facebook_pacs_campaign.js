@@ -2,6 +2,7 @@ let m = require("mithril");
 let api = require("../models/api");
 let FacebookPacsCampaignModel = require("../models/facebook_pacs_campaign");
 var config = require("../config");
+let i18n = require("../i18n");
 
 class FacebookPacsCampaignView {
   constructor() {
@@ -56,7 +57,7 @@ class FacebookPacsCampaignView {
         this.optionsLoading = false;
       }.bind(this))
       .catch(function () {
-        this.optionsError = "Failed to load campaign options.";
+        this.optionsError = i18n.t("facebook.campaigns.optionsLoadFailed");
         this.optionsLoading = false;
       }.bind(this));
   }
@@ -69,9 +70,9 @@ class FacebookPacsCampaignView {
       m(".row.g-4", [
         m(".col-12.col-xl-6", [
           m(".bg-light.rounded.h-100.p-4", [
-            m("h6.mb-4", isNew ? "New Campaign" : "Campaign Modification"),
+            m("h6.mb-4", isNew ? i18n.t("facebook.campaigns.new") : i18n.t("facebook.campaigns.modify")),
             this.model.isLoading
-              ? m("div", "Loading campaign...")
+              ? m("div", i18n.t("campaigns.loading"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -96,11 +97,11 @@ class FacebookPacsCampaignView {
                     },
                     [
                       m(".mb-3", [
-                        m("label.form-label", { for: "campaignName" }, "Name"),
+                        m("label.form-label", { for: "campaignName" }, i18n.t("common.name")),
                         m("input.form-control", {
                           type: "text",
                           id: "campaignName",
-                          placeholder: "Campaign name",
+                          placeholder: i18n.t("campaigns.namePlaceholder"),
                           value: this.model.form.name,
                           oninput: function (event) {
                             this.model.form.name = event.target.value;
@@ -112,7 +113,7 @@ class FacebookPacsCampaignView {
                           m(
                             "label.form-label",
                             { for: "campaignCostModel" },
-                            "Cost Model",
+                            i18n.t("common.costModel"),
                           ),
                           m(
                             "select.form-select",
@@ -138,12 +139,12 @@ class FacebookPacsCampaignView {
                           m(
                             "label.form-label",
                             { for: "campaignCostValue" },
-                            "Cost Value",
+                            i18n.t("common.costValue"),
                           ),
                           m("input.form-control", {
                             type: "number",
                             id: "campaignCostValue",
-                            placeholder: "Cost value",
+                            placeholder: i18n.t("common.costValue"),
                             value: this.model.form.costValue,
                             oninput: function (event) {
                               this.model.form.costValue = event.target.value;
@@ -154,7 +155,7 @@ class FacebookPacsCampaignView {
                           m(
                             "label.form-label",
                             { for: "campaignCurrency" },
-                            "Currency",
+                            i18n.t("common.currency"),
                           ),
                           m(
                             "select.form-select",
@@ -177,7 +178,7 @@ class FacebookPacsCampaignView {
                         m(
                           "label.form-label",
                           { for: "campaignStatusMapper" },
-                          "Status Mapper",
+                          i18n.t("campaigns.statusMapper"),
                         ),
                         m("textarea.form-control.font-monospace", {
                           id: "campaignStatusMapper",
@@ -199,14 +200,14 @@ class FacebookPacsCampaignView {
                         }),
                         m(
                           ".form-text",
-                          "Provide a JSON object for status mapping.",
+                          i18n.t("facebook.campaigns.statusMapperHelp"),
                         ),
                       ]),
                       m(".mb-3", [
                         m(
                           "label.form-label",
                           { for: "campaignExecutor" },
-                          "Executor",
+                          i18n.t("facebook.executor"),
                         ),
                         m(
                           "select.form-select",
@@ -219,7 +220,7 @@ class FacebookPacsCampaignView {
                             disabled: this.optionsLoading,
                           },
                           [
-                            m("option", { value: "" }, "Select executor"),
+                            m("option", { value: "" }, i18n.t("facebook.campaigns.selectExecutor")),
                           ].concat(
                             this.executors.map(function (executor) {
                               return m(
@@ -235,7 +236,7 @@ class FacebookPacsCampaignView {
                         m(
                           "label.form-label",
                           { for: "campaignAdCabinet" },
-                          "Ad Cabinet",
+                          i18n.t("facebook.adCabinet"),
                         ),
                         m(
                           "select.form-select",
@@ -248,7 +249,7 @@ class FacebookPacsCampaignView {
                             disabled: this.optionsLoading,
                           },
                           [
-                            m("option", { value: "" }, "Select ad cabinet"),
+                            m("option", { value: "" }, i18n.t("facebook.campaigns.selectAdCabinet")),
                           ].concat(
                             this.adCabinets.map(function (adCabinet) {
                               return m(
@@ -264,7 +265,7 @@ class FacebookPacsCampaignView {
                         m(
                           "label.form-label",
                           { for: "campaignBusinessPage" },
-                          "Business Page",
+                          i18n.t("facebook.businessPage"),
                         ),
                         m(
                           "select.form-select",
@@ -277,7 +278,7 @@ class FacebookPacsCampaignView {
                             disabled: this.optionsLoading,
                           },
                           [
-                            m("option", { value: "" }, "Select business page"),
+                            m("option", { value: "" }, i18n.t("facebook.campaigns.selectBusinessPage")),
                           ].concat(
                             this.businessPages.map(function (businessPage) {
                               return m(
@@ -292,12 +293,12 @@ class FacebookPacsCampaignView {
                       m(
                         "button.btn.btn-primary",
                         { type: "submit" },
-                        "Save changes",
+                        i18n.t("common.saveChanges"),
                       ),
                       m(
                         "button.btn.btn-secondary.ms-2",
                         { type: "reset" },
-                        "Reset",
+                        i18n.t("common.reset"),
                       ),
                     ],
                   ),

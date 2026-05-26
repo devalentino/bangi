@@ -2,6 +2,7 @@ let m = require("mithril");
 let CoreCampaignModel = require("../models/core_campaign");
 let CoreFlowsModel = require("../models/core_flows");
 let Flows = require("../components/flows");
+let i18n = require("../i18n");
 
 class CoreCampaignView {
   constructor(vnode) {
@@ -32,10 +33,10 @@ class CoreCampaignView {
           m(".bg-light.rounded.h-100.p-4", [
             m(
               "h6.mb-4",
-              isNew ? "New Core Campaign" : "Core Campaign Modification",
+              isNew ? i18n.t("campaigns.newCore") : i18n.t("campaigns.updateCore"),
             ),
             this.campaignModel.isLoading
-              ? m("div", "Loading campaign...")
+              ? m("div", i18n.t("campaigns.loading"))
               : [
                   this.campaignModel.error
                     ? m(".alert.alert-danger", this.campaignModel.error)
@@ -60,11 +61,11 @@ class CoreCampaignView {
                     },
                     [
                       m(".mb-3", [
-                        m("label.form-label", { for: "campaignName" }, "Name"),
+                        m("label.form-label", { for: "campaignName" }, i18n.t("common.name")),
                         m("input.form-control", {
                           type: "text",
                           id: "campaignName",
-                          placeholder: "Campaign Name",
+                          placeholder: i18n.t("campaigns.namePlaceholder"),
                           value: this.campaignModel.form.name,
                           oninput: function (event) {
                             this.campaignModel.form.name = event.target.value;
@@ -75,7 +76,7 @@ class CoreCampaignView {
                         m(
                           "label.form-label",
                           { for: "internalProcessUrl" },
-                          "Internal Process URL",
+                          i18n.t("campaigns.internalProcessUrl"),
                         ),
                         m(
                           "#internalProcessUrl.form-control-plaintext",
@@ -87,7 +88,7 @@ class CoreCampaignView {
                           m(
                             "label.form-label",
                             { for: "costModel" },
-                            "Cost Model",
+                            i18n.t("common.costModel"),
                           ),
                           m(
                             "select.form-select",
@@ -114,12 +115,12 @@ class CoreCampaignView {
                           m(
                             "label.form-label",
                             { for: "costValue" },
-                            "Cost Value",
+                            i18n.t("common.costValue"),
                           ),
                           m("input.form-control", {
                             type: "number",
                             id: "costValue",
-                            placeholder: "Cost Value",
+                            placeholder: i18n.t("common.costValue"),
                             value: this.campaignModel.form.costValue,
                             oninput: function (event) {
                               this.campaignModel.form.costValue =
@@ -131,7 +132,7 @@ class CoreCampaignView {
                           m(
                             "label.form-label",
                             { for: "currency" },
-                            "Currency",
+                            i18n.t("common.currency"),
                           ),
                           m(
                             "select.form-select",
@@ -155,7 +156,7 @@ class CoreCampaignView {
                         m(
                           "label.form-label",
                           { for: "statusMapper" },
-                          "Status Mapper",
+                          i18n.t("campaigns.statusMapper"),
                         ),
                         m("textarea.form-control", {
                           id: "statusMapper",
@@ -178,7 +179,7 @@ class CoreCampaignView {
                         }),
                         m(
                           ".form-text",
-                          "JSON with parameter string and mapping object (string to string).",
+                          i18n.t("campaigns.statusMapperHelp"),
                         ),
                       ]),
                       isNew
@@ -187,7 +188,7 @@ class CoreCampaignView {
                             m(
                               "label.form-label",
                               { for: "defaultFlowId" },
-                              "Default Flow",
+                              i18n.t("campaigns.defaultFlow"),
                             ),
                             m(
                               "select.form-select",
@@ -200,7 +201,7 @@ class CoreCampaignView {
                                 }.bind(this),
                               },
                               [
-                                m("option", { value: "" }, "No default flow"),
+                                m("option", { value: "" }, i18n.t("campaigns.noDefaultFlow")),
                               ].concat(this.flowsModel.items.map(function (flow) {
                                 return m(
                                   "option",
@@ -213,18 +214,18 @@ class CoreCampaignView {
                             ),
                             m(
                               ".form-text",
-                              "Served when no normal flow matches, even if the default flow rule would not match.",
+                              i18n.t("campaigns.defaultFlowHelp"),
                             ),
                           ]),
                       m(
                         "button.btn.btn-primary",
                         { type: "submit" },
-                        "Save changes",
+                        i18n.t("common.saveChanges"),
                       ),
                       m(
                         "button.btn.btn-secondary.ms-2",
                         { type: "reset" },
-                        "Reset",
+                        i18n.t("common.reset"),
                       ),
                     ],
                   ),
@@ -236,7 +237,7 @@ class CoreCampaignView {
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
               [
-                m("h6.mb-0", "Flows"),
+                m("h6.mb-0", i18n.t("flows.title")),
                 this.campaignModel.campaignId
                   && this.campaignModel.campaignId !== "new"
                   ? m(
@@ -244,13 +245,13 @@ class CoreCampaignView {
                       {
                         href: `#!/core/campaigns/${this.campaignModel.campaignId}/flows/new`,
                       },
-                      "New Flow",
+                      i18n.t("flows.new"),
                     )
                   : null,
               ],
             ),
             this.flowsModel.isLoading
-              ? m("div", "Loading flows...")
+              ? m("div", i18n.t("flows.loading"))
               : [
                   this.flowsModel.error
                     ? m(".alert.alert-danger", this.flowsModel.error)

@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class FacebookPacsCampaignModel {
   constructor(campaignId) {
@@ -58,30 +59,30 @@ class FacebookPacsCampaignModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load campaign details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.campaignDetails") });
         this.isLoading = false;
       }.bind(this));
   }
 
   validate() {
     if (!this.form.name.trim()) {
-      return "Name is required.";
+      return i18n.t("validation.nameRequired");
     }
 
     if (!this.form.costModel) {
-      return "Cost model is required.";
+      return i18n.t("validation.costModelRequired");
     }
 
     if (!this.form.currency) {
-      return "Currency is required.";
+      return i18n.t("validation.currencyRequired");
     }
 
     if (this.form.costValue === "") {
-      return "Cost value is required.";
+      return i18n.t("validation.costValueRequired");
     }
 
     if (Number.isNaN(Number(this.form.costValue))) {
-      return "Cost value must be a number.";
+      return i18n.t("validation.costValueNumber");
     }
 
     if (this.form.statusMapperText.trim().length > 0) {
@@ -89,23 +90,23 @@ class FacebookPacsCampaignModel {
         let parsed = JSON.parse(this.form.statusMapperText);
 
         if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-          return "Status mapper must be a JSON object.";
+          return i18n.t("validation.statusMapperJsonObject");
         }
       } catch (error) {
-        return "Status mapper must be valid JSON.";
+        return i18n.t("validation.statusMapperJson");
       }
     }
 
     if (!this.form.executorId) {
-      return "Executor is required.";
+      return i18n.t("validation.executorRequired");
     }
 
     if (!this.form.adCabinetId) {
-      return "Ad cabinet is required.";
+      return i18n.t("validation.adCabinetRequired");
     }
 
     if (!this.form.businessPageId) {
-      return "Business page is required.";
+      return i18n.t("validation.businessPageRequired");
     }
 
     return null;
@@ -155,16 +156,16 @@ class FacebookPacsCampaignModel {
     })
       .then(function () {
         this.successMessage = isNew
-          ? "Campaign created successfully."
-          : "Campaign updated successfully.";
+          ? i18n.t("messages.created", { entity: i18n.t("entities.campaign") })
+          : i18n.t("messages.updated", { entity: i18n.t("entities.campaign") });
         setTimeout(function () {
           m.route.set("/facebook/pacs/campaigns");
         }, 2000);
       }.bind(this))
       .catch(function () {
         this.error = isNew
-          ? "Failed to create campaign."
-          : "Failed to update campaign.";
+          ? i18n.t("messages.failedCreate", { entity: i18n.t("entities.campaign") })
+          : i18n.t("messages.failedUpdate", { entity: i18n.t("entities.campaign") });
       }.bind(this));
   }
 }

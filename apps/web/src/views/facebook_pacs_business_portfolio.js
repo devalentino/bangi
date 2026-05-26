@@ -2,6 +2,7 @@ let m = require("mithril");
 let FacebookPacsBusinessPortfolioModel = require("../models/facebook_pacs_business_portfolio");
 let AutocompleteModule = require("@trevoreyre/autocomplete-js");
 let ConfirmModal = require("../components/confirm_modal");
+let i18n = require("../i18n");
 
 let Autocomplete = AutocompleteModule.default || AutocompleteModule;
 
@@ -30,14 +31,14 @@ class ExecutorsSearchWidget {
     this.autocomplete = new Autocomplete(root, {
       search: function (input) {
         if (typeof onSearch !== "function") {
-          this.searchError = "Search handler is not configured.";
+          this.searchError = i18n.t("facebook.searchHandlerMissing");
           return Promise.resolve([]);
         }
 
         this.searchError = null;
 
         return Promise.resolve(onSearch(input)).catch(function () {
-          this.searchError = "Failed to search executors.";
+          this.searchError = i18n.t("facebook.searchExecutorsFailed");
           return [];
         }.bind(this));
       }.bind(this),
@@ -79,13 +80,13 @@ class ExecutorsSearchWidget {
         }.bind(this),
       },
       [
-        m("h6.mb-4", "Executors"),
+        m("h6.mb-4", i18n.t("facebook.executors")),
         m("div", [
           m(
             "div.autocomplete.mb-3",
             m("input.form-control.border-0", {
               type: "search",
-              placeholder: "Search",
+              placeholder: i18n.t("facebook.search"),
             }),
             m("div", {"style": "position: relative;"}, m("ul.autocomplete-result-list")),
           ),
@@ -93,14 +94,14 @@ class ExecutorsSearchWidget {
             ? m("div.text-danger.small.mt-2", this.searchError)
             : null,
           linkError ? m("div.text-danger.small.mt-2", linkError) : null,
-          isLinking ? m("div.text-muted.small.mt-2", "Linking...") : null,
+          isLinking ? m("div.text-muted.small.mt-2", i18n.t("facebook.linking")) : null,
           this.deleteError
             ? m("div.text-danger.small.mt-2", this.deleteError)
             : null,
         ]),
         m("div.mb-3", [
           relatedExecutors.length === 0
-            ? m("div.text-muted", "No executors linked.")
+            ? m("div.text-muted", i18n.t("facebook.noExecutorsLinked"))
             : m(
               "ul.mb-0",
               relatedExecutors.map(function (executor) {
@@ -119,7 +120,7 @@ class ExecutorsSearchWidget {
                         this.deleteError = null;
                       }.bind(this),
                       disabled: this.isDeleting,
-                      title: "Delete",
+                      title: i18n.t("common.delete"),
                     },
                     m("i", { class: "fa fa-trash" }),
                   ),
@@ -130,15 +131,15 @@ class ExecutorsSearchWidget {
         m(ConfirmModal, {
           isOpen: Boolean(this.deleteTarget),
           isBusy: this.isDeleting,
-          title: "Delete executor",
+          title: i18n.t("facebook.deleteExecutor"),
           body: this.deleteTarget
             ? m(
                 "p.mb-0",
-                `Are you sure you want to delete "${this.deleteTarget.name}"?`,
+                i18n.t("facebook.deleteExecutorMessage", { name: this.deleteTarget.name }),
               )
             : null,
-          confirmText: this.isDeleting ? "Deleting..." : "Delete",
-          cancelText: "Cancel",
+          confirmText: this.isDeleting ? i18n.t("common.deleting") : i18n.t("common.delete"),
+          cancelText: i18n.t("common.cancel"),
           onCancel: function () {
             if (this.isDeleting) {
               return;
@@ -147,7 +148,7 @@ class ExecutorsSearchWidget {
           }.bind(this),
           onConfirm: function () {
             if (typeof onRemove !== "function") {
-              this.deleteError = "Delete handler is not configured.";
+              this.deleteError = i18n.t("facebook.deleteHandlerMissing");
               this.deleteTarget = null;
               return;
             }
@@ -160,7 +161,7 @@ class ExecutorsSearchWidget {
                 this.deleteTarget = null;
               }.bind(this))
               .catch(function () {
-                this.deleteError = "Failed to delete executor.";
+                this.deleteError = i18n.t("facebook.deleteExecutorFailed");
               }.bind(this))
               .finally(function () {
                 this.isDeleting = false;
@@ -201,10 +202,10 @@ class FacebookPacsBusinessPortfolioView {
           m(".bg-light.rounded.h-100.p-4", [
             m(
               "h6.mb-4",
-              isNew ? "New Business Portfolio" : "Business Portfolio Modification",
+              isNew ? i18n.t("facebook.businessPortfolios.new") : i18n.t("facebook.businessPortfolios.modify"),
             ),
             this.model.isLoading
-              ? m("div", "Loading business portfolio...")
+              ? m("div", i18n.t("facebook.businessPortfolios.loadingOne"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -226,11 +227,11 @@ class FacebookPacsBusinessPortfolioView {
                     },
                     [
                       m(".mb-3", [
-                        m("label.form-label", { for: "portfolioName" }, "Name"),
+                        m("label.form-label", { for: "portfolioName" }, i18n.t("common.name")),
                         m("input.form-control", {
                           type: "text",
                           id: "portfolioName",
-                          placeholder: "Business portfolio name",
+                          placeholder: i18n.t("facebook.businessPortfolios.namePlaceholder"),
                           value: this.model.form.name,
                           oninput: function (event) {
                             this.model.form.name = event.target.value;
@@ -249,18 +250,18 @@ class FacebookPacsBusinessPortfolioView {
                         m(
                           "label.form-check-label",
                           { for: "portfolioIsBanned" },
-                          "Banned",
+                          i18n.t("common.banned"),
                         ),
                       ]),
                       m(
                         "button.btn.btn-primary",
                         { type: "submit" },
-                        "Save changes",
+                        i18n.t("common.saveChanges"),
                       ),
                       m(
                         "button.btn.btn-secondary.ms-2",
                         { type: "reset" },
-                        "Reset",
+                        i18n.t("common.reset"),
                       ),
                     ],
                   ),
@@ -282,7 +283,7 @@ class FacebookPacsBusinessPortfolioView {
                     }
 
                     if (linkedExecutorIds.indexOf(executor.id) !== -1) {
-                      this.executorLinkError = "Executor is already linked.";
+                      this.executorLinkError = i18n.t("facebook.executorAlreadyLinked");
                       return;
                     }
 
@@ -295,7 +296,7 @@ class FacebookPacsBusinessPortfolioView {
                         return this.model.fetch();
                       }.bind(this))
                       .catch(function () {
-                        this.executorLinkError = "Failed to link executor.";
+                        this.executorLinkError = i18n.t("facebook.linkExecutorFailed");
                       }.bind(this))
                       .finally(function () {
                         this.isLinkingExecutor = false;
@@ -312,9 +313,9 @@ class FacebookPacsBusinessPortfolioView {
               ]),
               m(".col-12.col-xl-4", [
                 m(".bg-light.rounded.h-100.p-4", [
-                  m("h6.mb-4", "Ad Cabinets"),
+                  m("h6.mb-4", i18n.t("facebook.adCabinets")),
                   this.model.adCabinets.length === 0
-                    ? m("div.text-muted", "No ad cabinets linked.")
+                    ? m("div.text-muted", i18n.t("facebook.noAdCabinetsLinked"))
                     : m(
                         "ul.mb-0",
                         this.model.adCabinets.map(function (adCabinet) {

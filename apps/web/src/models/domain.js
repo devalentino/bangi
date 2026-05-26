@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class DomainModel {
   constructor(domainId) {
@@ -58,7 +59,7 @@ class DomainModel {
       }.bind(this))
       .catch(function () {
         this.campaigns = [];
-        this.campaignError = "Failed to load campaign options.";
+        this.campaignError = i18n.t("messages.failedLoad", { entity: i18n.t("entities.campaignOptions") });
       });
   }
 
@@ -85,7 +86,7 @@ class DomainModel {
         }
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load domain details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.domainDetails") });
         this.isLoading = false;
       }.bind(this));
   }
@@ -104,18 +105,18 @@ class DomainModel {
         this.isCertificateLoading = false;
       }.bind(this))
       .catch(function () {
-        this.certificateError = "Failed to load certificate details.";
+        this.certificateError = i18n.t("messages.failedLoad", { entity: i18n.t("entities.certificateDetails") });
         this.isCertificateLoading = false;
       }.bind(this));
   }
 
   validate() {
     if (!this.form.hostname.trim()) {
-      return "Hostname is required.";
+      return i18n.t("validation.hostnameRequired");
     }
 
     if (this.domainId === "new" && !this.form.purpose) {
-      return "Purpose is required.";
+      return i18n.t("validation.purposeRequired");
     }
 
     return null;
@@ -142,7 +143,7 @@ class DomainModel {
       return null;
     }
 
-    return "The latest Nginx validation snapshot reports an inconsistency. Check Health for details.";
+    return i18n.t("messages.domainValidationInconsistent");
   }
 
   save() {
@@ -168,16 +169,16 @@ class DomainModel {
     })
       .then(function () {
         this.successMessage = isNew
-          ? "Domain created successfully."
-          : "Domain updated successfully.";
+          ? i18n.t("messages.created", { entity: i18n.t("entities.domain") })
+          : i18n.t("messages.updated", { entity: i18n.t("entities.domain") });
         setTimeout(function () {
           m.route.set("/domains");
         }, 2000);
       }.bind(this))
       .catch(function () {
         this.error = isNew
-          ? "Failed to create domain."
-          : "Failed to update domain.";
+          ? i18n.t("messages.failedCreate", { entity: i18n.t("entities.domain") })
+          : i18n.t("messages.failedUpdate", { entity: i18n.t("entities.domain") });
       }.bind(this));
   }
 }
