@@ -1,4 +1,5 @@
 var m = require("mithril");
+var i18n = require("../i18n");
 
 class Spinner {
   view() {
@@ -11,7 +12,7 @@ class Spinner {
       m(
         ".spinner-border.text-primary",
         { style: "width: 3rem; height: 3rem;", role: "status" },
-        m("span.sr-only", "Loading..."),
+        m("span.sr-only", i18n.t("common.loading")),
       ),
     );
   }

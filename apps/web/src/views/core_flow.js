@@ -1,5 +1,6 @@
 let m = require("mithril");
 let CoreFlowModel = require("../models/core_flow");
+let i18n = require("../i18n");
 
 class CoreFlowView {
   constructor(vnode) {
@@ -20,9 +21,9 @@ class CoreFlowView {
       m(".row.g-4", [
         m(".col-12.col-xl-6", [
           m(".bg-light.rounded.h-100.p-4", [
-            m("h6.mb-4", isNew ? "New Flow" : "Flow Modification"),
+            m("h6.mb-4", isNew ? i18n.t("flows.new") : i18n.t("flows.modify")),
             this.model.isLoading
-              ? m("div", "Loading flow...")
+              ? m("div", i18n.t("flows.loading"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -51,11 +52,11 @@ class CoreFlowView {
                       }),
                       m(".row.g-3", [
                         m(".col-sm-12", [
-                          m("label.form-label", { for: "flowName" }, "Name"),
+                          m("label.form-label", { for: "flowName" }, i18n.t("common.name")),
                           m("input.form-control", {
                             type: "text",
                             id: "flowName",
-                            placeholder: "Enter flow name",
+                            placeholder: i18n.t("flows.namePlaceholder"),
                             value: this.model.form.name,
                             oninput: function (event) {
                               this.model.form.name = event.target.value;
@@ -78,7 +79,7 @@ class CoreFlowView {
                                     this.model.form.landingArchive = null;
                                   }.bind(this),
                                 },
-                                "Redirect",
+                                i18n.t("flows.redirect"),
                               ),
                             ]),
                             m("li.nav-item", [
@@ -95,20 +96,20 @@ class CoreFlowView {
                                     this.model.form.redirectUrl = null;
                                   }.bind(this),
                                 },
-                                "Render",
+                                i18n.t("flows.render"),
                               ),
                             ]),
                           ]),
                         ]),
                       ]),
                       m(".row.g-3.mt-1", [
-                        m(".col-sm-12.col-md-6", [
+                        m(".col-sm-12.col-md-12", [
                           this.model.form.actionType === "redirect"
                             ? [
                                 m(
                                   "label.form-label",
                                   { for: "redirectUrl" },
-                                  "Redirect URL",
+                                  i18n.t("flows.redirectUrl"),
                                 ),
                                 m("input.form-control", {
                                   type: "url",
@@ -126,18 +127,18 @@ class CoreFlowView {
                                   ? m(".alert.alert-info.mb-3", [
                                       m(
                                         ".fw-semibold",
-                                        "Landing page already uploaded",
+                                        i18n.t("flows.landingUploaded"),
                                       ),
                                       m(
                                         ".small.mt-1",
-                                        "Upload a new archive only if you want to replace it.",
+                                        i18n.t("flows.replaceArchiveHelp"),
                                       ),
                                     ])
                                   : null,
                                 m(
                                   "label.form-label",
                                   { for: "renderFile" },
-                                  "Render file",
+                                  i18n.t("flows.renderFile"),
                                 ),
                                 m("input.form-control", {
                                   type: "file",
@@ -151,18 +152,18 @@ class CoreFlowView {
                         ]),
                       ]),
                       m(".mb-3.mt-3", [
-                        m("label.form-label", { for: "flowRule" }, "Rule"),
+                        m("label.form-label", { for: "flowRule" }, i18n.t("flows.rule")),
                         m("textarea.form-control", {
                           id: "flowRule",
                           rows: "4",
                           placeholder:
-                            'Leave blank for catch-all traffic, or enter a rule like country == "US"',
+                            i18n.t("flows.rulePlaceholder"),
                           value: this.model.form.rule,
                           oninput: function (event) {
                             this.model.form.rule = event.target.value;
                           }.bind(this),
                         }),
-                        m(".form-text", "Leave blank for a catch-all flow."),
+                        m(".form-text", i18n.t("flows.ruleHelp")),
                       ]),
                       m(".form-check.mt-3", [
                         m("input.form-check-input", {
@@ -176,7 +177,7 @@ class CoreFlowView {
                         m(
                           "label.form-check-label",
                           { for: "isEnabled" },
-                          "Enabled",
+                          i18n.t("common.enabled"),
                         ),
                       ]),
                       m(".form-check.mt-3", [
@@ -192,22 +193,22 @@ class CoreFlowView {
                         m(
                           "label.form-check-label",
                           { for: "showOncePerVisitor" },
-                          "Show only once per visitor",
+                          i18n.t("flows.showOncePerVisitor"),
                         ),
                         m(
                           ".form-text",
-                          "After this visitor sees the flow, Bangi skips it when selecting their next landing.",
+                          i18n.t("flows.showOncePerVisitorHelp"),
                         ),
                       ]),
                       m(
                         "button.btn.btn-primary.mt-3",
                         { type: "submit" },
-                        "Save changes",
+                        i18n.t("common.saveChanges"),
                       ),
                       m(
                         "button.btn.btn-secondary.mt-3.ms-2",
                         { type: "reset" },
-                        "Reset",
+                        i18n.t("common.reset"),
                       ),
                     ],
                   ),

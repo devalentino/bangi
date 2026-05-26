@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class CoreCampaignModel {
   constructor(campaignId) {
@@ -58,30 +59,30 @@ class CoreCampaignModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load campaign details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.campaignDetails") });
         this.isLoading = false;
       }.bind(this));
   }
 
   validate() {
     if (!this.form.name.trim()) {
-      return "Name is required.";
+      return i18n.t("validation.nameRequired");
     }
 
     if (!this.form.costModel) {
-      return "Cost model is required.";
+      return i18n.t("validation.costModelRequired");
     }
 
     if (!this.form.currency) {
-      return "Currency is required.";
+      return i18n.t("validation.currencyRequired");
     }
 
     if (this.form.costValue === "") {
-      return "Cost value is required.";
+      return i18n.t("validation.costValueRequired");
     }
 
     if (Number.isNaN(Number(this.form.costValue))) {
-      return "Cost value must be a number.";
+      return i18n.t("validation.costValueNumber");
     }
 
     if (this.form.statusMapperText.trim().length > 0) {
@@ -89,11 +90,11 @@ class CoreCampaignModel {
         let parsed = JSON.parse(this.form.statusMapperText);
 
         if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-          return "Status mapper must be an object with parameter and mapping.";
+          return i18n.t("validation.statusMapperObject");
         }
 
         if (typeof parsed.parameter !== "string" || !parsed.parameter.trim()) {
-          return "Status mapper parameter must be a non-empty string.";
+          return i18n.t("validation.statusMapperParameter");
         }
 
         if (
@@ -101,22 +102,22 @@ class CoreCampaignModel {
           || typeof parsed.mapping !== "object"
           || Array.isArray(parsed.mapping)
         ) {
-          return "Status mapper mapping must be an object.";
+          return i18n.t("validation.statusMapperMappingObject");
         }
 
         let keys = Object.keys(parsed.mapping);
         for (let i = 0; i < keys.length; i += 1) {
           let key = keys[i];
           if (typeof key !== "string" || !key.trim()) {
-            return "Status mapper mapping keys must be non-empty strings.";
+            return i18n.t("validation.statusMapperMappingKey");
           }
 
           if (typeof parsed.mapping[key] !== "string") {
-            return "Status mapper mapping values must be strings.";
+            return i18n.t("validation.statusMapperMappingValue");
           }
         }
       } catch (error) {
-        return "Status mapper must be valid JSON.";
+        return i18n.t("validation.statusMapperJson");
       }
     }
 
@@ -173,16 +174,16 @@ class CoreCampaignModel {
     })
       .then(function () {
         this.successMessage = isNew
-          ? "Campaign created successfully."
-          : "Campaign updated successfully.";
+          ? i18n.t("messages.created", { entity: i18n.t("entities.campaign") })
+          : i18n.t("messages.updated", { entity: i18n.t("entities.campaign") });
         setTimeout(function () {
           m.route.set("/core/campaigns");
         }, 2000);
       }.bind(this))
       .catch(function () {
         this.error = isNew
-          ? "Failed to create campaign."
-          : "Failed to update campaign.";
+          ? i18n.t("messages.failedCreate", { entity: i18n.t("entities.campaign") })
+          : i18n.t("messages.failedUpdate", { entity: i18n.t("entities.campaign") });
       }.bind(this));
   }
 }

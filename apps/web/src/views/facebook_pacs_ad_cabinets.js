@@ -1,6 +1,7 @@
 let m = require("mithril");
 let FacebookPacsAdCabinetsModel = require("../models/facebook_pacs_ad_cabinets");
 let Pagination = require("../components/pagination");
+let i18n = require("../i18n");
 
 class FacebookPacsAdCabinetsView {
   constructor() {
@@ -20,16 +21,16 @@ class FacebookPacsAdCabinetsView {
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
               [
-                m("h6.mb-0", "Facebook PACS Ad Cabinets"),
+                m("h6.mb-0", i18n.t("facebook.adCabinets.title")),
                 m(
                   "a.btn.btn-primary.btn-sm",
                   { href: "#!/facebook/pacs/ad-cabinets/new" },
-                  "New Ad Cabinet",
+                  i18n.t("facebook.adCabinets.new"),
                 ),
               ],
             ),
             this.model.isLoading
-              ? m("div", "Loading ad cabinets...")
+              ? m("div", i18n.t("facebook.adCabinets.loading"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -40,10 +41,10 @@ class FacebookPacsAdCabinetsView {
                       m(
                         "thead",
                         m("tr", [
-                          m("th", { scope: "col" }, "ID"),
-                          m("th", { scope: "col" }, "Name"),
-                          m("th", { scope: "col" }, "Active"),
-                          m("th", { scope: "col" }, "Business Portfolio"),
+                          m("th", { scope: "col" }, i18n.t("common.id")),
+                          m("th", { scope: "col" }, i18n.t("common.name")),
+                          m("th", { scope: "col" }, i18n.t("common.active")),
+                          m("th", { scope: "col" }, i18n.t("facebook.businessPortfolio")),
                         ]),
                       ),
                       m(
@@ -53,7 +54,7 @@ class FacebookPacsAdCabinetsView {
                               m(
                                 "td.text-center",
                                 { colspan: 4 },
-                                "No ad cabinets found.",
+                                i18n.t("facebook.adCabinets.notFound"),
                               ),
                             ])
                           : this.model.items.map(function (adCabinet) {
@@ -74,11 +75,11 @@ class FacebookPacsAdCabinetsView {
                                   adCabinet.isBanned
                                     ? m("i", {
                                         class: "fa fa-ban text-danger",
-                                        title: "Banned",
+                                        title: i18n.t("common.banned"),
                                       })
                                     : m("i", {
                                         class: "fa fa-check text-success",
-                                        title: "Active",
+                                        title: i18n.t("common.active"),
                                       }),
                                 ),
                                 m(

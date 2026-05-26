@@ -1,5 +1,6 @@
 let m = require("mithril");
 let FacebookPacsBusinessPortfolioAccessUrlModel = require("../models/facebook_pacs_business_portfolio_access_url");
+let i18n = require("../i18n");
 
 class FacebookPacsBusinessPortfolioAccessUrlView {
   constructor() {
@@ -15,7 +16,7 @@ class FacebookPacsBusinessPortfolioAccessUrlView {
       m(".row.g-4", [
         m(".col-12.col-xl-6", [
           m(".bg-light.rounded.h-100.p-4", [
-            m("h6.mb-4", "New Access URL"),
+            m("h6.mb-4", i18n.t("facebook.accessUrls.new")),
             this.model.error
               ? m(".alert.alert-danger", this.model.error)
               : null,
@@ -36,7 +37,7 @@ class FacebookPacsBusinessPortfolioAccessUrlView {
               },
               [
                 m(".mb-3", [
-                  m("label.form-label", { for: "accessUrl" }, "URL"),
+                  m("label.form-label", { for: "accessUrl" }, i18n.t("common.url")),
                   m("input.form-control", {
                     type: "text",
                     id: "accessUrl",
@@ -48,7 +49,7 @@ class FacebookPacsBusinessPortfolioAccessUrlView {
                   }),
                 ]),
                 m(".mb-3", [
-                  m("label.form-label", { for: "accessUrlEmail" }, "Email"),
+                  m("label.form-label", { for: "accessUrlEmail" }, i18n.t("common.email")),
                   m("input.form-control", {
                     type: "email",
                     id: "accessUrlEmail",
@@ -63,7 +64,7 @@ class FacebookPacsBusinessPortfolioAccessUrlView {
                   m(
                     "label.form-label",
                     { for: "expiresAt" },
-                    "Expires At",
+                    i18n.t("facebook.accessUrls.expiresAt"),
                   ),
                   m("input.form-control", {
                     type: "date",
@@ -77,12 +78,12 @@ class FacebookPacsBusinessPortfolioAccessUrlView {
                 m(
                   "button.btn.btn-primary",
                   { type: "submit" },
-                  "Save changes",
+                  i18n.t("common.saveChanges"),
                 ),
                 m(
                   "button.btn.btn-secondary.ms-2",
                   { type: "reset" },
-                  "Reset",
+                  i18n.t("common.reset"),
                 ),
               ],
             ),

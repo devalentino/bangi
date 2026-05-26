@@ -1,5 +1,6 @@
 let m = require("mithril");
 let FacebookPacsBusinessPageModel = require("../models/facebook_pacs_business_page");
+let i18n = require("../i18n");
 
 class FacebookPacsBusinessPageView {
   constructor() {
@@ -23,10 +24,10 @@ class FacebookPacsBusinessPageView {
           m(".bg-light.rounded.h-100.p-4", [
             m(
               "h6.mb-4",
-              isNew ? "New Business Page" : "Business Page Modification",
+              isNew ? i18n.t("facebook.businessPages.new") : i18n.t("facebook.businessPages.modify"),
             ),
             this.model.isLoading
-              ? m("div", "Loading business page...")
+              ? m("div", i18n.t("facebook.businessPages.loadingOne"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -48,11 +49,11 @@ class FacebookPacsBusinessPageView {
                     },
                     [
                       m(".mb-3", [
-                        m("label.form-label", { for: "businessPageName" }, "Name"),
+                        m("label.form-label", { for: "businessPageName" }, i18n.t("common.name")),
                         m("input.form-control", {
                           type: "text",
                           id: "businessPageName",
-                          placeholder: "Business page name",
+                          placeholder: i18n.t("facebook.businessPages.namePlaceholder"),
                           value: this.model.form.name,
                           oninput: function (event) {
                             this.model.form.name = event.target.value;
@@ -71,18 +72,18 @@ class FacebookPacsBusinessPageView {
                         m(
                           "label.form-check-label",
                           { for: "businessPageIsBanned" },
-                          "Banned",
+                          i18n.t("common.banned"),
                         ),
                       ]),
                       m(
                         "button.btn.btn-primary",
                         { type: "submit" },
-                        "Save changes",
+                        i18n.t("common.saveChanges"),
                       ),
                       m(
                         "button.btn.btn-secondary.ms-2",
                         { type: "reset" },
-                        "Reset",
+                        i18n.t("common.reset"),
                       ),
                     ],
                   ),

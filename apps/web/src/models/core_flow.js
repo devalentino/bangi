@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class CoreFlowModel {
   constructor(flowId, campaignId) {
@@ -58,29 +59,29 @@ class CoreFlowModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load flow details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.flowDetails") });
         this.isLoading = false;
       }.bind(this));
   }
 
   validate() {
     if (!this.form.name.trim()) {
-      return "Name is required.";
+      return i18n.t("validation.nameRequired");
     }
 
     if (!this.form.actionType) {
-      return "Action type is required.";
+      return i18n.t("validation.actionTypeRequired");
     }
 
     if (this.form.actionType === "redirect") {
       let redirectUrl = (this.form.redirectUrl || "").trim();
       if (!redirectUrl) {
-        return "Redirect URL is required.";
+        return i18n.t("validation.redirectUrlRequired");
       }
       try {
         new URL(redirectUrl);
       } catch (error) {
-        return "Redirect URL must be a valid URL.";
+        return i18n.t("validation.redirectUrlInvalid");
       }
     }
 
@@ -89,7 +90,7 @@ class CoreFlowModel {
       !this.form.hasLandingPage &&
       !this.form.landingArchive
     ) {
-      return "Landing archive is required.";
+      return i18n.t("validation.landingArchiveRequired");
     }
 
     return null;
@@ -156,8 +157,8 @@ class CoreFlowModel {
     )
       .then(function () {
         this.successMessage = isNew
-          ? "Flow created successfully."
-          : "Flow updated successfully.";
+          ? i18n.t("messages.created", { entity: i18n.t("entities.flow") })
+          : i18n.t("messages.updated", { entity: i18n.t("entities.flow") });
         setTimeout(function () {
           if (this.campaignId) {
             m.route.set(`/core/campaigns/${this.campaignId}`);
@@ -197,8 +198,8 @@ class CoreFlowModel {
         }
 
         this.error = isNew
-          ? "Failed to create flow."
-          : "Failed to update flow.";
+          ? i18n.t("messages.failedCreate", { entity: i18n.t("entities.flow") })
+          : i18n.t("messages.failedUpdate", { entity: i18n.t("entities.flow") });
       }.bind(this));
   }
 }

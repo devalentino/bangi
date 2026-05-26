@@ -2,6 +2,7 @@ let m = require("mithril");
 let FacebookPacsAdCabinetModel = require("../models/facebook_pacs_ad_cabinet");
 let AutocompleteModule = require("@trevoreyre/autocomplete-js");
 let ConfirmModal = require("../components/confirm_modal");
+let i18n = require("../i18n");
 
 let Autocomplete = AutocompleteModule.default || AutocompleteModule;
 
@@ -30,14 +31,14 @@ class BusinessPortfolioSearchWidget {
     this.autocomplete = new Autocomplete(root, {
       search: function (input) {
         if (typeof onSearch !== "function") {
-          this.searchError = "Search handler is not configured.";
+          this.searchError = i18n.t("facebook.searchHandlerMissing");
           return Promise.resolve([]);
         }
 
         this.searchError = null;
 
         return Promise.resolve(onSearch(input)).catch(function () {
-          this.searchError = "Failed to search business portfolios.";
+          this.searchError = i18n.t("facebook.searchBusinessPortfoliosFailed");
           return [];
         }.bind(this));
       }.bind(this),
@@ -79,13 +80,13 @@ class BusinessPortfolioSearchWidget {
         }.bind(this),
       },
       [
-        m("h6.mb-4", "Business Portfolio"),
+        m("h6.mb-4", i18n.t("facebook.businessPortfolio")),
         m("div", [
           m(
             "div.autocomplete.mb-3",
             m("input.form-control.border-0", {
               type: "search",
-              placeholder: "Search",
+              placeholder: i18n.t("facebook.search"),
             }),
             m("div", {"style": "position: relative;"}, m("ul.autocomplete-result-list")),
           ),
@@ -93,7 +94,7 @@ class BusinessPortfolioSearchWidget {
             ? m("div.text-danger.small.mt-2", this.searchError)
             : null,
           linkError ? m("div.text-danger.small.mt-2", linkError) : null,
-          isLinking ? m("div.text-muted.small.mt-2", "Linking...") : null,
+          isLinking ? m("div.text-muted.small.mt-2", i18n.t("facebook.linking")) : null,
           this.deleteError
             ? m("div.text-danger.small.mt-2", this.deleteError)
             : null,
@@ -117,25 +118,25 @@ class BusinessPortfolioSearchWidget {
                       this.deleteError = null;
                     }.bind(this),
                     disabled: this.isDeleting,
-                    title: "Unbind",
+                    title: i18n.t("facebook.unbind"),
                   },
                   m("i", { class: "fa fa-trash" }),
                 ),
               ])
-            : m("div.text-muted", "No business portfolio linked."),
+            : m("div.text-muted", i18n.t("facebook.noBusinessPortfolioLinked")),
         ]),
         m(ConfirmModal, {
           isOpen: Boolean(this.deleteTarget),
           isBusy: this.isDeleting,
-          title: "Unbind business portfolio",
+          title: i18n.t("facebook.unbindBusinessPortfolio"),
           body: this.deleteTarget
             ? m(
                 "p.mb-0",
-                `Are you sure you want to unbind "${this.deleteTarget.name}"?`,
+                i18n.t("facebook.unbindBusinessPortfolioMessage", { name: this.deleteTarget.name }),
               )
             : null,
-          confirmText: this.isDeleting ? "Unbinding..." : "Unbind",
-          cancelText: "Cancel",
+          confirmText: this.isDeleting ? i18n.t("facebook.unbinding") : i18n.t("facebook.unbind"),
+          cancelText: i18n.t("common.cancel"),
           onCancel: function () {
             if (this.isDeleting) {
               return;
@@ -144,7 +145,7 @@ class BusinessPortfolioSearchWidget {
           }.bind(this),
           onConfirm: function () {
             if (typeof onRemove !== "function") {
-              this.deleteError = "Unbind handler is not configured.";
+              this.deleteError = i18n.t("facebook.unbindHandlerMissing");
               this.deleteTarget = null;
               return;
             }
@@ -157,7 +158,7 @@ class BusinessPortfolioSearchWidget {
                 this.deleteTarget = null;
               }.bind(this))
               .catch(function () {
-                this.deleteError = "Failed to unbind business portfolio.";
+                this.deleteError = i18n.t("facebook.unbindBusinessPortfolioFailed");
               }.bind(this))
               .finally(function () {
                 this.isDeleting = false;
@@ -191,9 +192,9 @@ class FacebookPacsAdCabinetView {
       m(".row.g-4", [
         m(".col-12.col-xl-6", [
           m(".bg-light.rounded.h-100.p-4", [
-            m("h6.mb-4", isNew ? "New Ad Cabinet" : "Ad Cabinet Modification"),
+            m("h6.mb-4", isNew ? i18n.t("facebook.adCabinets.new") : i18n.t("facebook.adCabinets.modify")),
             this.model.isLoading
-              ? m("div", "Loading ad cabinet...")
+              ? m("div", i18n.t("facebook.adCabinets.loadingOne"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -215,11 +216,11 @@ class FacebookPacsAdCabinetView {
                     },
                     [
                       m(".mb-3", [
-                        m("label.form-label", { for: "adCabinetName" }, "Name"),
+                        m("label.form-label", { for: "adCabinetName" }, i18n.t("common.name")),
                         m("input.form-control", {
                           type: "text",
                           id: "adCabinetName",
-                          placeholder: "Ad cabinet name",
+                          placeholder: i18n.t("facebook.adCabinets.namePlaceholder"),
                           value: this.model.form.name,
                           oninput: function (event) {
                             this.model.form.name = event.target.value;
@@ -238,18 +239,18 @@ class FacebookPacsAdCabinetView {
                         m(
                           "label.form-check-label",
                           { for: "adCabinetIsBanned" },
-                          "Banned",
+                          i18n.t("common.banned"),
                         ),
                       ]),
                       m(
                         "button.btn.btn-primary",
                         { type: "submit" },
-                        "Save changes",
+                        i18n.t("common.saveChanges"),
                       ),
                       m(
                         "button.btn.btn-secondary.ms-2",
                         { type: "reset" },
-                        "Reset",
+                        i18n.t("common.reset"),
                       ),
                     ],
                   ),
@@ -274,7 +275,7 @@ class FacebookPacsAdCabinetView {
                     this.model.businessPortfolio.id === portfolio.id
                   ) {
                     this.portfolioLinkError =
-                      "Business portfolio is already linked.";
+                      i18n.t("facebook.businessPortfolioAlreadyLinked");
                     return;
                   }
 
@@ -288,7 +289,7 @@ class FacebookPacsAdCabinetView {
                     }.bind(this))
                     .catch(function () {
                       this.portfolioLinkError =
-                        "Failed to link business portfolio.";
+                        i18n.t("facebook.linkBusinessPortfolioFailed");
                     }.bind(this))
                     .finally(function () {
                       this.isLinkingPortfolio = false;

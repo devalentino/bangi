@@ -1,5 +1,6 @@
 const m = require("mithril");
 var config = require("../config");
+const i18n = require("../i18n");
 
 var POLL_INTERVAL_MS = 1 * 60 * 1000;
 
@@ -29,7 +30,7 @@ class AlertsModel {
       }.bind(this))
       .catch(function () {
         this.items = [];
-        this.error = "Failed to load alerts.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.alerts") });
         this.isLoading = false;
       }.bind(this));
   }

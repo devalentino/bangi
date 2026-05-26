@@ -1,6 +1,7 @@
 let m = require("mithril");
 let DomainsModel = require("../models/domains");
 let Pagination = require("../components/pagination");
+let i18n = require("../i18n");
 
 class DomainsView {
   constructor() {
@@ -12,30 +13,30 @@ class DomainsView {
   }
 
   _purposeBadge(domain) {
-    return domain.purpose === "dashboard" ? "Dashboard" : "Campaign";
+    return domain.purpose === "dashboard" ? i18n.t("domains.dashboard") : i18n.t("nav.facebookPacs.campaigns");
   }
 
   _aRecordBadge(domain) {
     if (domain.isARecordSet === true) {
-      return "Set";
+      return i18n.t("domains.set");
     }
 
     if (domain.isARecordSet === false) {
-      return "Missing";
+      return i18n.t("domains.missing");
     }
 
-    return "Unchecked";
+    return i18n.t("domains.unchecked");
   }
 
   _disabledBadge(domain) {
     return domain.isDisabled
       ? m("i", {
           class: "fa fa-ban text-danger",
-          title: "Disabled",
+          title: i18n.t("common.disabled"),
         })
       : m("i", {
           class: "fa fa-check text-success",
-          title: "Enabled",
+          title: i18n.t("common.enabled"),
         });
   }
 
@@ -51,10 +52,10 @@ class DomainsView {
       expired: "badge bg-danger",
     };
     let labels = {
-      pending: "Pending",
-      active: "Active",
-      failed: "Failed",
-      expired: "Expired",
+      pending: i18n.t("status.pending"),
+      active: i18n.t("status.active"),
+      failed: i18n.t("status.failed"),
+      expired: i18n.t("status.expired"),
     };
 
     return m(
@@ -81,16 +82,16 @@ class DomainsView {
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
               [
-                m("h6.mb-0", "Managed Domains"),
+                m("h6.mb-0", i18n.t("domains.managed")),
                 m(
                   "a.btn.btn-primary.btn-sm",
                   { href: "#!/domains/new" },
-                  "New Domain",
+                  i18n.t("domains.new"),
                 ),
               ],
             ),
             this.model.isLoading
-              ? m("div", "Loading domains...")
+              ? m("div", i18n.t("domains.loading"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -101,13 +102,13 @@ class DomainsView {
                       m(
                         "thead",
                         m("tr", [
-                          m("th", { scope: "col" }, "ID"),
-                          m("th", { scope: "col" }, "Hostname"),
-                          m("th", { scope: "col" }, "Purpose"),
-                          m("th", { scope: "col" }, "Campaign"),
-                          m("th", { scope: "col" }, "A Record"),
-                          m("th", { scope: "col" }, "Certificate"),
-                          m("th", { scope: "col" }, "State"),
+                          m("th", { scope: "col" }, i18n.t("common.id")),
+                          m("th", { scope: "col" }, i18n.t("domains.hostname")),
+                          m("th", { scope: "col" }, i18n.t("domains.purpose")),
+                          m("th", { scope: "col" }, i18n.t("nav.facebookPacs.campaigns")),
+                          m("th", { scope: "col" }, i18n.t("domains.aRecord")),
+                          m("th", { scope: "col" }, i18n.t("domains.certificate")),
+                          m("th", { scope: "col" }, i18n.t("domains.state")),
                         ]),
                       ),
                       m(
@@ -117,7 +118,7 @@ class DomainsView {
                               m(
                                 "td.text-center",
                                 { colspan: 7 },
-                                "No domains found.",
+                                i18n.t("domains.notFound"),
                               ),
                             ])
                           : this.model.items.map(

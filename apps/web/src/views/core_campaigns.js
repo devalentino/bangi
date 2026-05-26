@@ -2,6 +2,7 @@ let m = require("mithril");
 let CoreCampaignsModel = require("../models/core_campaigns");
 let Pagination = require("../components/pagination");
 let { timestamp2LocalTime } = require("../utils/date");
+let i18n = require("../i18n");
 
 class CoreCampaignsView {
   constructor(vnode) {
@@ -21,16 +22,16 @@ class CoreCampaignsView {
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
               [
-                m("h6.mb-0", "Core Campaigns"),
+                m("h6.mb-0", i18n.t("campaigns.core.title")),
                 m(
                   "a.btn.btn-primary.btn-sm",
                   { href: "#!/core/campaigns/new" },
-                  "New Campaign",
+                  i18n.t("campaigns.new"),
                 ),
               ],
             ),
             this.model.isLoading
-              ? m("div", "Loading campaigns...")
+              ? m("div", i18n.t("common.loading.campaigns"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -41,14 +42,14 @@ class CoreCampaignsView {
                       m(
                         "thead",
                         m("tr", [
-                          m("th", { scope: "col" }, "ID"),
-                          m("th", { scope: "col" }, "Name"),
-                          m("th", { scope: "col" }, "Cost Model"),
-                          m("th", { scope: "col" }, "Cost Value"),
-                          m("th", { scope: "col" }, "Currency"),
-                          m("th", { scope: "col" }, "Clicks"),
-                          m("th", { scope: "col" }, "Click Share"),
-                          m("th", { scope: "col" }, "Last Activity"),
+                          m("th", { scope: "col" }, i18n.t("common.id")),
+                          m("th", { scope: "col" }, i18n.t("common.name")),
+                          m("th", { scope: "col" }, i18n.t("common.costModel")),
+                          m("th", { scope: "col" }, i18n.t("common.costValue")),
+                          m("th", { scope: "col" }, i18n.t("common.currency")),
+                          m("th", { scope: "col" }, i18n.t("statistics.clicks")),
+                          m("th", { scope: "col" }, i18n.t("campaigns.clickShare")),
+                          m("th", { scope: "col" }, i18n.t("campaigns.lastActivity")),
                         ]),
                       ),
                       m(
@@ -58,7 +59,7 @@ class CoreCampaignsView {
                               m(
                                 "td.text-center",
                                 { colspan: 8 },
-                                "No campaigns found.",
+                                i18n.t("campaigns.notFound"),
                               ),
                             ])
                           : this.model.items.map(function (campaign) {

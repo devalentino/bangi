@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class DomainsModel {
   constructor() {
@@ -30,7 +31,7 @@ class DomainsModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load domains.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.domains") });
         this.isLoading = false;
       })
   }

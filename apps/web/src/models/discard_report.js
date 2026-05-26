@@ -1,5 +1,6 @@
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class DiscardReportFilter {
   constructor() {
@@ -50,7 +51,7 @@ class DiscardReportModel {
       .catch(
         function () {
           this.campaigns = [];
-          this.campaignError = "Failed to load campaigns.";
+          this.campaignError = i18n.t("messages.failedLoad", { entity: i18n.t("entities.campaigns") });
         }.bind(this),
       );
   }
@@ -93,7 +94,7 @@ class DiscardReportModel {
       .catch(
         function () {
           this.content = null;
-          this.error = "Failed to load discard report.";
+          this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.discardReport") });
           this.isLoading = false;
         }.bind(this),
       );

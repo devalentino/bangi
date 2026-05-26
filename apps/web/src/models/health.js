@@ -1,5 +1,6 @@
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class HealthModel {
   constructor() {
@@ -40,7 +41,7 @@ class HealthModel {
         function () {
           this.summary = null;
           this.history = [];
-          this.error = "Failed to load disk utilization.";
+          this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.diskUtilization") });
         }.bind(this),
       );
 
@@ -58,7 +59,7 @@ class HealthModel {
       .catch(
         function () {
           this.nginxSnapshot = null;
-          this.nginxError = "Failed to load Nginx validation snapshot.";
+          this.nginxError = i18n.t("messages.failedLoad", { entity: i18n.t("entities.nginxValidationSnapshot") });
         }.bind(this),
       );
 
@@ -76,7 +77,7 @@ class HealthModel {
       .catch(
         function () {
           this.certificateDiagnostics = [];
-          this.certificateError = "Failed to load certificate diagnostics.";
+          this.certificateError = i18n.t("messages.failedLoad", { entity: i18n.t("entities.certificateDiagnostics") });
         }.bind(this),
       );
 
