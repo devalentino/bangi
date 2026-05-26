@@ -1,5 +1,6 @@
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class ExpensesReportFilter {
   constructor() {
@@ -73,7 +74,7 @@ class ExpensesReportModel {
         this._buildMatrix();
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load expenses report.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.expensesReport") });
         this.isLoading = false;
       }.bind(this));
   }
@@ -90,7 +91,7 @@ class ExpensesReportModel {
       }.bind(this))
       .catch(function () {
         this.campaigns = [];
-        this.campaignError = "Failed to load campaigns.";
+        this.campaignError = i18n.t("messages.failedLoad", { entity: i18n.t("entities.campaigns") });
       }.bind(this));
   }
 
@@ -115,7 +116,7 @@ class ExpensesReportModel {
       .catch(function () {
         this.distributionParameters = [];
         this.distributionParameterError =
-          "Failed to load distribution parameters.";
+          i18n.t("messages.failedLoad", { entity: i18n.t("entities.distributionParameters") });
       }.bind(this));
   }
 
@@ -142,7 +143,7 @@ class ExpensesReportModel {
       }.bind(this))
       .catch(function () {
         this.distributionParameterValuesError =
-          "Failed to load distribution parameter values.";
+          i18n.t("messages.failedLoad", { entity: i18n.t("entities.distributionParameterValues") });
       }.bind(this));
   }
 
@@ -180,11 +181,11 @@ class ExpensesReportModel {
       })
       .then(function () {
         this.isSaving = false;
-        this.saveSuccess = "Report saved.";
+        this.saveSuccess = i18n.t("messages.reportSaved");
       }.bind(this))
       .catch(function () {
         this.isSaving = false;
-        this.saveError = "Failed to save report.";
+        this.saveError = i18n.t("messages.failedSaveReport");
       }.bind(this));
   }
 

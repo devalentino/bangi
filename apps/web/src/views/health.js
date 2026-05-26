@@ -2,6 +2,7 @@ const m = require("mithril");
 const ChartComponent = require("../components/chart");
 const HealthModel = require("../models/health");
 const { timestamp2LocalTime, timestamp2UtcTime } = require("../utils/date");
+const i18n = require("../i18n");
 
 function formatBytes(size) {
   const units = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -30,14 +31,14 @@ class HealthView {
     const summary = this.model.summary;
 
     return [
-      ["Filesystem", summary && summary.filesystem ? summary.filesystem : "-"],
-      ["Mountpoint", summary && summary.mountpoint ? summary.mountpoint : "-"],
-      ["Total size", summary ? formatBytes(summary.totalBytes) : "-"],
-      ["Used size", summary ? formatBytes(summary.usedBytes) : "-"],
-      ["Available size", summary ? formatBytes(summary.availableBytes) : "-"],
-      ["Used percent", summary && summary.usedPercent !== null ? `${summary.usedPercent.toFixed(1)}%` : "-"],
-      ["Last received (local)", summary ? timestamp2LocalTime(summary.lastReceivedAt) : "-"],
-      ["Last received (UTC)", summary ? timestamp2UtcTime(summary.lastReceivedAt) : "-"],
+      [i18n.t("health.filesystem"), summary && summary.filesystem ? summary.filesystem : "-"],
+      [i18n.t("health.mountpoint"), summary && summary.mountpoint ? summary.mountpoint : "-"],
+      [i18n.t("health.totalSize"), summary ? formatBytes(summary.totalBytes) : "-"],
+      [i18n.t("health.usedSize"), summary ? formatBytes(summary.usedBytes) : "-"],
+      [i18n.t("health.availableSize"), summary ? formatBytes(summary.availableBytes) : "-"],
+      [i18n.t("health.usedPercent"), summary && summary.usedPercent !== null ? `${summary.usedPercent.toFixed(1)}%` : "-"],
+      [i18n.t("health.lastReceivedLocal"), summary ? timestamp2LocalTime(summary.lastReceivedAt) : "-"],
+      [i18n.t("health.lastReceivedUtc"), summary ? timestamp2UtcTime(summary.lastReceivedAt) : "-"],
     ];
   }
 
@@ -50,7 +51,7 @@ class HealthView {
         }),
         datasets: [
           {
-            label: "Used percent",
+            label: i18n.t("health.usedPercentDataset"),
             data: this.model.history.map(function (row) {
               return row.usedPercent;
             }),
@@ -86,9 +87,9 @@ class HealthView {
     const snapshot = this.model.nginxSnapshot;
 
     return [
-      ["Validation status", snapshot ? this._nginxStatus() : "-"],
-      ["Validation timestamp (local)", snapshot ? timestamp2LocalTime(snapshot.validationTimestamp) : "-"],
-      ["Validation timestamp (UTC)", snapshot ? timestamp2UtcTime(snapshot.validationTimestamp) : "-"],
+      [i18n.t("health.validationStatus"), snapshot ? this._nginxStatus() : "-"],
+      [i18n.t("health.validationTimestampLocal"), snapshot ? timestamp2LocalTime(snapshot.validationTimestamp) : "-"],
+      [i18n.t("health.validationTimestampUtc"), snapshot ? timestamp2UtcTime(snapshot.validationTimestamp) : "-"],
     ];
   }
 
@@ -97,14 +98,14 @@ class HealthView {
 
     if (snapshot.validationStatus === "failed") {
       return [
-        m("i.fa.fa-times.text-danger.me-2", { title: "Failed" }),
+        m("i.fa.fa-times.text-danger.me-2", { title: i18n.t("status.failed") }),
         "failed",
       ];
     }
 
     return [
-      m("i.fa.fa-check.text-success.me-2", { title: "Success" }),
-      "success",
+        m("i.fa.fa-check.text-success.me-2", { title: i18n.t("health.success") }),
+        i18n.t("health.success"),
     ];
   }
 
@@ -127,11 +128,11 @@ class HealthView {
 
     return m(".mt-3", [
       this._nginxFileList(
-        "Available files",
+        i18n.t("health.availableFiles"),
         snapshot.sitesAvailableFiles,
       ),
       this._nginxFileList(
-        "Enabled refs",
+        i18n.t("health.enabledRefs"),
         snapshot.sitesEnabledRefs,
       ),
     ]);
@@ -139,18 +140,18 @@ class HealthView {
 
   _certificateStatusText(diagnostic) {
     if (diagnostic.isARecordSet !== true) {
-      return "DNS not ready";
+      return i18n.t("health.dnsNotReady");
     }
 
     if (!diagnostic.status) {
-      return "No certificate";
+      return i18n.t("health.noCertificate");
     }
 
     const labels = {
-      pending: "Pending",
-      active: "Active",
-      failed: "Failed",
-      expired: "Expired",
+      pending: i18n.t("status.pending"),
+      active: i18n.t("status.active"),
+      failed: i18n.t("status.failed"),
+      expired: i18n.t("status.expired"),
     };
 
     return labels[diagnostic.status] || diagnostic.status;
@@ -177,33 +178,33 @@ class HealthView {
   _aRecordIcon(diagnostic) {
     return m("i.text-muted", {
       class: diagnostic.isARecordSet ? "fa fa-check" : "fa fa-times",
-      title: diagnostic.isARecordSet ? "A record is set" : "A record is not set",
+      title: diagnostic.isARecordSet ? i18n.t("health.aRecordIsSet") : i18n.t("health.aRecordIsNotSet"),
     });
   }
 
   _certificateDiagnosticsPanel() {
     return m(".col-sm-12", [
       m(".bg-light.rounded.h-100.p-4", [
-        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Certificate Diagnostics")),
+        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("health.certificateDiagnostics"))),
         this.model.certificateError ? m(".alert.alert-danger.py-2.mb-4", this.model.certificateError) : null,
         this.model.certificateDiagnostics.length === 0
           ? m(".health-empty-state.py-5.text-center", [
               m("i.fa.fa-lock.fa-2x.mb-3"),
-              m("h5.mb-2", "No Certificate Risks"),
-              m(".text-muted", "Enabled domains do not currently have certificate diagnostics to surface."),
+              m("h5.mb-2", i18n.t("health.noCertificateRisks")),
+              m(".text-muted", i18n.t("health.noCertificateRisksHelp")),
             ])
           : m(
               "div.table-responsive",
               m("table.table.table-sm.health-certificate-table.align-middle.mb-0", [
                 m("thead", [
                   m("tr", [
-                    m("th", { scope: "col" }, "Domain"),
-                    m("th", { scope: "col" }, "Certificate status"),
-                    m("th", { scope: "col" }, "A record"),
-                    m("th", { scope: "col" }, "Expires"),
-                    m("th", { scope: "col" }, "Last attempt"),
-                    m("th", { scope: "col" }, "Failures"),
-                    m("th", { scope: "col" }, "Failure"),
+                    m("th", { scope: "col" }, i18n.t("domains.domain")),
+                    m("th", { scope: "col" }, i18n.t("health.certificateStatus")),
+                    m("th", { scope: "col" }, i18n.t("domains.aRecord")),
+                    m("th", { scope: "col" }, i18n.t("health.expires")),
+                    m("th", { scope: "col" }, i18n.t("health.lastAttempt")),
+                    m("th", { scope: "col" }, i18n.t("health.failures")),
+                    m("th", { scope: "col" }, i18n.t("health.failure")),
                   ]),
                 ]),
                 m(
@@ -231,15 +232,15 @@ class HealthView {
   _usagePanel() {
     return m(".col-sm-12.col-xl-6", [
       m(".bg-light.rounded.h-100.p-4", [
-        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Disk Usage")),
+        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("health.diskUsage"))),
         this.model.summary && this.model.summary.stale
-          ? m(".alert.alert-warning.py-2.mb-4", "Telemetry is stale. The latest successful report is older than the expected reporting window.")
+          ? m(".alert.alert-warning.py-2.mb-4", i18n.t("health.telemetryStale"))
           : null,
         this.model.isNeverReported()
           ? m(".health-empty-state.py-5.text-center", [
               m("i.fa.fa-hdd.fa-2x.mb-3"),
-              m("h5.mb-2", "Never Reported"),
-              m(".text-muted", "No storage usage info exists yet. The chart and summary will populate after the first successful telemetry push."),
+              m("h5.mb-2", i18n.t("health.neverReported")),
+              m(".text-muted", i18n.t("health.noStorageInfo")),
             ])
           : m(
               "div.table-responsive",
@@ -262,13 +263,13 @@ class HealthView {
 
     return m(".col-sm-12.col-xl-6", [
       m(".bg-light.rounded.h-100.p-4", [
-        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Nginx Validation")),
+        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("health.nginxValidation"))),
         this.model.nginxError ? m(".alert.alert-danger.py-2.mb-4", this.model.nginxError) : null,
         !snapshot
           ? m(".health-empty-state.py-5.text-center", [
               m("i.fa.fa-server.fa-2x.mb-3"),
-              m("h5.mb-2", "No Validation Snapshot"),
-              m(".text-muted", "No published Nginx validation snapshot is available yet."),
+              m("h5.mb-2", i18n.t("health.noValidationSnapshot")),
+              m(".text-muted", i18n.t("health.noValidationSnapshotHelp")),
             ])
           : [
               m(
@@ -297,7 +298,7 @@ class HealthView {
                       ? "fa fa-chevron-down"
                       : "fa fa-chevron-right",
                   }),
-                  "Nginx files",
+                  i18n.t("health.nginxFiles"),
                 ],
               ),
               this.showNginxFiles
@@ -314,12 +315,12 @@ class HealthView {
   _historyPanel() {
     return m(".col-sm-12", [
       m(".bg-light.rounded.h-100.p-4", [
-        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "30-Day Disk History")),
+        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("health.diskHistory"))),
         this.model.isNeverReported()
           ? m(".health-empty-state.py-5.text-center", [
               m("i.fa.fa-chart-line.fa-2x.mb-3"),
-              m("h5.mb-2", "Never Reported"),
-              m(".text-muted", "No 30-day storage history is available."),
+              m("h5.mb-2", i18n.t("health.neverReported")),
+              m(".text-muted", i18n.t("health.noDiskHistory")),
             ])
           : m(".health-chart-container", m(ChartComponent, { chartOptions: this._historyChartOptions() })),
       ]),
@@ -333,7 +334,7 @@ class HealthView {
       this.model.certificateDiagnostics.length > 0 || this.model.certificateError !== null;
 
     return m(".container-fluid.pt-4.px-4", [
-      this.model.isLoading ? m(".bg-light.rounded.p-4.mb-4", "Loading system health...") : null,
+      this.model.isLoading ? m(".bg-light.rounded.p-4.mb-4", i18n.t("health.loading")) : null,
       this.model.error ? m(".alert.alert-danger.mb-4", this.model.error) : null,
       hasDiskSummary
         ? m("div", [

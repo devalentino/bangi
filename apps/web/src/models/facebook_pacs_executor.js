@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class FacebookPacsExecutorModel {
   constructor(executorId) {
@@ -44,14 +45,14 @@ class FacebookPacsExecutorModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load executor details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.executor") });
         this.isLoading = false;
       }.bind(this));
   }
 
   validate() {
     if (!this.form.name.trim()) {
-      return "Name is required.";
+      return i18n.t("validation.nameRequired");
     }
 
     return null;
@@ -88,16 +89,16 @@ class FacebookPacsExecutorModel {
     })
       .then(function () {
         this.successMessage = isNew
-          ? "Executor created successfully."
-          : "Executor updated successfully.";
+          ? i18n.t("messages.created", { entity: i18n.t("entities.executor") })
+          : i18n.t("messages.updated", { entity: i18n.t("entities.executor") });
         setTimeout(function () {
           m.route.set("/facebook/pacs/executors");
         }, 2000);
       }.bind(this))
       .catch(function () {
         this.error = isNew
-          ? "Failed to create executor."
-          : "Failed to update executor.";
+          ? i18n.t("messages.failedCreate", { entity: i18n.t("entities.executor") })
+          : i18n.t("messages.failedUpdate", { entity: i18n.t("entities.executor") });
       }.bind(this));
   }
 }

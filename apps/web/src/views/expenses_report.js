@@ -6,6 +6,7 @@ const Tabulator =
   tabulatorModule.TabulatorFull || tabulatorModule.default || tabulatorModule;
 const Autocomplete = AutocompleteModule.default || AutocompleteModule;
 const ExpensesReportModel = require("../models/expenses_report");
+const i18n = require("../i18n");
 
 function normalizeMatrixValue(value) {
   if (value === "" || value === null || value === undefined) {
@@ -48,7 +49,7 @@ const ExpensesReportTable = {
         headerSort: false,
         widthGrow: 1,
       },
-      placeholder: "Expenses report",
+      placeholder: i18n.t("expenses.placeholder"),
     });
 
     vnode.state.table = table;
@@ -405,13 +406,13 @@ class ExpensesReportView {
   _saveReport() {
     this._validateTable();
     if (this.validationErrors.length > 0) {
-      this.model.saveError = "Fix validation errors before saving.";
+      this.model.saveError = i18n.t("expenses.fixValidationBeforeSaving");
       this.model.saveSuccess = null;
       return;
     }
 
     if (!this.model.distributionParameter) {
-      this.model.saveError = "Distribution parameter is required for saving.";
+      this.model.saveError = i18n.t("expenses.distributionParameterRequired");
       this.model.saveSuccess = null;
       return;
     }
@@ -437,7 +438,7 @@ class ExpensesReportView {
             m(".h-100.bg-light.rounded.p-4", [
               m(
                 ".d-flex.align-items-center.justify-content-between.mb-4",
-                m("h6.mb-0", "Date Range"),
+                m("h6.mb-0", i18n.t("statistics.dateRange")),
               ),
               m(".row.g-2", [
                 m(
@@ -470,14 +471,14 @@ class ExpensesReportView {
             m(".h-100.bg-light.rounded.p-4", [
               m(
                 ".d-flex.align-items-center.justify-content-between.mb-4",
-                m("h6.mb-0", "Campaign"),
+                m("h6.mb-0", i18n.t("nav.facebookPacs.campaigns")),
               ),
               m(
                 ".d-flex.mb-2",
                 m(
                   "select.form-select.mb-3",
                   {
-                    "aria-label": "Campaign",
+                    "aria-label": i18n.t("nav.facebookPacs.campaigns"),
                     oninput: function (event) {
                       this.model.filter.campaignId = Number(event.target.value);
                       this.model.distributionParameter = "";
@@ -504,7 +505,7 @@ class ExpensesReportView {
             m(".h-100.bg-light.rounded.p-4", [
               m(
                 ".d-flex.align-items-center.justify-content-between.mb-4",
-                m("h6.mb-0", "Distribution Parameter"),
+                m("h6.mb-0", i18n.t("expenses.distributionParameter")),
               ),
               m(".mb-3", [
                 m(
@@ -518,7 +519,7 @@ class ExpensesReportView {
                     m("input.form-control", {
                       type: "text",
                       value: this.model.distributionParameter,
-                      placeholder: "Select distribution parameter",
+                      placeholder: i18n.t("expenses.selectDistributionParameter"),
                       readonly: this.model.distributionParameterLocked,
                       oninput: function (event) {
                         this.model.distributionParameter = event.target.value;
@@ -555,13 +556,13 @@ class ExpensesReportView {
                 m(".bg-light.rounded.p-4", [
                   m(
                     ".d-flex.align-items-center.justify-content-between.mb-3",
-                    m("h6.mb-0", "Expenses Report"),
+                    m("h6.mb-0", i18n.t("expenses.report")),
                   ),
                   this.model.error
                     ? m("div.text-danger.mb-3", this.model.error)
                     : null,
                   this.model.isLoading
-                    ? m("div.mb-3", "Loading report...")
+                    ? m("div.mb-3", i18n.t("expenses.loadingReport"))
                     : null,
                   m(ExpensesReportTable, {
                     columns: tableState.columns,
@@ -599,7 +600,7 @@ class ExpensesReportView {
                             this._saveReport();
                           }.bind(this),
                         },
-                        this.model.isSaving ? "Saving..." : "Save Report",
+                        this.model.isSaving ? i18n.t("common.saving") : i18n.t("expenses.saveReport"),
                       ),
                       m(
                         "button.btn.btn-outline-secondary",
@@ -609,13 +610,13 @@ class ExpensesReportView {
                             this._resetToOriginal();
                           }.bind(this),
                         },
-                        "Reset",
+                        i18n.t("common.reset"),
                       ),
                     ]),
                     this.validationErrors.length > 0
                       ? m(
                           "div.text-danger.mt-2",
-                          `Validation errors: ${this.validationErrors.length}`,
+                          i18n.t("expenses.validationCount", { count: this.validationErrors.length }),
                         )
                       : null,
                     this.model.saveError

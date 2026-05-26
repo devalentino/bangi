@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class FacebookPacsBusinessPortfolioModel {
   constructor(businessPortfolioId) {
@@ -48,14 +49,14 @@ class FacebookPacsBusinessPortfolioModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load business portfolio details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.businessPortfolio") });
         this.isLoading = false;
       }.bind(this));
   }
 
   validate() {
     if (!this.form.name.trim()) {
-      return "Name is required.";
+      return i18n.t("validation.nameRequired");
     }
 
     return null;
@@ -92,16 +93,16 @@ class FacebookPacsBusinessPortfolioModel {
     })
       .then(function () {
         this.successMessage = isNew
-          ? "Business portfolio created successfully."
-          : "Business portfolio updated successfully.";
+          ? i18n.t("messages.created", { entity: i18n.t("entities.businessPortfolio") })
+          : i18n.t("messages.updated", { entity: i18n.t("entities.businessPortfolio") });
         setTimeout(function () {
           m.route.set("/facebook/pacs/business-portfolios");
         }, 2000);
       }.bind(this))
       .catch(function () {
         this.error = isNew
-          ? "Failed to create business portfolio."
-          : "Failed to update business portfolio.";
+          ? i18n.t("messages.failedCreate", { entity: i18n.t("entities.businessPortfolio") })
+          : i18n.t("messages.failedUpdate", { entity: i18n.t("entities.businessPortfolio") });
       }.bind(this));
   }
 

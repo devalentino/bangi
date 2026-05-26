@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class FacebookPacsBusinessPagesModel {
   constructor() {
@@ -30,7 +31,7 @@ class FacebookPacsBusinessPagesModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load business pages.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.businessPage") });
         this.isLoading = false;
       }.bind(this));
   }

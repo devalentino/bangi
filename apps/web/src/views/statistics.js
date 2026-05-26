@@ -3,6 +3,7 @@ let StatisticsModel = require("../models/statistics");
 let ChartComponent = require("../components/chart");
 let ChartUtils = require("../utils/chart");
 let {setDefaultDateRange} = require("../utils/date");
+let i18n = require("../i18n");
 
 class FilterView {
   constructor(model) {
@@ -23,7 +24,7 @@ class FilterView {
           m(".h-100.bg-light.rounded.p-4", [
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
-              m("h6.mb-0", "Date Range"),
+              m("h6.mb-0", i18n.t("statistics.dateRange")),
             ),
             m(".row.g-2", [
               m(
@@ -56,14 +57,14 @@ class FilterView {
           m(".h-100.bg-light.rounded.p-4", [
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
-              m("h6.mb-0", "Campaign"),
+              m("h6.mb-0", i18n.t("nav.facebookPacs.campaigns")),
             ),
             m(
               ".d-flex.mb-2",
               m(
                 "select.form-select.mb-3",
                 {
-                  "aria-label": "Campaign",
+                  "aria-label": i18n.t("nav.facebookPacs.campaigns"),
                   oninput: function (event) {
                     this.model.filter.campaignId = event.target.value;
                     this.model.loadStatisticsReport();
@@ -82,14 +83,14 @@ class FilterView {
           m(".h-100.bg-light.rounded.p-4", [
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
-              m("h6.mb-0", "Group By"),
+              m("h6.mb-0", i18n.t("statistics.groupBy")),
             ),
             m(
               ".d-flex.mb-2",
               m(
                 "select.form-select.mb-3",
                 {
-                  "aria-label": "Group By",
+                  "aria-label": i18n.t("statistics.groupBy"),
                   disabled: this.model.parameters === null,
                   oninput: function (event) {
                     this.model.filter.groupBy = event.target.value || null;
@@ -98,7 +99,7 @@ class FilterView {
                   value: this.model.filter.groupBy || "",
                 },
                 [
-                  m("option", {value: ""}, "Select group"),
+                  m("option", {value: ""}, i18n.t("statistics.selectGroup")),
                 ].concat(
                   (this.model.parameters || []).map(function (parameter) {
                     return m(
@@ -123,7 +124,7 @@ class FilterView {
               m(
                 "label.form-check-label",
                 {for: "statisticsSkipClicksWithoutParameters"},
-                "Skip clicks without parameters",
+                i18n.t("statistics.skipClicksWithoutParameters"),
               ),
             ]),
           ]),
@@ -182,7 +183,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(clicks, "Clicks"),
+        datasets: ChartUtils.distribution2ChartJsDataset(clicks, i18n.t("statistics.clicks")),
       },
       options: {
         responsive: true,
@@ -198,7 +199,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(leads, "Leads"),
+        datasets: ChartUtils.distribution2ChartJsDataset(leads, i18n.t("statistics.leads")),
       },
       options: {
         responsive: true,
@@ -214,7 +215,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(leadsAccepted, "Leads Accepted"),
+        datasets: ChartUtils.distribution2ChartJsDataset(leadsAccepted, i18n.t("statistics.leadsAccepted")),
       },
       options: {
         responsive: true,
@@ -230,7 +231,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(payoutsAccepted, "Payouts"),
+        datasets: ChartUtils.distribution2ChartJsDataset(payoutsAccepted, i18n.t("statistics.payouts")),
       },
       options: {
         responsive: true,
@@ -246,7 +247,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(payoutsExpected, "Payouts (expected)"),
+        datasets: ChartUtils.distribution2ChartJsDataset(payoutsExpected, i18n.t("statistics.payoutsExpected")),
       },
       options: {
         responsive: true,
@@ -262,7 +263,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(expenses, "Expenses"),
+        datasets: ChartUtils.distribution2ChartJsDataset(expenses, i18n.t("statistics.expenses")),
       },
       options: {
         responsive: true,
@@ -278,7 +279,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(roiAccepted, "ROI"),
+        datasets: ChartUtils.distribution2ChartJsDataset(roiAccepted, i18n.t("statistics.roi")),
       },
       options: {
         responsive: true,
@@ -294,7 +295,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(profitAccepted, "Profit"),
+        datasets: ChartUtils.distribution2ChartJsDataset(profitAccepted, i18n.t("statistics.profit")),
       },
       options: {
         responsive: true,
@@ -310,7 +311,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(profitExpected, "Profit (expected)"),
+        datasets: ChartUtils.distribution2ChartJsDataset(profitExpected, i18n.t("statistics.profitExpected")),
       },
       options: {
         responsive: true,
@@ -326,7 +327,7 @@ class ChartView {
       type: "line",
       data: {
         labels: dates,
-        datasets: ChartUtils.distribution2ChartJsDataset(roiExpected, "ROI (expected)"),
+        datasets: ChartUtils.distribution2ChartJsDataset(roiExpected, i18n.t("statistics.roiExpected")),
       },
       options: {
         responsive: true,
@@ -349,62 +350,62 @@ class ChartView {
     let tabs = [
       {
         id: "clicks",
-        title: "Clicks",
-        tabLabel: buildTabLabel("Clicks"),
+        title: i18n.t("statistics.clicks"),
+        tabLabel: buildTabLabel(i18n.t("statistics.clicks")),
         options: clicksChartOptions
       },
       {
         id: "leads",
-        title: "Leads",
-        tabLabel: buildTabLabel("Leads"),
+        title: i18n.t("statistics.leads"),
+        tabLabel: buildTabLabel(i18n.t("statistics.leads")),
         options: leadsChartOptions
       },
       {
         id: "accepted-leads",
-        title: "Leads (accepted)",
-        tabLabel: buildTabLabel("Leads", "(accepted)"),
+        title: i18n.t("statistics.leadsAccepted"),
+        tabLabel: buildTabLabel(i18n.t("statistics.leads"), i18n.t("statistics.chart.accepted")),
         options: leadsAcceptedChartOptions,
       },
       {
         id: "accepted-payouts",
-        title: "Payouts",
-        tabLabel: buildTabLabel("Payouts", "(accepted)"),
+        title: i18n.t("statistics.payouts"),
+        tabLabel: buildTabLabel(i18n.t("statistics.payouts"), i18n.t("statistics.chart.accepted")),
         options: payoutsAcceptedChartOptions
       },
       {
         id: "expected-payouts",
-        title: "Payouts (expected)",
-        tabLabel: buildTabLabel("Payouts", "(expected)"),
+        title: i18n.t("statistics.payoutsExpected"),
+        tabLabel: buildTabLabel(i18n.t("statistics.payouts"), i18n.t("statistics.chart.expected")),
         options: payoutsExpectedChartOptions,
       },
       {
         id: "expenses",
-        title: "Expenses",
-        tabLabel: buildTabLabel("Expenses"),
+        title: i18n.t("statistics.expenses"),
+        tabLabel: buildTabLabel(i18n.t("statistics.expenses")),
         options: expensesChartOptions
       },
       {
         id: "profit-accepted",
-        title: "Profit",
-        tabLabel: buildTabLabel("Profit", "(accepted)"),
+        title: i18n.t("statistics.profitAccepted"),
+        tabLabel: buildTabLabel(i18n.t("statistics.profit"), i18n.t("statistics.chart.accepted")),
         options: profitAcceptedChartOptions
       },
       {
         id: "profit-expected",
-        title: "Profit (expected)",
-        tabLabel: buildTabLabel("Profit", "(expected)"),
+        title: i18n.t("statistics.profitExpected"),
+        tabLabel: buildTabLabel(i18n.t("statistics.profit"), i18n.t("statistics.chart.expected")),
         options: profitExpectedChartOptions,
       },
       {
         id: "roi-accepted",
-        title: "ROI",
-        tabLabel: buildTabLabel("ROI", "(accepted)"),
+        title: i18n.t("statistics.roiAccepted"),
+        tabLabel: buildTabLabel(i18n.t("statistics.roi"), i18n.t("statistics.chart.accepted")),
         options: roiAcceptedChartOptions
       },
       {
         id: "roi-expected",
-        title: "ROI (expected)",
-        tabLabel: buildTabLabel("ROI", "(expected)"),
+        title: i18n.t("statistics.roiExpected"),
+        tabLabel: buildTabLabel(i18n.t("statistics.roi"), i18n.t("statistics.chart.expected")),
         options: roiExpectedChartOptions,
       },
     ];
@@ -546,7 +547,7 @@ class TableView {
   _buildTotal(total, groupCount) {
     let tds = [];
     for (let i = 0; i <= groupCount; i++) {
-      tds.push(m("td", i === 0 ? m("b", "Total") : ""));
+      tds.push(m("td", i === 0 ? m("b", i18n.t("statistics.table.total")) : ""));
     }
 
     tds.push(m("td", total.clicks));
@@ -595,27 +596,27 @@ class TableView {
         m(
           "div.col-12",
           m("div.bg-light.rounded.h-100.p-4", [
-            m("h6.mb-4", "Statistics"),
+            m("h6.mb-4", i18n.t("statistics.title")),
             m(
               "div.table-responsive",
               m("table.table.statistics-table", [
                 m(
                   "thead",
                   m("tr", [
-                    m("th", {scope: "col"}, "Date"),
+                    m("th", {scope: "col"}, i18n.t("common.date")),
                     ...groupByThs,
-                    m("th", {scope: "col"}, "Clicks"),
-                    m("th", {scope: "col"}, "Accept"),
-                    m("th", {scope: "col"}, "Expect"),
-                    m("th", {scope: "col"}, "Reject"),
-                    m("th", {scope: "col"}, "Trash"),
-                    m("th", {scope: "col"}, "Payout Accept"),
-                    m("th", {scope: "col"}, "Payout Expect"),
-                    m("th", {scope: "col"}, "Expenses"),
-                    m("th", {scope: "col"}, "Profit Accept"),
-                    m("th", {scope: "col"}, "Profit Expect"),
-                    m("th", {scope: "col"}, "ROI Accept"),
-                    m("th", {scope: "col"}, "ROI Expect"),
+                    m("th", {scope: "col"}, i18n.t("statistics.clicks")),
+                    m("th", {scope: "col"}, i18n.t("statistics.accept")),
+                    m("th", {scope: "col"}, i18n.t("statistics.expect")),
+                    m("th", {scope: "col"}, i18n.t("statistics.reject")),
+                    m("th", {scope: "col"}, i18n.t("statistics.trash")),
+                    m("th", {scope: "col"}, i18n.t("statistics.payoutAccept")),
+                    m("th", {scope: "col"}, i18n.t("statistics.payoutExpect")),
+                    m("th", {scope: "col"}, i18n.t("statistics.expenses")),
+                    m("th", {scope: "col"}, i18n.t("statistics.profitAccept")),
+                    m("th", {scope: "col"}, i18n.t("statistics.profitExpect")),
+                    m("th", {scope: "col"}, i18n.t("statistics.roiAccept")),
+                    m("th", {scope: "col"}, i18n.t("statistics.roiExpect")),
                   ]),
                 ),
                 m("tbody", trs),

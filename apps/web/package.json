@@ -7,7 +7,7 @@
     "start": "node scripts/esbuild.js --watch",
     "openapi:download": "node scripts/openapi.js download",
     "openapi:check": "node scripts/openapi.js check",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node src/i18n/index.test.js"
   },
   "keywords": [],
   "author": "",

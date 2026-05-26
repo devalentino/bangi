@@ -1,5 +1,24 @@
 var m = require("mithril");
 var AlertsBell = require("./alerts_bell");
+var i18n = require("../i18n");
+
+function languageItem(locale) {
+  var isActive = i18n.getLocale() === locale;
+
+  return m(
+    "button.dropdown-item.d-flex.align-items-center.justify-content-between",
+    {
+      type: "button",
+      onclick: function () {
+        i18n.setLocale(locale);
+      },
+    },
+    [
+      m("span", i18n.t("language." + locale)),
+      isActive ? m("i.fa.fa-check.ms-3", { "aria-hidden": "true" }) : null,
+    ],
+  );
+}
 
 class Navbar {
   view(vnode) {
@@ -24,21 +43,27 @@ class Navbar {
                   },
                   "A",
                 ),
-                m("span.d-none.d-lg-inline-flex", "Admin"),
+                m("span.d-none.d-lg-inline-flex", i18n.t("nav.account.admin")),
               ],
             ),
             m(
               ".dropdown-menu.dropdown-menu-end.bg-light.border-0.rounded-0.rounded-bottom.m-0",
-              m(
-                "a.dropdown-item",
-                {
-                  href: "#",
-                  onclick: function () {
-                    auth.signOut();
+              [
+                m("h6.dropdown-header", i18n.t("language.label")),
+                languageItem("en"),
+                languageItem("uk"),
+                m(".dropdown-divider"),
+                m(
+                  "a.dropdown-item",
+                  {
+                    href: "#",
+                    onclick: function () {
+                      auth.signOut();
+                    },
                   },
-                },
-                "Log Out",
-              ),
+                  i18n.t("nav.logout"),
+                ),
+              ],
             ),
           ]),
         ],

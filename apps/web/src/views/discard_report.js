@@ -1,22 +1,23 @@
 const m = require("mithril");
 const ChartComponent = require("../components/chart");
 const DiscardReportModel = require("../models/discard_report");
+const i18n = require("../i18n");
 
 class DiscardReportView {
   constructor() {
     this.model = new DiscardReportModel();
     this.windows = [
-      { value: "5m", label: "Last 5 minutes" },
-      { value: "1h", label: "Last 1 hour" },
-      { value: "1d", label: "Last 1 day" },
+      { value: "5m", labelKey: "discard.window.5m" },
+      { value: "1h", labelKey: "discard.window.1h" },
+      { value: "1d", labelKey: "discard.window.1d" },
     ];
     this.groupings = [
-      { value: "country", label: "Country" },
-      { value: "browserFamily", label: "Browser family" },
-      { value: "osFamily", label: "OS family" },
-      { value: "isMobile", label: "Is mobile" },
-      { value: "deviceFamily", label: "Device family" },
-      { value: "isBot", label: "Is bot" },
+      { value: "country", labelKey: "discard.group.country" },
+      { value: "browserFamily", labelKey: "discard.group.browserFamily" },
+      { value: "osFamily", labelKey: "discard.group.osFamily" },
+      { value: "isMobile", labelKey: "discard.group.isMobile" },
+      { value: "deviceFamily", labelKey: "discard.group.deviceFamily" },
+      { value: "isBot", labelKey: "discard.group.isBot" },
     ];
   }
 
@@ -38,7 +39,7 @@ class DiscardReportView {
         }),
         datasets: [
           {
-            label: "Discards",
+            label: i18n.t("discard.discards"),
             data: content.rows.map(function (row) {
               return row.count;
             }),
@@ -64,11 +65,11 @@ class DiscardReportView {
       m(
         ".col-sm-12.col-md-6.col-xl-4",
         m(".h-100.bg-light.rounded.p-4", [
-          m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Campaign")),
+          m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("nav.facebookPacs.campaigns"))),
           m(
             "select.form-select",
             {
-              "aria-label": "Campaign",
+              "aria-label": i18n.t("nav.facebookPacs.campaigns"),
               value: this.model.filter.campaignId || "",
               oninput: function (event) {
                 this.model.filter.campaignId = Number(event.target.value);
@@ -85,11 +86,11 @@ class DiscardReportView {
       m(
         ".col-sm-12.col-md-6.col-xl-4",
         m(".h-100.bg-light.rounded.p-4", [
-          m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Window")),
+          m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("discard.window"))),
           m(
             "select.form-select",
             {
-              "aria-label": "Window",
+              "aria-label": i18n.t("discard.window"),
               value: this.model.filter.window,
               oninput: function (event) {
                 this.model.filter.window = event.target.value;
@@ -97,7 +98,7 @@ class DiscardReportView {
               }.bind(this),
             },
             this.windows.map(function (window) {
-              return m("option", { value: window.value }, window.label);
+              return m("option", { value: window.value }, i18n.t(window.labelKey));
             }),
           ),
         ]),
@@ -105,11 +106,11 @@ class DiscardReportView {
       m(
         ".col-sm-12.col-md-6.col-xl-4",
         m(".h-100.bg-light.rounded.p-4", [
-          m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Group By")),
+          m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("statistics.groupBy"))),
           m(
             "select.form-select",
             {
-              "aria-label": "Group By",
+              "aria-label": i18n.t("statistics.groupBy"),
               value: this.model.filter.groupBy,
               oninput: function (event) {
                 this.model.filter.groupBy = event.target.value;
@@ -117,7 +118,7 @@ class DiscardReportView {
               }.bind(this),
             },
             this.groupings.map(function (grouping) {
-              return m("option", { value: grouping.value }, grouping.label);
+              return m("option", { value: grouping.value }, i18n.t(grouping.labelKey));
             }),
           ),
         ]),
@@ -135,25 +136,25 @@ class DiscardReportView {
       m(
         ".col-sm-12.col-md-6.col-xl-3",
         m(".bg-light.rounded.d-flex.align-items-center.justify-content-between.p-4", [
-          m(".ms-3", [m("p.mb-2", "Discards"), m("h6.mb-0", content.summary.discardCount)]),
+          m(".ms-3", [m("p.mb-2", i18n.t("discard.discards")), m("h6.mb-0", content.summary.discardCount)]),
         ]),
       ),
       m(
         ".col-sm-12.col-md-6.col-xl-3",
         m(".bg-light.rounded.d-flex.align-items-center.justify-content-between.p-4", [
-          m(".ms-3", [m("p.mb-2", "Total events"), m("h6.mb-0", content.summary.totalCount)]),
+          m(".ms-3", [m("p.mb-2", i18n.t("discard.totalEvents")), m("h6.mb-0", content.summary.totalCount)]),
         ]),
       ),
       m(
         ".col-sm-12.col-md-6.col-xl-3",
         m(".bg-light.rounded.d-flex.align-items-center.justify-content-between.p-4", [
-          m(".ms-3", [m("p.mb-2", "Discard rate"), m("h6.mb-0", this._formatPercent(content.summary.rate))]),
+          m(".ms-3", [m("p.mb-2", i18n.t("discard.discardRate")), m("h6.mb-0", this._formatPercent(content.summary.rate))]),
         ]),
       ),
       m(
         ".col-sm-12.col-md-6.col-xl-3",
         m(".bg-light.rounded.d-flex.align-items-center.justify-content-between.p-4", [
-          m(".ms-3", [m("p.mb-2", "Eligible"), m("h6.mb-0", content.summary.eligible ? "Yes" : "No")]),
+          m(".ms-3", [m("p.mb-2", i18n.t("discard.eligible")), m("h6.mb-0", content.summary.eligible ? i18n.t("common.yes") : i18n.t("common.no"))]),
         ]),
       ),
     ]);
@@ -168,9 +169,9 @@ class DiscardReportView {
     return m(
       ".col-sm-12.col-xl-7",
       m(".bg-light.text-center.rounded.p-4.h-100", [
-        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Discard distribution")),
+        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("discard.distribution"))),
         content.rows.length === 0
-          ? m(".text-muted.py-5", "No discards in the selected window.")
+          ? m(".text-muted.py-5", i18n.t("discard.noDiscards"))
           : m(ChartComponent, { chartOptions: this._chartOptions() }),
       ]),
     );
@@ -185,12 +186,12 @@ class DiscardReportView {
     return m(
       ".col-sm-12.col-xl-5",
       m(".bg-light.text-center.rounded.p-4.h-100", [
-        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", "Breakdown rows")),
+        m(".d-flex.align-items-center.justify-content-between.mb-4", m("h6.mb-0", i18n.t("discard.breakdownRows"))),
         content.rows.length === 0
-          ? m(".text-muted.py-5", "No grouped rows to display.")
+          ? m(".text-muted.py-5", i18n.t("discard.noGroupedRows"))
           : m("div.table-responsive", [
               m("table.table.table-striped.mb-0", [
-                m("thead", m("tr", [m("th", "Value"), m("th", "Count"), m("th", "Share")])),
+                m("thead", m("tr", [m("th", i18n.t("discard.value")), m("th", i18n.t("discard.count")), m("th", i18n.t("discard.share"))])),
                 m(
                   "tbody",
                   content.rows.map(
@@ -212,7 +213,7 @@ class DiscardReportView {
   view() {
     return m(".container-fluid.pt-4.px-4", [
       this._renderFilters(),
-      this.model.isLoading ? m(".bg-light.rounded.p-4.mt-4", "Loading discard report...") : null,
+      this.model.isLoading ? m(".bg-light.rounded.p-4.mt-4", i18n.t("discard.loading")) : null,
       this.model.error ? m(".alert.alert-danger.mt-4", this.model.error) : null,
       this.model.content ? this._renderSummary() : null,
       this.model.content ? m(".row.g-4.mt-1", [this._renderChart(), this._renderTable()]) : null,

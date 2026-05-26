@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class CoreFlowsModel {
   constructor(campaignId) {
@@ -13,8 +14,8 @@ class CoreFlowsModel {
 
   updateOrderBulk(campaignId, orderMapping) {
     if (campaignId === undefined || campaignId === null || campaignId === "") {
-      this.error = "Campaign ID is required.";
-      return Promise.reject(new Error("Campaign ID is required."));
+      this.error = i18n.t("messages.campaignIdRequired");
+      return Promise.reject(new Error(i18n.t("messages.campaignIdRequired")));
     }
 
     return api.request({
@@ -46,7 +47,7 @@ class CoreFlowsModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load flows.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.flows") });
         this.isLoading = false;
       }.bind(this));
   }

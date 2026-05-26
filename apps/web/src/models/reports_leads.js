@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class ReportsLeadsModel {
   constructor() {
@@ -27,7 +28,7 @@ class ReportsLeadsModel {
       }.bind(this))
       .catch(function () {
         this.campaigns = [];
-        this.campaignError = "Failed to load campaigns.";
+        this.campaignError = i18n.t("messages.failedLoad", { entity: i18n.t("entities.campaigns") });
         this.isLoadingCampaigns = false;
       }.bind(this));
   }
@@ -71,7 +72,7 @@ class ReportsLeadsModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load leads.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.leads") });
         this.isLoading = false;
       }.bind(this));
   }

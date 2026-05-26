@@ -3,6 +3,7 @@ let Pagination = require("../components/pagination");
 let ReportsLeadsModel = require("../models/reports_leads");
 let { timestamp2LocalTime, timestamp2UtcTime } = require("../utils/date");
 let { formatCurrency } = require("../utils/currency");
+let i18n = require("../i18n");
 
 function renderStatus(status) {
   if (!status) {
@@ -105,7 +106,7 @@ class ReportsLeadsView {
             m(".h-100.bg-light.rounded.p-4", [
               m(
                 ".d-flex.align-items-center.justify-content-between.mb-4",
-                m("h6.mb-0", "Campaign"),
+                m("h6.mb-0", i18n.t("nav.facebookPacs.campaigns")),
               ),
               m(
                 ".d-flex.mb-2",
@@ -113,7 +114,7 @@ class ReportsLeadsView {
                   "select.form-select.mb-3",
                   {
                     id: "leadCampaignId",
-                    "aria-label": "Campaign",
+                    "aria-label": i18n.t("nav.facebookPacs.campaigns"),
                     value: m.route.param("campaignId") || "",
                     oninput: this.onCampaignChange.bind(this),
                     disabled:
@@ -126,8 +127,8 @@ class ReportsLeadsView {
                           "option",
                           { value: "" },
                           this.model.isLoadingCampaigns
-                            ? "Loading campaigns..."
-                            : "No campaigns",
+                            ? i18n.t("common.loading.campaigns")
+                            : i18n.t("campaigns.none"),
                         ),
                       ]
                     : this.model.campaigns.map(function (campaign) {
@@ -145,12 +146,12 @@ class ReportsLeadsView {
         m(".row.g-4.mt-1", [
           m(".col-12", [
             m(".bg-light.rounded.h-100.p-4", [
-              m("h6.mb-4", "Reports Leads"),
+              m("h6.mb-4", i18n.t("reports.leads.title")),
             this.model.campaignError
               ? m(".alert.alert-danger", this.model.campaignError)
               : null,
             this.model.isLoading
-              ? m("div", "Loading leads...")
+              ? m("div", i18n.t("reports.leads.loading"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -161,11 +162,11 @@ class ReportsLeadsView {
                       m(
                         "thead",
                         m("tr", [
-                          m("th", { scope: "col" }, "Click ID"),
-                          m("th", { scope: "col" }, "Status"),
-                          m("th", { scope: "col" }, "Payout"),
-                          m("th", { scope: "col" }, "Time (Local)"),
-                          m("th", { scope: "col" }, "Time (UTC)"),
+                          m("th", { scope: "col" }, i18n.t("reports.leads.clickId")),
+                          m("th", { scope: "col" }, i18n.t("common.status")),
+                          m("th", { scope: "col" }, i18n.t("reports.leads.payout")),
+                          m("th", { scope: "col" }, i18n.t("reports.timeLocal")),
+                          m("th", { scope: "col" }, i18n.t("reports.timeUtc")),
                         ]),
                       ),
                       m(
@@ -175,7 +176,7 @@ class ReportsLeadsView {
                               m(
                                 "td.text-center",
                                 { colspan: 5 },
-                                "No leads found.",
+                                i18n.t("reports.lead.noLeads"),
                               ),
                             ])
                           : this.model.leads.map(function (lead) {

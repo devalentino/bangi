@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class FacebookPacsAdCabinetModel {
   constructor(adCabinetId) {
@@ -46,14 +47,14 @@ class FacebookPacsAdCabinetModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load ad cabinet details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.adCabinet") });
         this.isLoading = false;
       }.bind(this));
   }
 
   validate() {
     if (!this.form.name.trim()) {
-      return "Name is required.";
+      return i18n.t("validation.nameRequired");
     }
 
     return null;
@@ -90,16 +91,16 @@ class FacebookPacsAdCabinetModel {
     })
       .then(function () {
         this.successMessage = isNew
-          ? "Ad cabinet created successfully."
-          : "Ad cabinet updated successfully.";
+          ? i18n.t("messages.created", { entity: i18n.t("entities.adCabinet") })
+          : i18n.t("messages.updated", { entity: i18n.t("entities.adCabinet") });
         setTimeout(function () {
           m.route.set("/facebook/pacs/ad-cabinets");
         }, 2000);
       }.bind(this))
       .catch(function () {
         this.error = isNew
-          ? "Failed to create ad cabinet."
-          : "Failed to update ad cabinet.";
+          ? i18n.t("messages.failedCreate", { entity: i18n.t("entities.adCabinet") })
+          : i18n.t("messages.failedUpdate", { entity: i18n.t("entities.adCabinet") });
       }.bind(this));
   }
 

@@ -2,6 +2,7 @@ const m = require("mithril");
 const api = require("./api");
 const session = require("./session");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class FacebookPacsBusinessPortfolioAccessUrlModel {
   constructor(businessPortfolioId) {
@@ -24,11 +25,11 @@ class FacebookPacsBusinessPortfolioAccessUrlModel {
 
   validate() {
     if (!this.form.url.trim()) {
-      return "URL is required.";
+      return i18n.t("validation.urlRequired");
     }
 
     if (!this.form.expiresAt.trim()) {
-      return "Expiration date is required.";
+      return i18n.t("validation.expirationDateRequired");
     }
 
     return null;
@@ -66,13 +67,13 @@ class FacebookPacsBusinessPortfolioAccessUrlModel {
     })
       .then(function () {
         session.alerts.fetch().catch(function () {});
-        this.successMessage = "Access URL created successfully.";
+        this.successMessage = i18n.t("messages.created", { entity: i18n.t("entities.accessUrl") });
         setTimeout(function () {
           m.route.set(`/facebook/pacs/business-portfolios/${this.businessPortfolioId}/access-urls`);
         }.bind(this), 2000);
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to create access URL.";
+        this.error = i18n.t("messages.failedCreate", { entity: i18n.t("entities.accessUrl") });
       }.bind(this));
   }
 }

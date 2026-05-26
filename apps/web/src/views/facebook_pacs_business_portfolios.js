@@ -1,6 +1,7 @@
 let m = require("mithril");
 let FacebookPacsBusinessPortfoliosModel = require("../models/facebook_pacs_business_portfolios");
 let Pagination = require("../components/pagination");
+let i18n = require("../i18n");
 
 class FacebookPacsBusinessPortfoliosView {
   constructor() {
@@ -20,16 +21,16 @@ class FacebookPacsBusinessPortfoliosView {
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
               [
-                m("h6.mb-0", "Facebook PACS Business Portfolios"),
+                m("h6.mb-0", i18n.t("facebook.businessPortfolios.title")),
                 m(
                   "a.btn.btn-primary.btn-sm",
                   { href: "#!/facebook/pacs/business-portfolios/new" },
-                  "New Business Portfolio",
+                  i18n.t("facebook.businessPortfolios.new"),
                 ),
               ],
             ),
             this.model.isLoading
-              ? m("div", "Loading business portfolios...")
+              ? m("div", i18n.t("facebook.businessPortfolios.loading"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -40,12 +41,12 @@ class FacebookPacsBusinessPortfoliosView {
                       m(
                         "thead",
                         m("tr", [
-                          m("th", { scope: "col" }, "ID"),
-                          m("th", { scope: "col" }, "Name"),
-                          m("th", { scope: "col" }, "Active"),
-                          m("th", { scope: "col" }, "Executors"),
-                          m("th", { scope: "col" }, "Ad Cabinets"),
-                          m("th", { scope: "col" }, "Access URLs"),
+                          m("th", { scope: "col" }, i18n.t("common.id")),
+                          m("th", { scope: "col" }, i18n.t("common.name")),
+                          m("th", { scope: "col" }, i18n.t("common.active")),
+                          m("th", { scope: "col" }, i18n.t("facebook.executors")),
+                          m("th", { scope: "col" }, i18n.t("facebook.adCabinets")),
+                          m("th", { scope: "col" }, i18n.t("facebook.accessUrls")),
                         ]),
                       ),
                       m(
@@ -55,7 +56,7 @@ class FacebookPacsBusinessPortfoliosView {
                               m(
                                 "td.text-center",
                                 { colspan: 6 },
-                                "No business portfolios found.",
+                                i18n.t("facebook.businessPortfolios.notFound"),
                               ),
                             ])
                           : this.model.items.map(function (portfolio) {
@@ -76,11 +77,11 @@ class FacebookPacsBusinessPortfoliosView {
                                   portfolio.isBanned
                                     ? m("i", {
                                         class: "fa fa-ban text-danger",
-                                        title: "Banned",
+                                        title: i18n.t("common.banned"),
                                       })
                                     : m("i", {
                                         class: "fa fa-check text-success",
-                                        title: "Active",
+                                        title: i18n.t("common.active"),
                                       }),
                                 ),
                                 m(
@@ -100,7 +101,7 @@ class FacebookPacsBusinessPortfoliosView {
                                     },
                                     m("i", {
                                       class: "fa fa-link",
-                                      title: "Access URLs",
+                                      title: i18n.t("facebook.accessUrls"),
                                     }),
                                   ),
                                 ),
