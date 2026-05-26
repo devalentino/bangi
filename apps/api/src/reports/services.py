@@ -214,9 +214,7 @@ class ReportService:
         }
 
         date2distribution = {
-            date: sum(json.loads(distribution).values())
-            for date, distribution in expenses_rows
-            if start <= date <= end
+            date: sum(json.loads(distribution).values()) for date, distribution in expenses_rows if start <= date <= end
         }
 
         payouts_accepted = 0
