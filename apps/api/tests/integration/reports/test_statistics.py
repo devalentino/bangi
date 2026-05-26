@@ -951,6 +951,65 @@ def test_get_report__zero_expenses_does_not_cause_division_by_zero(
     }
 
 
+def test_get_report__single_day_total_includes_expenses(client, authorization, campaign, statistics_expenses, today):
+    expected_expenses = sum(statistics_expenses[today].values())
+    cost_value = float(campaign['cost_value'])
+
+    response = client.get(
+        '/api/v2/reports/statistics',
+        headers={'Authorization': authorization},
+        query_string={
+            'campaignId': campaign['id'],
+            'periodStart': today.isoformat(),
+            'periodEnd': today.isoformat(),
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json == {
+        'content': {
+            'parameters': mock.ANY,
+            'groupParameters': [],
+            'report': {
+                today.isoformat(): {
+                    'expenses': pytest.approx(expected_expenses, abs=0.02),
+                    'roi_accepted': pytest.approx(
+                        (cost_value - expected_expenses) / expected_expenses * 100,
+                        abs=0.02,
+                    ),
+                    'roi_expected': pytest.approx(
+                        (cost_value - expected_expenses) / expected_expenses * 100,
+                        abs=0.02,
+                    ),
+                    'profit_accepted': pytest.approx(cost_value - expected_expenses, abs=0.02),
+                    'profit_expected': pytest.approx(cost_value - expected_expenses, abs=0.02),
+                    'statuses': {
+                        'accept': {'leads': 1, 'payouts': cost_value},
+                        'expect': {'leads': 0, 'payouts': 0},
+                        'reject': {'leads': 0, 'payouts': 0},
+                        'trash': {'leads': 0, 'payouts': 0},
+                    },
+                    'clicks': 8,
+                }
+            },
+            'total': {
+                'clicks': 8,
+                'statuses': {
+                    'accept': {'leads': 1, 'payouts': cost_value},
+                    'expect': {'leads': 0, 'payouts': 0},
+                    'reject': {'leads': 0, 'payouts': 0},
+                    'trash': {'leads': 0, 'payouts': 0},
+                },
+                'expenses': pytest.approx(expected_expenses, abs=0.02),
+                'profit_accepted': pytest.approx(cost_value - expected_expenses, abs=0.02),
+                'profit_expected': pytest.approx(cost_value - expected_expenses, abs=0.02),
+                'roi_accepted': pytest.approx((cost_value - expected_expenses) / expected_expenses * 100, abs=0.02),
+                'roi_expected': pytest.approx((cost_value - expected_expenses) / expected_expenses * 100, abs=0.02),
+            },
+        }
+    }
+
+
 def test_get_report__does_not_count_statistics_outside_filter_boundaries(
     client, authorization, campaign, write_to_db, today, click_parameters, postback_parameters
 ):
