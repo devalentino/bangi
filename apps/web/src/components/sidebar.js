@@ -1,4 +1,5 @@
 var m = require("mithril");
+var i18n = require("../i18n");
 
 class Sidebar {
   view() {
@@ -34,35 +35,35 @@ class Sidebar {
                 { href: "#!/statistics", class: linkClass(isStatisticsRoute) },
                 [
                 m("i.fa.fa-tachometer-alt.me-2"),
-                "Statistics",
+                i18n.t("nav.statistics"),
               ]),
               m(
                 "a.nav-item.nav-link",
                 { href: "#!/reports/leads", class: linkClass(isReportsLeadsRoute) },
                 [
                   m("i.fa.fa-address-card.me-2"),
-                  "Leads",
+                  i18n.t("nav.leads"),
                 ]),
               m(
                 "a.nav-item.nav-link",
                 { href: "#!/core/campaigns", class: linkClass(isCoreCampaignsRoute) },
                 [
                 m("i.fa.fa-bullhorn.me-2"),
-                "Campaigns",
+                i18n.t("nav.facebookPacs.campaigns"),
               ]),
               m(
                 "a.nav-item.nav-link",
                 { href: "#!/reports/expenses", class: linkClass(isExpensesReportRoute) },
                 [
                   m("i.fa.fa-receipt.me-2"),
-                  "Expenses",
+                  i18n.t("nav.expenses"),
                 ]),
               m(
                 "a.nav-item.nav-link",
                 { href: "#!/reports/discard", class: linkClass(isDiscardReportRoute) },
                 [
                   m("i.fa.fa-filter.me-2"),
-                  "Discards",
+                  i18n.t("nav.reports.discards"),
                 ]),
               m(".nav-item.dropdown", [
                 m(
@@ -75,7 +76,7 @@ class Sidebar {
                       ? "nav-link dropdown-toggle active fw-bold"
                       : "nav-link dropdown-toggle",
                   },
-                  [m("i.fa.fa-laptop.me-2"), "Facebook PACS"],
+                  [m("i.fa.fa-laptop.me-2"), i18n.t("nav.facebookPacs")],
                 ),
                 m(
                   ".dropdown-menu.bg-transparent.border-0",
@@ -90,7 +91,7 @@ class Sidebar {
                           ? "dropdown-item active fw-bold"
                           : "dropdown-item",
                     },
-                    "Executors",
+                    i18n.t("nav.facebookPacs.executors"),
                   ),
                   m(
                     "a.dropdown-item",
@@ -101,7 +102,7 @@ class Sidebar {
                           ? "dropdown-item active fw-bold"
                           : "dropdown-item",
                     },
-                    "Business Portfolios",
+                    i18n.t("nav.facebookPacs.businessPortfolios"),
                   ),
                   m(
                     "a.dropdown-item",
@@ -112,7 +113,7 @@ class Sidebar {
                           ? "dropdown-item active fw-bold"
                           : "dropdown-item",
                     },
-                    "Ad Cabinets",
+                    i18n.t("nav.facebookPacs.adCabinets"),
                   ),
                   m(
                     "a.dropdown-item",
@@ -123,7 +124,7 @@ class Sidebar {
                           ? "dropdown-item active fw-bold"
                           : "dropdown-item",
                     },
-                    "Campaigns",
+                    i18n.t("nav.facebookPacs.campaigns"),
                   ),
                   m(
                     "a.dropdown-item",
@@ -134,7 +135,7 @@ class Sidebar {
                           ? "dropdown-item active fw-bold"
                           : "dropdown-item",
                     },
-                    "Business Pages",
+                    i18n.t("nav.facebookPacs.businessPages"),
                   ),
                 ],
                 ),
@@ -144,7 +145,7 @@ class Sidebar {
                 { href: "#!/domains", class: linkClass(isDomainsRoute) },
                 [
                   m("i.fa.fa-globe.me-2"),
-                  "Domains",
+                  i18n.t("nav.domains"),
                 ],
               ),
               m(
@@ -152,7 +153,7 @@ class Sidebar {
                 { href: "#!/health", class: linkClass(isHealthRoute) },
                 [
                     m("i.fa.fa-heartbeat.me-2"),
-                    "Health",
+                    i18n.t("nav.health"),
                 ],
               ),
             ],

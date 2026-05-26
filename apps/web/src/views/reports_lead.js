@@ -2,6 +2,7 @@ let m = require("mithril");
 let ReportsLeadModel = require("../models/reports_lead");
 let { timestamp2LocalTime, timestamp2UtcTime } = require("../utils/date");
 let { formatCurrency } = require("../utils/currency");
+let i18n = require("../i18n");
 
 const FIRST_COLUMN_STYLE = "width: 220px;";
 const DETAILS_TABLE_STYLE = "table-layout: fixed; width: 100%;";
@@ -27,7 +28,7 @@ function renderParametersTable(parameters) {
   let parameterKeys = Object.keys(parameters || {});
 
   if (parameterKeys.length === 0) {
-    return m(".text-muted", "No parameters.");
+    return m(".text-muted", i18n.t("reports.lead.noParameters"));
   }
 
   return m(
@@ -36,8 +37,8 @@ function renderParametersTable(parameters) {
       m(
         "thead",
         m("tr", [
-          m("th", { scope: "col", style: FIRST_COLUMN_STYLE }, "Parameter"),
-          m("th", { scope: "col" }, "Value"),
+          m("th", { scope: "col", style: FIRST_COLUMN_STYLE }, i18n.t("reports.lead.parameter")),
+          m("th", { scope: "col" }, i18n.t("common.value")),
         ]),
       ),
       m(
@@ -69,7 +70,7 @@ class ReportsLeadView {
       ? m(".container-fluid.pt-4.px-4", [
           m(".row.g-4", [
             m(".col-12", [
-              m(".bg-light.rounded.h-100.p-4", "Loading lead..."),
+              m(".bg-light.rounded.h-100.p-4", i18n.t("reports.lead.loading")),
             ]),
           ]),
         ])
@@ -88,24 +89,24 @@ class ReportsLeadView {
               m(".row.g-4", [
                 m(".col-12", [
                   m(".bg-light.rounded.h-100.p-4", [
-                    m("h6.mb-4", "Click"),
+                    m("h6.mb-4", i18n.t("reports.lead.click")),
                     m(
                       "div.table-responsive",
                       m("table.table.table-sm.mb-0", { style: DETAILS_TABLE_STYLE }, [
                         m(
                           "thead",
                           m("tr", [
-                            m("th", { scope: "col", style: FIRST_COLUMN_STYLE }, "Attribute"),
-                            m("th", { scope: "col" }, "Value"),
+                            m("th", { scope: "col", style: FIRST_COLUMN_STYLE }, i18n.t("reports.lead.attribute")),
+                            m("th", { scope: "col" }, i18n.t("common.value")),
                           ]),
                         ),
                         m("tbody", [
                           m("tr", [
-                            m("td", { style: FIRST_COLUMN_STYLE }, "Click ID"),
+                            m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("reports.leads.clickId")),
                             m("td", { style: VALUE_COLUMN_STYLE }, String(lead.clickId)),
                           ]),
                           m("tr", [
-                            m("td", { style: FIRST_COLUMN_STYLE }, "Campaign"),
+                            m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("nav.facebookPacs.campaigns")),
                             m(
                               "td",
                               { style: VALUE_COLUMN_STYLE },
@@ -117,17 +118,17 @@ class ReportsLeadView {
                             ),
                           ]),
                           m("tr", [
-                            m("td", { style: FIRST_COLUMN_STYLE }, "Time (Local)"),
+                            m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("reports.timeLocal")),
                             m("td", { style: VALUE_COLUMN_STYLE }, String(timestamp2LocalTime(lead.createdAt))),
                           ]),
                           m("tr", [
-                            m("td", { style: FIRST_COLUMN_STYLE }, "Time (UTC)"),
+                            m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("reports.timeUtc")),
                             m("td", { style: VALUE_COLUMN_STYLE }, String(timestamp2UtcTime(lead.createdAt))),
                           ]),
                         ]),
                       ]),
                     ),
-                    m("h6.mt-4.mb-3", "Parameters"),
+                    m("h6.mt-4.mb-3", i18n.t("reports.lead.parameters")),
                     renderParametersTable(lead.parameters),
                   ]),
                 ]),
@@ -138,8 +139,8 @@ class ReportsLeadView {
                   m(".row.g-4", [
                     m(".col-12", [
                       m(".bg-light.rounded.h-100.p-4", [
-                        m("h6.mb-0", "Postbacks"),
-                        m(".text-muted.mt-3", "No postbacks found."),
+                        m("h6.mb-0", i18n.t("reports.lead.postbacks")),
+                        m(".text-muted.mt-3", i18n.t("reports.lead.noPostbacks")),
                       ]),
                     ]),
                   ]),
@@ -151,24 +152,24 @@ class ReportsLeadView {
                     m(".row.g-4", [
                       m(".col-12", [
                         m(".bg-light.rounded.h-100.p-4", [
-                          m("h6.mb-4", `Postback #${postbackNumber}`),
+                          m("h6.mb-4", i18n.t("reports.lead.postbackNumber", { number: postbackNumber })),
                           m(
                             "div.table-responsive",
                             m("table.table.table-sm.mb-0", { style: DETAILS_TABLE_STYLE }, [
                               m(
                                 "thead",
                                 m("tr", [
-                                  m("th", { scope: "col", style: FIRST_COLUMN_STYLE }, "Attribute"),
-                                  m("th", { scope: "col" }, "Value"),
+                                  m("th", { scope: "col", style: FIRST_COLUMN_STYLE }, i18n.t("reports.lead.attribute")),
+                                  m("th", { scope: "col" }, i18n.t("common.value")),
                                 ]),
                               ),
                               m("tbody", [
                                 m("tr", [
-                                  m("td", { style: FIRST_COLUMN_STYLE }, "Status"),
+                                  m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("common.status")),
                                   m("td", { style: VALUE_COLUMN_STYLE }, String(postback.status || "-")),
                                 ]),
                                 m("tr", [
-                                  m("td", { style: FIRST_COLUMN_STYLE }, "Payout"),
+                                  m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("reports.leads.payout")),
                                   m(
                                     "td",
                                     { style: VALUE_COLUMN_STYLE },
@@ -181,7 +182,7 @@ class ReportsLeadView {
                                   ),
                                 ]),
                                 m("tr", [
-                                  m("td", { style: FIRST_COLUMN_STYLE }, "Time (Local)"),
+                                  m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("reports.timeLocal")),
                                   m(
                                     "td",
                                     { style: VALUE_COLUMN_STYLE },
@@ -191,7 +192,7 @@ class ReportsLeadView {
                                   ),
                                 ]),
                                 m("tr", [
-                                  m("td", { style: FIRST_COLUMN_STYLE }, "Time (UTC)"),
+                                  m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("reports.timeUtc")),
                                   m(
                                     "td",
                                     { style: VALUE_COLUMN_STYLE },
@@ -201,7 +202,7 @@ class ReportsLeadView {
                               ]),
                             ]),
                           ),
-                          m("h6.mt-4.mb-3", "Parameters"),
+                          m("h6.mt-4.mb-3", i18n.t("reports.lead.parameters")),
                           renderParametersTable(postback.parameters),
                         ]),
                       ]),
@@ -213,8 +214,8 @@ class ReportsLeadView {
                   m(".row.g-4", [
                     m(".col-12", [
                       m(".bg-light.rounded.h-100.p-4", [
-                        m("h6.mb-0", "Leads"),
-                        m(".text-muted.mt-3", "No leads found."),
+                        m("h6.mb-0", i18n.t("nav.leads")),
+                        m(".text-muted.mt-3", i18n.t("reports.lead.noLeads")),
                       ]),
                     ]),
                   ]),
@@ -226,20 +227,20 @@ class ReportsLeadView {
                     m(".row.g-4", [
                       m(".col-12", [
                         m(".bg-light.rounded.h-100.p-4", [
-                          m("h6.mb-4", `Lead #${leadNumber}`),
+                          m("h6.mb-4", i18n.t("reports.lead.leadNumber", { number: leadNumber })),
                           m(
                             "div.table-responsive",
                             m("table.table.table-sm.mb-0", { style: DETAILS_TABLE_STYLE }, [
                               m(
                                 "thead",
                                 m("tr", [
-                                  m("th", { scope: "col", style: FIRST_COLUMN_STYLE }, "Attribute"),
-                                  m("th", { scope: "col" }, "Value"),
+                                  m("th", { scope: "col", style: FIRST_COLUMN_STYLE }, i18n.t("reports.lead.attribute")),
+                                  m("th", { scope: "col" }, i18n.t("common.value")),
                                 ]),
                               ),
                               m("tbody", [
                                 m("tr", [
-                                  m("td", { style: FIRST_COLUMN_STYLE }, "Time (Local)"),
+                                  m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("reports.timeLocal")),
                                   m(
                                     "td",
                                     { style: VALUE_COLUMN_STYLE },
@@ -247,7 +248,7 @@ class ReportsLeadView {
                                   ),
                                 ]),
                                 m("tr", [
-                                  m("td", { style: FIRST_COLUMN_STYLE }, "Time (UTC)"),
+                                  m("td", { style: FIRST_COLUMN_STYLE }, i18n.t("reports.timeUtc")),
                                   m(
                                     "td",
                                     { style: VALUE_COLUMN_STYLE },
@@ -257,7 +258,7 @@ class ReportsLeadView {
                               ]),
                             ]),
                           ),
-                          m("h6.mt-4.mb-3", "Parameters"),
+                          m("h6.mt-4.mb-3", i18n.t("reports.lead.parameters")),
                           renderParametersTable(leadItem.parameters),
                         ]),
                       ]),

@@ -1,5 +1,6 @@
 var m = require("mithril");
 var config = require("../config");
+var i18n = require("../i18n");
 
 var STORAGE_KEY = "bangi.auth";
 var PERSISTENT_AUTH = config.debugPersistentAuth;
@@ -102,13 +103,15 @@ class AuthModel {
         }
         m.route.set("");
       }.bind(this))
-      .catch(function () {
-        alert("Failed to authenticate");
-        this.isAuthenticated = false;
-        this.token = null;
-        clearCredentials();
-        m.route.set("");
-      }.bind(this));
+      .catch(
+        function () {
+          alert(i18n.t("auth.failed"));
+          this.isAuthenticated = false;
+          this.token = null;
+          clearCredentials();
+          m.route.set("");
+        }.bind(this),
+      );
   }
 
   signOut() {
@@ -121,7 +124,7 @@ class AuthModel {
       this.onSignedOut();
     }
     m.route.set("");
-    alert("Signed out");
+    alert(i18n.t("auth.signedOut"));
   }
 }
 

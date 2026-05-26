@@ -1,6 +1,7 @@
 let m = require("mithril");
 let FacebookPacsBusinessPagesModel = require("../models/facebook_pacs_business_pages");
 let Pagination = require("../components/pagination");
+let i18n = require("../i18n");
 
 class FacebookPacsBusinessPagesView {
   constructor() {
@@ -20,16 +21,16 @@ class FacebookPacsBusinessPagesView {
             m(
               ".d-flex.align-items-center.justify-content-between.mb-4",
               [
-                m("h6.mb-0", "Facebook PACS Business Pages"),
+                m("h6.mb-0", i18n.t("facebook.businessPages.title")),
                 m(
                   "a.btn.btn-primary.btn-sm",
                   { href: "#!/facebook/pacs/business-pages/new" },
-                  "New Business Page",
+                  i18n.t("facebook.businessPages.new"),
                 ),
               ],
             ),
             this.model.isLoading
-              ? m("div", "Loading business pages...")
+              ? m("div", i18n.t("facebook.businessPages.loading"))
               : [
                   this.model.error
                     ? m(".alert.alert-danger", this.model.error)
@@ -40,9 +41,9 @@ class FacebookPacsBusinessPagesView {
                       m(
                         "thead",
                         m("tr", [
-                          m("th", { scope: "col" }, "ID"),
-                          m("th", { scope: "col" }, "Name"),
-                          m("th", { scope: "col" }, "Active"),
+                          m("th", { scope: "col" }, i18n.t("common.id")),
+                          m("th", { scope: "col" }, i18n.t("common.name")),
+                          m("th", { scope: "col" }, i18n.t("common.active")),
                         ]),
                       ),
                       m(
@@ -52,7 +53,7 @@ class FacebookPacsBusinessPagesView {
                               m(
                                 "td.text-center",
                                 { colspan: 3 },
-                                "No business pages found.",
+                                i18n.t("facebook.businessPages.notFound"),
                               ),
                             ])
                           : this.model.items.map(function (businessPage) {
@@ -73,11 +74,11 @@ class FacebookPacsBusinessPagesView {
                                   businessPage.isBanned
                                     ? m("i", {
                                         class: "fa fa-ban text-danger",
-                                        title: "Banned",
+                                        title: i18n.t("common.banned"),
                                       })
                                     : m("i", {
                                         class: "fa fa-check text-success",
-                                        title: "Active",
+                                        title: i18n.t("common.active"),
                                       }),
                                 ),
                               ]);

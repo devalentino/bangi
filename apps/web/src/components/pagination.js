@@ -1,4 +1,5 @@
 var m = require("mithril");
+var i18n = require("../i18n");
 
 class Pagination {
   navigate(toPage, pagination) {
@@ -29,10 +30,10 @@ class Pagination {
                 this.navigate(page - 1, pagination);
               }.bind(this),
             },
-            "Previous",
+            i18n.t("common.previous"),
           )
           : m("div"),
-        m("div", `Page ${page} of ${totalPages}`),
+        m("div", i18n.t("common.pageOf", { page: page, totalPages: totalPages })),
         page < totalPages
           ? m(
               "a.nav-item.nav-link",
@@ -42,7 +43,7 @@ class Pagination {
                   this.navigate(page + 1, pagination);
                 }.bind(this),
               },
-              "Next",
+              i18n.t("common.next"),
             )
           : m("div"),
       ],

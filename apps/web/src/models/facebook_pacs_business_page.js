@@ -1,6 +1,7 @@
 const m = require("mithril");
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class FacebookPacsBusinessPageModel {
   constructor(businessPageId) {
@@ -44,14 +45,14 @@ class FacebookPacsBusinessPageModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load business page details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.businessPage") });
         this.isLoading = false;
       }.bind(this));
   }
 
   validate() {
     if (!this.form.name.trim()) {
-      return "Name is required.";
+      return i18n.t("validation.nameRequired");
     }
 
     return null;
@@ -88,16 +89,16 @@ class FacebookPacsBusinessPageModel {
     })
       .then(function () {
         this.successMessage = isNew
-          ? "Business page created successfully."
-          : "Business page updated successfully.";
+          ? i18n.t("messages.created", { entity: i18n.t("entities.businessPage") })
+          : i18n.t("messages.updated", { entity: i18n.t("entities.businessPage") });
         setTimeout(function () {
           m.route.set("/facebook/pacs/business-pages");
         }, 2000);
       }.bind(this))
       .catch(function () {
         this.error = isNew
-          ? "Failed to create business page."
-          : "Failed to update business page.";
+          ? i18n.t("messages.failedCreate", { entity: i18n.t("entities.businessPage") })
+          : i18n.t("messages.failedUpdate", { entity: i18n.t("entities.businessPage") });
       }.bind(this));
   }
 }

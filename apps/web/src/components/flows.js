@@ -1,6 +1,7 @@
 let m = require("mithril");
 let Sortable = require("sortablejs");
 let ConfirmModal = require("./confirm_modal");
+let i18n = require("../i18n");
 
 class Flows {
   constructor() {
@@ -42,7 +43,7 @@ class Flows {
       : Number(vnode.attrs.defaultFlowId);
 
     if (this.items.length === 0) {
-      return m("div.text-muted", "No flows found.");
+      return m("div.text-muted", i18n.t("flows.empty"));
     }
 
     let self = this;
@@ -104,7 +105,7 @@ class Flows {
                     self.error = null;
                   },
                 },
-                m("i", { class: "fa fa-trash", title: "Delete" }),
+                m("i", { class: "fa fa-trash", title: i18n.t("common.delete") }),
               ),
             ],
           );
@@ -113,25 +114,25 @@ class Flows {
       m(ConfirmModal, {
         isOpen: Boolean(this.deleteTarget),
         isBusy: this.isDeleting,
-        title: "Delete flow",
+        title: i18n.t("flows.delete.title"),
         body: this.deleteTarget
           ? [
               m(
                 "p.mb-0",
-                `Are you sure you want to delete \"${
-                  this.deleteTarget.name || this.deleteTarget.id
-                }\"?`,
+                i18n.t("flows.delete.message", {
+                  name: this.deleteTarget.name || this.deleteTarget.id,
+                }),
               ),
               this.deleteTarget.id === defaultFlowId
                 ? m(
                     "p.mt-3.mb-0.text-warning",
-                    "This flow is the campaign default. Deleting it will clear the campaign default flow.",
+                    i18n.t("flows.delete.defaultWarning"),
                   )
                 : null,
             ]
           : null,
-        confirmText: this.isDeleting ? "Deleting..." : "Delete",
-        cancelText: "Cancel",
+        confirmText: this.isDeleting ? i18n.t("common.deleting") : i18n.t("common.delete"),
+        cancelText: i18n.t("common.cancel"),
         onCancel: function () {
           if (this.isDeleting) {
             return;
@@ -140,7 +141,7 @@ class Flows {
         }.bind(this),
         onConfirm: function () {
           if (typeof this.onDeleteCallback !== "function") {
-            this.error = "Delete handler is not configured.";
+            this.error = i18n.t("flows.delete.handlerMissing");
             this.deleteTarget = null;
             return;
           }
@@ -152,7 +153,7 @@ class Flows {
               this.deleteTarget = null;
             }.bind(this))
             .catch(function () {
-              this.error = "Failed to delete flow.";
+              this.error = i18n.t("flows.delete.error");
             }.bind(this))
             .finally(function () {
               this.isDeleting = false;

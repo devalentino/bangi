@@ -1,4 +1,5 @@
 var m = require("mithril");
+var i18n = require("../i18n");
 
 class ConfirmModal {
   view(vnode) {
@@ -17,7 +18,7 @@ class ConfirmModal {
         m(".modal-dialog", { role: "document" }, [
           m(".modal-content", [
             m(".modal-header", [
-              m("h5.modal-title", vnode.attrs.title || "Confirm"),
+              m("h5.modal-title", vnode.attrs.title || i18n.t("common.confirm")),
               m(
                 "button.btn-close",
                 {
@@ -37,7 +38,7 @@ class ConfirmModal {
                   onclick: vnode.attrs.onCancel,
                   disabled: vnode.attrs.isBusy,
                 },
-                vnode.attrs.cancelText || "Cancel",
+                vnode.attrs.cancelText || i18n.t("common.cancel"),
               ),
               m(
                 "button.btn.btn-danger",
@@ -46,7 +47,7 @@ class ConfirmModal {
                   onclick: vnode.attrs.onConfirm,
                   disabled: vnode.attrs.isBusy,
                 },
-                vnode.attrs.confirmText || "Confirm",
+                vnode.attrs.confirmText || i18n.t("common.confirm"),
               ),
             ]),
           ]),

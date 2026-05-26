@@ -1,5 +1,6 @@
 const api = require("./api");
 var config = require("../config");
+const i18n = require("../i18n");
 
 class ReportsLeadModel {
   constructor(clickId) {
@@ -22,7 +23,7 @@ class ReportsLeadModel {
         this.isLoading = false;
       }.bind(this))
       .catch(function () {
-        this.error = "Failed to load lead details.";
+        this.error = i18n.t("messages.failedLoad", { entity: i18n.t("entities.leadDetails") });
         this.isLoading = false;
       }.bind(this));
   }
