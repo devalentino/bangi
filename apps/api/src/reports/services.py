@@ -202,6 +202,7 @@ class ReportService:
         return report
 
     def _build_total(self, report_rows, expenses_rows, start, end):
+        end = end or utcnow().date()
         total = {
             'clicks': 0,
             'statuses': {s.value: {'leads': 0, 'payouts': 0} for s in LeadStatus},
@@ -213,9 +214,7 @@ class ReportService:
         }
 
         date2distribution = {
-            date: sum(json.loads(distribution).values())
-            for date, distribution in expenses_rows
-            if date > start or date < end
+            date: sum(json.loads(distribution).values()) for date, distribution in expenses_rows if start <= date <= end
         }
 
         payouts_accepted = 0
