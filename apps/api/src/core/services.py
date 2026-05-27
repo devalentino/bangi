@@ -28,6 +28,7 @@ from src.core.utils import log_execution_time
 logger = logging.getLogger(__name__)
 HEADER_EXCLUSIONS = {
     'connection',
+    'content-encoding',
     'content-length',
     'keep-alive',
     'proxy-authenticate',
