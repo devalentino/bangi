@@ -1,71 +1,158 @@
-Use `k6` to find the highest stable request rate under the current Docker memory limits.
+Use `k6` to find the highest stable request rate for regular user behavior:
 
-## Common notes
+- tracking writes plus report reads;
+- campaign process traffic plus report reads.
 
-Safety guard:
+## Runtime Model
 
-- `perf/track_and_reports_seed.py` prompts for confirmation if `MARIADB_HOST` is non-local.
-- `perf/process_and_reports_seed.py` prompts for confirmation if `MARIADB_HOST` is non-local.
-- `perf/process_and_reports_seed.py` also refuses to run if the `campaign` table is not empty.
-- `perf/track_and_reports_seed.py` also refuses to run if the `campaign` table is not empty.
-- `perf/run_k6.sh` prompts for confirmation if `BASE_URL` is non-local.
-- You must type `yes` before the script proceeds.
+Use semantic origins instead of environment-specific names:
 
-Suggested flow:
+- `DASHBOARD_BASE_URL`: dashboard/API origin. Used for `/api/v2/track/*` and `/api/v2/reports/*`.
+- `CAMPAIGN_BASE_URL`: campaign entrypoint. Required for every run. Used by the process workload; kept in track workload run metadata for consistency.
+- `CAMPAIGN_ID`: existing campaign id used by reports and local direct process URLs.
 
-1. Start the stack.
-2. Start observers in one terminal.
-3. Run `k6` in another terminal.
-4. Review `docker stats`, compose logs, latency percentiles, and error rate.
+`perf/run_k6.sh` prompts before targeting non-local dashboard or campaign origins. Run external tests from an interactive terminal and type `yes` to continue.
+`CAMPAIGN_BASE_URL` is required for both workloads; the wrapper refuses to run without it.
 
-Observer:
+Local Docker Compose usually uses the backend directly:
 
 ```bash
-bash perf/observe.sh perf/out
+DASHBOARD_BASE_URL=http://host.docker.internal:8000
+CAMPAIGN_BASE_URL=http://host.docker.internal:8000/process/1
 ```
 
-What to look for:
-
-- Stable rate: no restarts, no OOM, error rate under 1%, p95 acceptable.
-- Degradation point: p95/p99 jumps sharply or swap/CPU stays pinned.
-- Failure point: healthcheck failures, container restarts, OOM kills, or sustained 5xx/timeouts.
-
-Useful host-side commands during the run:
+External nginx-managed environments use separate public origins:
 
 ```bash
-docker compose ps
-docker compose top
-free -m
-vmstat 1
+DASHBOARD_BASE_URL=https://dashboard.example.com
+CAMPAIGN_BASE_URL=https://campaign.example.com
 ```
 
-## Track Performance Scenario
+Do not run process traffic against `https://dashboard.example.com/process/<campaignId>` externally. Dashboard nginx configs return `404` for `/process`. Campaign domains proxy their root path to the backend process route.
 
-This workload continuously writes tracking data and reads both reports endpoints in parallel.
+## Setup Paths
+Choose one setup path before running a workload.
 
-How it works:
+| Target | Configuration source | Historical data | Observability |
+| --- | --- | --- | --- |
+| Local Docker Compose | Manually through dashboard/API | Seed scripts | Local Docker artifacts plus k6 artifacts |
+| External host | Manually through dashboard/API | Seed scripts through exposed MariaDB | External server, nginx, app, and DB metrics plus k6 artifacts |
 
-- Every tracking iteration sends one `/api/v2/track/click`.
-- About `30%` of clicks also send `/api/v2/track/lead` after `10s`.
-- About `15%` of leads also send `/api/v2/track/postback` after another `15s`.
-- A parallel scenario reads `/api/v2/reports/leads` and `/api/v2/reports/statistics`.
-- `CLICK_RATE_STAGES` and `REPORT_RATE_STAGES` are interpreted relative to `CLICK_TIME_UNIT` and `REPORT_TIME_UNIT`.
+Seed scripts are used to fill historical tracker data for realistic report reads. Current seed scripts also create campaign fixtures and require an empty `campaign` table, so they fit fresh performance databases. They do not create domains, nginx configs, or certificates. `KAN-74` tracks the follow-up to seed history for an already configured campaign.
 
-Preparation:
+## Manual Environment Setup
 
-Create a dedicated campaign and seed realistic historical data before running this workload:
+Create the performance target through the product path so nginx and certificates are exercised the same way as real usage.
+
+Required for both workloads:
+
+1. Create or choose a campaign.
+2. Note the campaign id as `CAMPAIGN_ID`.
+3. Configure dashboard/API access and prepare the `AUTHORIZATION` header for report endpoints.
+4. Confirm `DASHBOARD_BASE_URL/api/v2/reports/statistics` and `DASHBOARD_BASE_URL/api/v2/reports/leads` are reachable with that auth.
+
+Create the Basic auth value on Linux:
 
 ```bash
-export $(grep -v '^#' .env | xargs) && python perf/track_and_reports_seed.py --clicks 1000000 --lead-ratio 0.15 --postback-ratio 0.85 --days 14
+printf 'admin:<password>' | base64 -w 0; echo
 ```
 
-The script only runs when the `campaign` table is empty, uses hardcoded perf campaign defaults, seeds tracker history, and prints the created `campaign_id`.
-It also prints the final inserted `clicks`, `leads`, and `postbacks` counts.
-
-Run:
+Use it as:
 
 ```bash
-BASE_URL=http://host.docker.internal:8000 \
+AUTHORIZATION='Basic <base64-user-pass>'
+```
+
+Additional requirements for the track workload:
+
+1. Confirm `DASHBOARD_BASE_URL/api/v2/track/click` accepts events for the campaign.
+2. Set `CAMPAIGN_BASE_URL` to the campaign entrypoint for consistency, even though this workload does not send traffic there.
+
+Additional requirements for the process workload:
+
+1. Create an enabled flow for the campaign.
+2. Create and enable a campaign domain for the campaign.
+3. Wait until nginx generation and certificate issuance are complete.
+4. Confirm the campaign domain root responds as expected:
+   - redirect flow: `302`;
+   - render flow: `200` with the expected content type.
+5. Use the campaign domain root as `CAMPAIGN_BASE_URL`.
+
+## Historical Data
+
+Historical rows make report reads more realistic. Current seed scripts fill historical tracker rows and also create the required campaign fixtures. They require an empty `campaign` table.
+
+Pass DB connection settings explicitly when running seed scripts:
+
+```bash
+MARIADB_HOST=127.0.0.1 \
+MARIADB_PORT=3306 \
+MARIADB_USER=bangi \
+MARIADB_PASSWORD='<password>' \
+MARIADB_DATABASE=bangi \
+python perf/track_and_reports_seed.py --clicks 1000000 --lead-ratio 0.15 --postback-ratio 0.85 --days 14
+```
+
+```bash
+MARIADB_HOST=127.0.0.1 \
+MARIADB_PORT=3306 \
+MARIADB_USER=bangi \
+MARIADB_PASSWORD='<password>' \
+MARIADB_DATABASE=bangi \
+python perf/process_and_reports_seed.py --action-type redirect --clicks 1000000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
+```
+
+For external hosts, expose MariaDB only in a controlled performance environment. The seed scripts prompt when `MARIADB_HOST` is non-local and refuse to run without an interactive confirmation.
+
+Do not run current seed scripts against an environment with existing campaigns. Use a fresh performance database, then complete any required dashboard domain and campaign domain setup through the product path.
+
+## Artifact Collection
+
+Create a run directory and write all artifacts there. Analyze artifacts after the run instead of relying on live observation.
+
+```bash
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-track"
+OUT_DIR="perf/out/$RUN_ID"
+mkdir -p "$OUT_DIR"
+```
+
+For local Docker Compose, start the observer in a separate terminal before k6. It records Docker stats, container health snapshots, and compose logs into `OUT_DIR` for post-run analysis:
+
+```bash
+bash perf/observe.sh "$OUT_DIR"
+```
+
+Run k6 with a JSON summary:
+
+```bash
+bash perf/run_k6.sh --summary-export "$OUT_DIR/k6-summary.json" perf/<workload>.js 2>&1 | tee "$OUT_DIR/k6-output.log"
+```
+
+For external runs, export matching metrics for the same time window into the same run directory when possible:
+
+- application CPU, memory, restarts, and 5xx rate;
+- nginx access/error rates;
+- MariaDB CPU, memory, connections, slow queries, and lock waits;
+- host CPU, memory, disk IO, and network IO.
+
+Keep screenshots, CSV exports, or links to dashboards in the run directory or in a short `external-metrics.md` file next to `k6-summary.json`.
+
+## Track And Reports
+
+This workload writes tracking events and reads report endpoints in parallel.
+
+Behavior:
+
+- `/api/v2/track/click` for every tracking iteration;
+- `/api/v2/track/lead` for a configurable subset of clicks;
+- `/api/v2/track/postback` for a configurable subset of leads;
+- `/api/v2/reports/leads` and `/api/v2/reports/statistics` in a parallel scenario.
+
+Local example:
+
+```bash
+DASHBOARD_BASE_URL=http://host.docker.internal:8000 \
+CAMPAIGN_BASE_URL=http://host.docker.internal:8000/process/1 \
 CAMPAIGN_ID=1 \
 AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
 CLICK_RATE_STAGES=5:2m,10:5m,15:5m,20:5m \
@@ -79,56 +166,41 @@ POSTBACK_DELAY_SECONDS=15 \
 bash perf/run_k6.sh perf/track_and_reports_workload.js
 ```
 
-Suggested first target on a 512 MB host:
-
-- clicks: `5 -> 10 -> 15 -> 20 rps`
-- reports: `1 -> 2 -> 3 rps`
-
-Then raise one side at a time:
-
-- If writes are stable, increase reports.
-- If reports are stable, increase clicks.
-- Once one component starts degrading, you found the likely bottleneck.
-
-## Process Performance Scenario
-
-This workload continuously hits `/process/<campaignId>` and reads both reports endpoints in parallel.
-
-How it works:
-
-- Every process iteration sends one `GET /process/<campaignId>`.
-- Each `/process` request gets a unique `clickId`.
-- About `15%` of process clicks also send `/api/v2/track/postback` after `15s`.
-- Redirects are not followed, so you measure the gateway response rather than the downstream landing target.
-- A parallel scenario reads `/api/v2/reports/leads` and `/api/v2/reports/statistics`.
-- `PROCESS_RATE_STAGES` and `REPORT_RATE_STAGES` are interpreted relative to `PROCESS_TIME_UNIT` and `REPORT_TIME_UNIT`.
-- `POSTBACK_PROBABILITY` and `POSTBACK_DELAY_SECONDS` control the postback side flow.
-
-Preparation:
-
-- Create a dedicated campaign and flow for this scenario:
-- The script only runs when the `campaign` table is empty.
-- Campaign, flow, redirect URL, landing content, and campaign pricing use hardcoded perf defaults.
-- The script also seeds tracker history for the created campaign before printing the result.
+External example:
 
 ```bash
-export $(grep -v '^#' .env | xargs) && python perf/process_and_reports_seed.py --action-type redirect --clicks 100000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
+DASHBOARD_BASE_URL=https://dashboard.example.com \
+CAMPAIGN_BASE_URL=https://campaign.example.com \
+CAMPAIGN_ID=123 \
+AUTHORIZATION='Basic <base64-user-pass>' \
+CLICK_RATE_STAGES=2:2m,5:5m,10:5m \
+CLICK_TIME_UNIT=1s \
+REPORT_RATE_STAGES=1:2m,2:5m \
+REPORT_TIME_UNIT=1m \
+LEAD_PROBABILITY=0.30 \
+POSTBACK_PROBABILITY=0.85 \
+LEAD_DELAY_SECONDS=10 \
+POSTBACK_DELAY_SECONDS=15 \
+bash perf/run_k6.sh perf/track_and_reports_workload.js
 ```
 
-- For a render flow, create the campaign, flow, and landing files:
+## Process And Reports
+
+This workload sends campaign process traffic and reads report endpoints in parallel.
+
+Behavior:
+
+- process traffic goes to `CAMPAIGN_BASE_URL`;
+- postbacks go to `DASHBOARD_BASE_URL/api/v2/track/postback`;
+- reports go to `DASHBOARD_BASE_URL/api/v2/reports/*`;
+- redirects are not followed, so redirect flows measure the gateway response.
+- cookies are cleared before every process iteration, so each process request behaves like a fresh visitor and does not reuse flow cookies.
+
+Local redirect-flow example:
 
 ```bash
-export $(grep -v '^#' .env | xargs) && python perf/process_and_reports_seed.py --action-type render --clicks 100000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
-```
-
-- The script prints the created `campaign_id`, `flow_id`, and `landing_index_path` for render flows.
-- It also prints the final inserted `clicks`, `leads`, and `postbacks` counts.
-- `LANDING_PAGES_BASE_PATH` must be set for `--action-type render`.
-
-Run for redirect flows:
-
-```bash
-BASE_URL=http://host.docker.internal:8000 \
+DASHBOARD_BASE_URL=http://host.docker.internal:8000 \
+CAMPAIGN_BASE_URL=http://host.docker.internal:8000/process/1 \
 CAMPAIGN_ID=1 \
 AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
 PROCESS_QUERY='{"status":"accept","tid":"123","payout":10,"offer_id":"456","lead_status":"accept,expect","sale_status":"confirm","rejected_status":"reject,fail,trash,error","return":"OK","from":"terraleads.com"}' \
@@ -142,20 +214,52 @@ POSTBACK_DELAY_SECONDS=15 \
 bash perf/run_k6.sh perf/process_and_reports_workload.js
 ```
 
-Run for render flows:
+External redirect-flow example:
 
 ```bash
-BASE_URL=http://host.docker.internal:8000 \
-CAMPAIGN_ID=1 \
-AUTHORIZATION='Basic YWRtaW46YWRtaW4K' \
+DASHBOARD_BASE_URL=https://dashboard.example.com \
+CAMPAIGN_BASE_URL=https://campaign.example.com \
+CAMPAIGN_ID=123 \
+AUTHORIZATION='Basic <base64-user-pass>' \
 PROCESS_QUERY='{"status":"accept","tid":"123","payout":10,"offer_id":"456","lead_status":"accept,expect","sale_status":"confirm","rejected_status":"reject,fail,trash,error","return":"OK","from":"terraleads.com"}' \
-EXPECTED_STATUSES=200 \
-EXPECTED_CONTENT_TYPE='text/html; charset=utf-8' \
-PROCESS_RATE_STAGES=5:2m,10:5m,15:5m,20:5m \
+EXPECTED_STATUSES=302 \
+PROCESS_RATE_STAGES=2:2m,5:5m,10:5m \
 PROCESS_TIME_UNIT=1s \
-REPORT_RATE_STAGES=1:2m,2:5m,3:5m \
+REPORT_RATE_STAGES=1:2m,2:5m \
 REPORT_TIME_UNIT=1m \
 POSTBACK_PROBABILITY=0.15 \
 POSTBACK_DELAY_SECONDS=15 \
 bash perf/run_k6.sh perf/process_and_reports_workload.js
 ```
+
+Render flows use the same shape with:
+
+```bash
+EXPECTED_STATUSES=200
+EXPECTED_CONTENT_TYPE='text/html; charset=utf-8'
+```
+
+## Reading Results
+
+Stable rate:
+
+- no restarts or OOM kills;
+- k6 `http_req_failed` below threshold;
+- checks above threshold;
+- p95/p99 stay within the workload target;
+- server and database metrics do not stay pinned.
+
+Degradation point:
+
+- p95/p99 jump sharply;
+- 5xx or timeout rate increases;
+- DB lock waits, slow queries, or connection pressure appear;
+- CPU, memory, or IO saturates for sustained periods.
+
+Failure point:
+
+- health checks fail;
+- containers restart;
+- nginx returns sustained 5xx;
+- MariaDB exhausts connections or stalls;
+- k6 cannot maintain the requested arrival rate.

@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const baseUrl = __ENV.BASE_URL || 'http://127.0.0.1:8000';
+const dashboardBaseUrl = __ENV.DASHBOARD_BASE_URL || 'http://127.0.0.1:8000';
 const logFailedRequests = (__ENV.LOG_FAILED_REQUESTS || 'true').toLowerCase() === 'true';
 const campaignId = Number(__ENV.CAMPAIGN_ID || 1);
 const authHeader = __ENV.AUTHORIZATION || '';
@@ -100,7 +100,7 @@ export function trackFlow() {
     };
 
     const clickResponse = http.post(
-        `${baseUrl}/api/v2/track/click`,
+        `${dashboardBaseUrl}/api/v2/track/click`,
         JSON.stringify(clickPayload),
         {
             headers: { 'Content-Type': 'application/json' },
@@ -123,7 +123,7 @@ export function trackFlow() {
         };
 
         const leadResponse = http.post(
-            `${baseUrl}/api/v2/track/lead`,
+            `${dashboardBaseUrl}/api/v2/track/lead`,
             JSON.stringify(leadPayload),
             {
                 headers: { 'Content-Type': 'application/json' },
@@ -146,7 +146,7 @@ export function trackFlow() {
         };
 
         const postbackResponse = http.post(
-            `${baseUrl}/api/v2/track/postback`,
+            `${dashboardBaseUrl}/api/v2/track/postback`,
             JSON.stringify(postbackPayload),
             {
                 headers: { 'Content-Type': 'application/json' },
@@ -168,7 +168,7 @@ export function reportsRead() {
     }
 
     const leadsResponse = http.get(
-        `${baseUrl}/api/v2/reports/leads?campaignId=${campaignId}&page=1&pageSize=20&sortBy=createdAt&sortOrder=desc`,
+        `${dashboardBaseUrl}/api/v2/reports/leads?campaignId=${campaignId}&page=1&pageSize=20&sortBy=createdAt&sortOrder=desc`,
         {
             headers,
             tags: { endpoint: 'reports_leads' },
@@ -181,7 +181,7 @@ export function reportsRead() {
 
     const today = new Date().toISOString().slice(0, 10);
     const statisticsResponse = http.get(
-        `${baseUrl}/api/v2/reports/statistics?campaignId=${campaignId}&periodStart=${today}&periodEnd=${today}`,
+        `${dashboardBaseUrl}/api/v2/reports/statistics?campaignId=${campaignId}&periodStart=${today}&periodEnd=${today}`,
         {
             headers,
             tags: { endpoint: 'reports_statistics' },
