@@ -1,7 +1,11 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const baseUrl = __ENV.BASE_URL || 'http://127.0.0.1:8000';
+const dashboardBaseUrl = __ENV.DASHBOARD_BASE_URL || 'http://127.0.0.1:8000';
+if (!__ENV.CAMPAIGN_BASE_URL) {
+    throw new Error('CAMPAIGN_BASE_URL is required for process workload runs.');
+}
+const campaignBaseUrl = __ENV.CAMPAIGN_BASE_URL.replace(/\/$/, '');
 const logFailedRequests = (__ENV.LOG_FAILED_REQUESTS || 'true').toLowerCase() === 'true';
 const campaignId = Number(__ENV.CAMPAIGN_ID || 1);
 const authHeader = __ENV.AUTHORIZATION || '';
@@ -106,8 +110,9 @@ function buildQueryString(payload) {
 }
 
 export function processFlow() {
+    http.cookieJar().clear(campaignBaseUrl);
     const queryArgumentsPayload = buildProcessPayload();
-    const response = http.get(`${baseUrl}/process/${campaignId}?${buildQueryString(queryArgumentsPayload)}`, {
+    const response = http.get(`${campaignBaseUrl}?${buildQueryString(queryArgumentsPayload)}`, {
         redirects: 0,
         tags: { endpoint: 'process_endpoint' },
     });
@@ -130,7 +135,7 @@ export function processFlow() {
         };
 
         const postbackResponse = http.post(
-            `${baseUrl}/api/v2/track/postback`,
+            `${dashboardBaseUrl}/api/v2/track/postback`,
             JSON.stringify(postbackPayload),
             {
                 headers: { 'Content-Type': 'application/json' },
@@ -152,7 +157,7 @@ export function reportsRead() {
     }
 
     const leadsResponse = http.get(
-        `${baseUrl}/api/v2/reports/leads?campaignId=${campaignId}&page=1&pageSize=20&sortBy=createdAt&sortOrder=desc`,
+        `${dashboardBaseUrl}/api/v2/reports/leads?campaignId=${campaignId}&page=1&pageSize=20&sortBy=createdAt&sortOrder=desc`,
         {
             headers,
             tags: { endpoint: 'reports_leads' },
@@ -165,7 +170,7 @@ export function reportsRead() {
 
     const today = new Date().toISOString().slice(0, 10);
     const response = http.get(
-        `${baseUrl}/api/v2/reports/statistics?campaignId=${campaignId}&periodStart=${today}&periodEnd=${today}`,
+        `${dashboardBaseUrl}/api/v2/reports/statistics?campaignId=${campaignId}&periodStart=${today}&periodEnd=${today}`,
         {
             headers,
             tags: { endpoint: 'reports_statistics' },

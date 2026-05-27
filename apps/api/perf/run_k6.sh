@@ -13,7 +13,7 @@ default_base_url() {
   esac
 }
 
-BASE_URL="${BASE_URL:-$(default_base_url)}"
+DASHBOARD_BASE_URL="${DASHBOARD_BASE_URL:-$(default_base_url)}"
 
 is_local_host() {
   case "$1" in
@@ -36,13 +36,14 @@ PY
 }
 
 confirm_remote_target() {
-  local url="$1"
+  local name="$1"
+  local url="$2"
   if [[ ! -t 0 ]]; then
-    echo "Refusing to target non-local BASE_URL=$url without an interactive terminal." >&2
+    echo "Refusing to target non-local $name=$url without an interactive terminal." >&2
     exit 1
   fi
 
-  echo "WARNING: non-local target detected: BASE_URL=$url" >&2
+  echo "WARNING: non-local target detected: $name=$url" >&2
   read -r -p "Type 'yes' to continue: " confirmation
   if [[ "$confirmation" != "yes" ]]; then
     echo "Aborted by user." >&2
@@ -50,10 +51,28 @@ confirm_remote_target() {
   fi
 }
 
-hostname="$(extract_hostname "$BASE_URL")"
+hostname="$(extract_hostname "$DASHBOARD_BASE_URL")"
+dashboard_is_local=false
 
-if ! is_local_host "$hostname"; then
-  confirm_remote_target "$BASE_URL"
+if is_local_host "$hostname"; then
+  dashboard_is_local=true
+fi
+
+if [[ -z "${CAMPAIGN_BASE_URL:-}" ]]; then
+  echo "Refusing to run without CAMPAIGN_BASE_URL." >&2
+  echo "Set CAMPAIGN_BASE_URL to the campaign entrypoint. Track workloads do not send traffic there, but the origin is required for a consistent run contract." >&2
+  exit 1
+fi
+
+if [[ "$dashboard_is_local" == "false" ]]; then
+  confirm_remote_target "DASHBOARD_BASE_URL" "$DASHBOARD_BASE_URL"
+fi
+
+if [[ -n "${CAMPAIGN_BASE_URL:-}" ]]; then
+  campaign_hostname="$(extract_hostname "$CAMPAIGN_BASE_URL")"
+  if ! is_local_host "$campaign_hostname"; then
+    confirm_remote_target "CAMPAIGN_BASE_URL" "$CAMPAIGN_BASE_URL"
+  fi
 fi
 
 docker_args=(
@@ -62,7 +81,7 @@ docker_args=(
   -i
   -v "$PWD:/work"
   -w /work
-  -e "BASE_URL=$BASE_URL"
+  -e "DASHBOARD_BASE_URL=$DASHBOARD_BASE_URL"
 )
 
 if [[ -n "${ENDPOINT:-}" ]]; then
@@ -97,6 +116,9 @@ if [[ -n "${CAMPAIGN_ID:-}" ]]; then
 fi
 if [[ -n "${PROCESS_QUERY:-}" ]]; then
   docker_args+=(-e "PROCESS_QUERY=$PROCESS_QUERY")
+fi
+if [[ -n "${CAMPAIGN_BASE_URL:-}" ]]; then
+  docker_args+=(-e "CAMPAIGN_BASE_URL=$CAMPAIGN_BASE_URL")
 fi
 if [[ -n "${EXPECTED_STATUSES:-}" ]]; then
   docker_args+=(-e "EXPECTED_STATUSES=$EXPECTED_STATUSES")
