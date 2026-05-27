@@ -4,9 +4,8 @@ import argparse
 from pprint import pprint
 
 from perf_seed_common import (
-    create_campaign,
-    ensure_empty_campaigns_table,
     ensure_safe_db_target,
+    get_campaign,
     get_connection,
     print_progress,
     seed_tracker_tables,
@@ -15,7 +14,8 @@ from perf_seed_common import (
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Seed tracker data for performance testing.')
+    parser = argparse.ArgumentParser(description='Seed historical tracker data for an existing campaign.')
+    parser.add_argument('--campaign-id', type=int, required=True, help='Existing campaign id to seed history for.')
     parser.add_argument('--clicks', type=int, default=100_000, help='How many clicks to create.')
     parser.add_argument('--lead-ratio', type=float, default=0.30, help='Fraction of clicks that also get a lead.')
     parser.add_argument(
@@ -36,9 +36,7 @@ def main():
     connection = get_connection()
     try:
         with connection.cursor() as cursor:
-            ensure_empty_campaigns_table(cursor)
-            campaign = create_campaign(cursor)
-        connection.commit()
+            campaign = get_campaign(cursor, args.campaign_id)
 
         seed_tracker_tables(
             connection=connection,

@@ -38,7 +38,7 @@ Choose one setup path before running a workload.
 | Local Docker Compose | Manually through dashboard/API | Seed scripts | Local Docker artifacts plus k6 artifacts |
 | External host | Manually through dashboard/API | Seed scripts through exposed MariaDB | External server, nginx, app, and DB metrics plus k6 artifacts |
 
-Seed scripts are used to fill historical tracker data for realistic report reads. Current seed scripts also create campaign fixtures and require an empty `campaign` table, so they fit fresh performance databases. They do not create domains, nginx configs, or certificates. `KAN-74` tracks the follow-up to seed history for an already configured campaign.
+Seed scripts are used to fill historical tracker data for realistic report reads. They require an existing `CAMPAIGN_ID` and do not create campaigns, flows, domains, nginx configs, or certificates.
 
 ## Manual Environment Setup
 
@@ -80,7 +80,7 @@ Additional requirements for the process workload:
 
 ## Historical Data
 
-Historical rows make report reads more realistic. Current seed scripts fill historical tracker rows and also create the required campaign fixtures. They require an empty `campaign` table.
+Historical rows make report reads more realistic. Seed scripts fill historical tracker rows for an existing campaign.
 
 Pass DB connection settings explicitly when running seed scripts:
 
@@ -90,7 +90,7 @@ MARIADB_PORT=3306 \
 MARIADB_USER=bangi \
 MARIADB_PASSWORD='<password>' \
 MARIADB_DATABASE=bangi \
-python perf/track_and_reports_seed.py --clicks 1000000 --lead-ratio 0.15 --postback-ratio 0.85 --days 14
+python perf/track_and_reports_seed.py --campaign-id 2 --clicks 1000000 --lead-ratio 0.15 --postback-ratio 0.85 --days 14
 ```
 
 ```bash
@@ -99,12 +99,12 @@ MARIADB_PORT=3306 \
 MARIADB_USER=bangi \
 MARIADB_PASSWORD='<password>' \
 MARIADB_DATABASE=bangi \
-python perf/process_and_reports_seed.py --action-type redirect --clicks 1000000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
+python perf/process_and_reports_seed.py --campaign-id 2 --clicks 1000000 --lead-ratio 0.30 --postback-ratio 0.85 --days 14
 ```
 
 For external hosts, expose MariaDB only in a controlled performance environment. The seed scripts prompt when `MARIADB_HOST` is non-local and refuse to run without an interactive confirmation.
 
-Do not run current seed scripts against an environment with existing campaigns. Use a fresh performance database, then complete any required dashboard domain and campaign domain setup through the product path.
+Run seed scripts only against the campaign prepared for the performance test. They insert tracker rows directly and do not validate flow or domain configuration.
 
 ## Artifact Collection
 
