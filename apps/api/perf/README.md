@@ -54,7 +54,7 @@ Required for both workloads:
 Create the Basic auth value on Linux:
 
 ```bash
-printf 'admin:<password>' | base64
+printf 'admin:<password>' | base64 -w 0; echo
 ```
 
 Use it as:
