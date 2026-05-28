@@ -28,6 +28,7 @@ from contextlib import suppress
 from decimal import *
 
 import peewee as pw
+from src.core.peewee import BinaryUUIDField
 from peewee_migrate import Migrator
 
 
@@ -226,7 +227,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     class ReportLead(pw.Model):
         id = pw.AutoField()
         created_at = pw.TimestampField()
-        click_id = pw.Field()
+        click_id = BinaryUUIDField()
         campaign_id = pw.IntegerField()
         click_created_at = pw.TimestampField()
         status = pw.CharField(max_length=255, null=True)
@@ -241,7 +242,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     class TrackClick(pw.Model):
         id = pw.AutoField()
         created_at = pw.TimestampField()
-        click_id = pw.Field()
+        click_id = BinaryUUIDField()
         campaign_id = pw.IntegerField()
         parameters = pw.TextField()
 
@@ -253,7 +254,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     class TrackDiscard(pw.Model):
         id = pw.AutoField()
         created_at = pw.TimestampField()
-        click_id = pw.Field()
+        click_id = BinaryUUIDField()
         campaign_id = pw.IntegerField()
         country = pw.CharField(max_length=2, null=True)
         browser_family = pw.CharField(max_length=255, null=True)
@@ -270,7 +271,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     class TrackLead(pw.Model):
         id = pw.AutoField()
         created_at = pw.TimestampField()
-        click_id = pw.Field()
+        click_id = BinaryUUIDField()
         parameters = pw.TextField()
 
         class Meta:
@@ -280,7 +281,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     class TrackPostback(pw.Model):
         id = pw.AutoField()
         created_at = pw.TimestampField()
-        click_id = pw.Field()
+        click_id = BinaryUUIDField()
         parameters = pw.TextField()
         status = pw.CharField(max_length=255, null=True)
         cost_value = pw.DecimalField(auto_round=False, decimal_places=5, max_digits=10, null=True, rounding=ROUND_HALF_EVEN)

@@ -13,6 +13,29 @@ migrations_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(api_dir))
 
 
+def patch_custom_fields(migration_name):
+    if migration_name is None:
+        return
+
+    migration_path = migrations_dir / migration_name
+    if migration_path.suffix != '.py':
+        migration_path = migration_path.with_suffix('.py')
+    if not migration_path.exists():
+        return
+
+    content = migration_path.read_text()
+    if 'click_id = pw.Field()' not in content:
+        return
+
+    content = content.replace(
+        'import peewee as pw\n',
+        'import peewee as pw\nfrom src.core.peewee import BinaryUUIDField\n',
+        1,
+    )
+    content = content.replace('click_id = pw.Field()', 'click_id = BinaryUUIDField()')
+    migration_path.write_text(content)
+
+
 def iter_entity_module_names():
     for entities_path in src_dir.rglob('entities.py'):
         module_path = entities_path.relative_to(api_dir).with_suffix('')
@@ -49,7 +72,8 @@ def parse_args():
 def main():
     args = parse_args()
     router = get_router(migrations_dir, args.database, verbose=1)
-    router.create(args.name, auto=load_entity_models())
+    migration_name = router.create(args.name, auto=load_entity_models())
+    patch_custom_fields(migration_name)
 
 
 if __name__ == '__main__':
