@@ -1,4 +1,4 @@
-"""Peewee migrations -- 001_initial_migration.py.
+"""Peewee migrations -- 001_initial_schema.py.
 
 Some examples (model - class or model name)::
 
@@ -40,7 +40,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class BusinessPortfolio(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         name = pw.CharField(max_length=255)
         is_banned = pw.BooleanField()
 
@@ -50,7 +50,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class AdCabinet(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         name = pw.CharField(max_length=255)
         is_banned = pw.BooleanField()
         business_portfolio = pw.ForeignKeyField(column_name='business_portfolio_id', field='id', model=migrator.orm['facebook_pacs_business_portfolio'], null=True)
@@ -61,7 +61,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class BusinessPage(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         name = pw.CharField(max_length=255)
         is_banned = pw.BooleanField()
 
@@ -71,8 +71,8 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class BusinessPortfolioAccessUrl(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
-        business_portfolio = pw.ForeignKeyField(column_name='business_portfolio_id', field='id', model=migrator.orm['facebook_pacs_business_portfolio'], null=True)
+        created_at = pw.TimestampField()
+        business_portfolio = pw.ForeignKeyField(column_name='business_portfolio_id', field='id', model=migrator.orm['facebook_pacs_business_portfolio'])
         url = pw.CharField(max_length=255)
         email = pw.CharField(max_length=255, null=True)
         expires_at = pw.TimestampField()
@@ -83,11 +83,11 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class Campaign(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         name = pw.CharField(max_length=255)
-        cost_model = pw.CharField(default='cpa', max_length=255, null=True)
-        cost_value = pw.DecimalField(auto_round=False, decimal_places=5, default=Decimal('0'), max_digits=10, null=True, rounding=ROUND_HALF_EVEN)
-        currency = pw.CharField(default='usd', max_length=255, null=True)
+        cost_model = pw.CharField(default='cpa', max_length=255)
+        cost_value = pw.DecimalField(auto_round=False, decimal_places=5, default=Decimal('0'), max_digits=10, rounding=ROUND_HALF_EVEN)
+        currency = pw.CharField(default='usd', max_length=255)
         status_mapper = pw.TextField(null=True)
         expenses_distribution_parameter = pw.CharField(max_length=255, null=True)
         default_flow_id = pw.IntegerField(null=True)
@@ -98,7 +98,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class Executor(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         name = pw.CharField(max_length=255)
         is_banned = pw.BooleanField()
 
@@ -108,7 +108,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class Campaign(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         core_campaign = pw.ForeignKeyField(column_name='core_campaign_id', field='id', model=migrator.orm['campaign'])
         ad_cabinet = pw.ForeignKeyField(column_name='ad_cabinet_id', field='id', model=migrator.orm['facebook_pacs_ad_cabinet'])
         executor = pw.ForeignKeyField(column_name='executor_id', field='id', model=migrator.orm['facebook_pacs_executor'])
@@ -120,7 +120,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class DiskUtilization(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         filesystem = pw.CharField(max_length=255)
         mountpoint = pw.CharField(max_length=255)
         total_bytes = pw.BigIntegerField()
@@ -134,7 +134,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class Domain(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         hostname = pw.CharField(max_length=255, unique=True)
         purpose = pw.CharField(max_length=32)
         campaign = pw.ForeignKeyField(column_name='campaign_id', field='id', model=migrator.orm['campaign'], null=True, unique=True)
@@ -147,7 +147,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class DomainCertificate(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         domain = pw.ForeignKeyField(column_name='domain_id', field='id', model=migrator.orm['domain'], on_delete='CASCADE', unique=True)
         status = pw.CharField(max_length=32)
         ca = pw.CharField(max_length=32)
@@ -169,7 +169,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class DomainCookie(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         domain = pw.ForeignKeyField(column_name='domain_id', field='id', model=migrator.orm['domain'], on_delete='CASCADE')
         name = pw.CharField(max_length=64)
         opaque_name = pw.CharField(max_length=64)
@@ -182,7 +182,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class Expense(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         campaign = pw.ForeignKeyField(column_name='campaign_id', field='id', model=migrator.orm['campaign'])
         date = pw.DateField()
         distribution = pw.TextField()
@@ -194,8 +194,8 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class Flow(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
-        name = pw.CharField(max_length=255, null=True)
+        created_at = pw.TimestampField()
+        name = pw.CharField(max_length=255)
         campaign = pw.ForeignKeyField(column_name='campaign_id', field='id', model=migrator.orm['campaign'])
         rule = pw.TextField(null=True)
         order_value = pw.IntegerField()
@@ -211,7 +211,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class NginxValidationSnapshot(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         domain_id = pw.IntegerField(null=True)
         validation_status = pw.CharField(max_length=16)
         validation_error = pw.TextField(null=True)
@@ -224,10 +224,10 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class ReportLead(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         click_id = pw.Field()
         campaign_id = pw.IntegerField()
-        click_created_at = pw.TimestampField(null=True)
+        click_created_at = pw.TimestampField()
         status = pw.CharField(max_length=255, null=True)
         cost_value = pw.DecimalField(auto_round=False, decimal_places=5, max_digits=10, null=True, rounding=ROUND_HALF_EVEN)
         currency = pw.CharField(max_length=255, null=True)
@@ -239,7 +239,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class TrackClick(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         click_id = pw.Field()
         campaign_id = pw.IntegerField()
         parameters = pw.TextField()
@@ -251,7 +251,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class TrackDiscard(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         click_id = pw.Field()
         campaign_id = pw.IntegerField()
         country = pw.CharField(max_length=2, null=True)
@@ -268,7 +268,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class TrackLead(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         click_id = pw.Field()
         parameters = pw.TextField()
 
@@ -278,7 +278,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
     @migrator.create_model
     class TrackPostback(pw.Model):
         id = pw.AutoField()
-        created_at = pw.TimestampField(null=True)
+        created_at = pw.TimestampField()
         click_id = pw.Field()
         parameters = pw.TextField()
         status = pw.CharField(max_length=255, null=True)

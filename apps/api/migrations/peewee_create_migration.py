@@ -1,4 +1,5 @@
 import argparse
+import sys
 from importlib import import_module
 from inspect import getmembers, isclass
 from pathlib import Path
@@ -8,6 +9,8 @@ from peewee_migrate.cli import get_router
 api_dir = Path(__file__).resolve().parent.parent
 src_dir = api_dir / 'src'
 migrations_dir = Path(__file__).resolve().parent
+
+sys.path.insert(0, str(api_dir))
 
 
 def iter_entity_module_names():

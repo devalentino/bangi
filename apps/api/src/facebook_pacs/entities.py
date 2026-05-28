@@ -70,7 +70,7 @@ class Campaign(Entity):
 
 
 class BusinessPortfolioAccessUrl(Entity):
-    business_portfolio = ForeignKeyField(BusinessPortfolio, backref='access_urls', null=True)
+    business_portfolio = ForeignKeyField(BusinessPortfolio, backref='access_urls')
     url = CharField()
     email = CharField(null=True)
     expires_at = UTCTimestampField(utc=True)

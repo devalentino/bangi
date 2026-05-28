@@ -16,7 +16,7 @@ class Expense(Entity):
 class ReportLead(Entity):
     click_id = BinaryUUIDField()
     campaign_id = IntegerField()
-    click_created_at = UTCTimestampField(null=True, utc=True)
+    click_created_at = UTCTimestampField(utc=True)
     status = CharField(null=True)
     cost_value = DecimalField(max_digits=10, decimal_places=5, null=True)
     currency = CharField(null=True)
