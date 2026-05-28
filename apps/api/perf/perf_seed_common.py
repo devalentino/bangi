@@ -10,13 +10,6 @@ from uuid import UUID, uuid4
 import pymysql
 from pymysql.cursors import DictCursor
 
-PERF_CAMPAIGN_PREFIX = 'Perf Process Campaign'
-PERF_STATUS_MAPPER = {'parameter': 'state', 'mapping': {'executed': 'accept', 'failed': 'reject'}}
-PERF_COST_MODEL = 'cpa'
-PERF_COST_VALUE = 10.0
-PERF_CURRENCY = 'usd'
-
-
 def is_local_db_host(host):
     return host in {'localhost', '127.0.0.1', '::1', 'mariadb', 'docker.local'}
 
@@ -39,20 +32,6 @@ def ensure_safe_db_target():
         confirm_remote_target(host)
 
 
-def count_campaigns(cursor):
-    cursor.execute('SELECT COUNT(*) AS count FROM campaign')
-    return cursor.fetchone()['count']
-
-
-def ensure_empty_campaigns_table(cursor):
-    campaign_count = count_campaigns(cursor)
-    if campaign_count != 0:
-        raise RuntimeError(
-            f'Refusing to seed because the database already contains {campaign_count} campaign(s). '
-            'Performance seed scripts must run against an empty campaigns table.'
-        )
-
-
 def get_connection():
     return pymysql.connect(
         host=os.environ['MARIADB_HOST'],
@@ -65,30 +44,19 @@ def get_connection():
     )
 
 
-def create_campaign(cursor):
-    payload = {
-        'name': f'{PERF_CAMPAIGN_PREFIX} {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}',
-        'cost_model': PERF_COST_MODEL,
-        'cost_value': PERF_COST_VALUE,
-        'currency': PERF_CURRENCY,
-        'status_mapper': json.dumps(PERF_STATUS_MAPPER),
-        'expenses_distribution_parameter': None,
-        'created_at': int(datetime.now(timezone.utc).timestamp()),
-    }
+def get_campaign(cursor, campaign_id):
     cursor.execute(
         '''
-        INSERT INTO campaign (
-            name, cost_model, cost_value, currency, status_mapper, expenses_distribution_parameter, created_at
-        )
-        VALUES (
-            %(name)s, %(cost_model)s, %(cost_value)s, %(currency)s, %(status_mapper)s,
-            %(expenses_distribution_parameter)s, %(created_at)s
-        )
+        SELECT id, name, cost_value, currency
+        FROM campaign
+        WHERE id = %s
         ''',
-        payload,
+        (campaign_id,),
     )
-    payload['id'] = cursor.lastrowid
-    return payload
+    campaign = cursor.fetchone()
+    if campaign is None:
+        raise RuntimeError(f'Campaign {campaign_id} does not exist.')
+    return campaign
 
 
 def now_timestamp():
