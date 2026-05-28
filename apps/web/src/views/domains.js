@@ -66,11 +66,46 @@ class DomainsView {
   }
 
   _campaignBadge(domain) {
-    if (domain.campaignName) {
-      return domain.campaignName;
+    if (domain.campaignId && domain.campaignName) {
+      return m(
+        "a",
+        { href: `#!/core/campaigns/${domain.campaignId}` },
+        domain.campaignName,
+      );
     }
 
     return m("span.text-muted", "-");
+  }
+
+  _targetUrl(hostname) {
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(hostname)) {
+      return hostname;
+    }
+
+    return `https://${hostname}`;
+  }
+
+  _hostnameCell(domain) {
+    let openTargetLabel = i18n.t("domains.openTarget");
+
+    return m(".d-flex.align-items-center.gap-2", [
+      m(
+        "a",
+        { href: `#!/domains/${domain.id}` },
+        domain.hostname,
+      ),
+      m(
+        "a.btn.btn-link.btn-sm.p-0",
+        {
+          href: this._targetUrl(domain.hostname),
+          target: "_blank",
+          rel: "noopener noreferrer",
+          title: openTargetLabel,
+          "aria-label": openTargetLabel,
+        },
+        m("i", { class: "fa fa-external-link-alt" }),
+      ),
+    ]);
   }
 
   view() {
@@ -127,11 +162,7 @@ class DomainsView {
                                   m("td", domain.id),
                                   m(
                                     "td",
-                                    m(
-                                      "a",
-                                      { href: `#!/domains/${domain.id}` },
-                                      domain.hostname,
-                                    ),
+                                    this._hostnameCell(domain),
                                   ),
                                   m("td", this._purposeBadge(domain)),
                                   m("td", this._campaignBadge(domain)),
