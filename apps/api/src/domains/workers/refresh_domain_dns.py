@@ -51,7 +51,10 @@ def _get_or_create_flow_id_cookie_name(database, domain_id: int) -> str:
         opaque_name = ''.join(secrets.choice(alphabet) for _ in range(length))
         try:
             database.execute_sql(
-                'INSERT INTO domain_cookie (domain_id, name, opaque_name) VALUES (%s, %s, %s)',
+                (
+                    'INSERT INTO domain_cookie (created_at, domain_id, name, opaque_name) '
+                    'VALUES (UNIX_TIMESTAMP(), %s, %s, %s)'
+                ),
                 (domain_id, 'flow_id', opaque_name),
             )
             database.commit()
