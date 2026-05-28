@@ -11,7 +11,10 @@ class TrackClick(Entity):
 
     class Meta:
         table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')
-        indexes = ((('click_id',), False),)
+        indexes = (
+            (('click_id',), False),
+            (('campaign_id', 'created_at', 'click_id'), False),
+        )
 
 
 class TrackPostback(Entity):
@@ -23,6 +26,7 @@ class TrackPostback(Entity):
 
     class Meta:
         table_settings = ('ENGINE=Aria', 'TRANSACTIONAL=0')
+        indexes = ((('click_id', 'id'), False),)
 
 
 class TrackLead(Entity):

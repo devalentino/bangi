@@ -44,18 +44,12 @@ class DomainModel {
   fetchCampaigns() {
     this.campaignError = null;
 
-    api.request({
+    return api.request({
       method: "GET",
-      url: `${config.backendApiBaseUrl}/core/campaigns`,
-      params: {
-        page: 1,
-        pageSize: 1000,
-        sortBy: "id",
-        sortOrder: "asc",
-      },
+      url: `${config.backendApiBaseUrl}/core/filters/campaigns`,
     })
       .then(function (payload) {
-        this.campaigns = payload.content;
+        this.campaigns = payload;
       }.bind(this))
       .catch(function () {
         this.campaigns = [];

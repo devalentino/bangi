@@ -45,10 +45,10 @@ class StatisticsModel {
     return api
       .request({
         method: "GET",
-        url: `${config.backendApiBaseUrl}/core/campaigns`,
+        url: `${config.backendApiBaseUrl}/core/filters/campaigns`,
       })
       .then(function (payload) {
-        this.campaigns = payload.content;
+        this.campaigns = payload;
         this.campaignError = null;
       }.bind(this))
       .catch(function () {
