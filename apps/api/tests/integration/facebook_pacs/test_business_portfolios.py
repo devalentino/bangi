@@ -168,6 +168,7 @@ class TestBusinessPortfolio:
         write_to_db(
             'facebook_pacs_business_portfolio2executor',
             {'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
+            skip_created_at=True,
         )
 
         response = client.post(
@@ -183,6 +184,7 @@ class TestBusinessPortfolio:
         write_to_db(
             'facebook_pacs_business_portfolio2executor',
             {'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
+            skip_created_at=True,
         )
 
         response = client.delete(
@@ -236,6 +238,7 @@ class TestBusinessPortfolioWithExecutorAndAdCabinet:
         write_to_db(
             'facebook_pacs_business_portfolio2executor',
             {'businessportfolio_id': business_portfolio['id'], 'executor_id': executor['id']},
+            skip_created_at=True,
         )
 
         return ad_cabinet

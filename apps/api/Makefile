@@ -38,4 +38,4 @@ migrate:
 
 generate-migration:
 	echo "=== Generating Migration ==="
-	pw_migrate create  --auto  --auto-source src --directory migrations --database "mysql://$(MARIADB_USER):$(MARIADB_PASSWORD)@$(MARIADB_HOST):$(MARIADB_PORT)/$(MARIADB_DATABASE)" $(name)
+	python migrations/peewee_create_migration.py $(name) --database "mysql://$(MARIADB_USER):$(MARIADB_PASSWORD)@$(MARIADB_HOST):$(MARIADB_PORT)/$(MARIADB_DATABASE)"
