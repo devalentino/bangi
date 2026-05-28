@@ -4,6 +4,10 @@ let Pagination = require("../components/pagination");
 let { timestamp2LocalTime } = require("../utils/date");
 let i18n = require("../i18n");
 
+function formatClickShare(clickShare) {
+  return `${(clickShare * 100).toFixed(2)}%`;
+}
+
 class CoreCampaignsView {
   constructor(vnode) {
     this.model = new CoreCampaignsModel();
@@ -77,7 +81,12 @@ class CoreCampaignsView {
                                 m("td", campaign.costValue),
                                 m("td", campaign.currency),
                                 m("td", campaign.summary ? campaign.summary.clickCount : "-"),
-                                m("td", campaign.summary ? campaign.summary.clickShare : "-"),
+                                m(
+                                  "td",
+                                  campaign.summary
+                                    ? formatClickShare(campaign.summary.clickShare)
+                                    : "-",
+                                ),
                                 m(
                                   "td",
                                   campaign.summary
@@ -99,3 +108,4 @@ class CoreCampaignsView {
 }
 
 module.exports = CoreCampaignsView;
+module.exports.formatClickShare = formatClickShare;
