@@ -59,19 +59,15 @@ def existing_landing_path(flow, landing_pages_base_path):
 
 
 @pytest.fixture
-def render_flow_with_landing(campaign, flow_rule, landing_pages_base_path, write_to_db):
+def render_flow_with_landing(campaign, flow_rule, landing_pages_base_path, write_to_db, flow_payload):
     flow = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Render Flow',
             'campaign_id': campaign['id'],
-            'rule': flow_rule,
-            'order_value': 1,
             'action_type': 'render',
             'redirect_url': None,
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
     landing_path = pathlib.Path(landing_pages_base_path) / str(flow['id'])
@@ -81,20 +77,16 @@ def render_flow_with_landing(campaign, flow_rule, landing_pages_base_path, write
     yield flow
 
 
-def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
+def test_flows_list(client, authorization, campaign, flow_rule, write_to_db, flow_payload):
     for index in range(25):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': f'Flow {index}',
                 'campaign_id': campaign['id'],
-                'rule': flow_rule,
                 'order_value': index + 1,
-                'action_type': 'redirect',
                 'redirect_url': f'https://example.com/{index}',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
 
@@ -125,20 +117,18 @@ def test_flows_list(client, authorization, campaign, flow_rule, write_to_db):
     }
 
 
-def test_flows_list__filters_by_campaign(client, authorization, campaign, campaign_payload, flow_rule, write_to_db):
+def test_flows_list__filters_by_campaign(
+    client, authorization, campaign, campaign_payload, flow_rule, write_to_db, flow_payload
+):
     for index in range(3):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': f'Flow {index}',
                 'campaign_id': campaign['id'],
-                'rule': flow_rule,
                 'order_value': index + 1,
-                'action_type': 'redirect',
                 'redirect_url': f'https://example.com/{index}',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
 
@@ -146,16 +136,12 @@ def test_flows_list__filters_by_campaign(client, authorization, campaign, campai
     for index in range(2):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': f'Other Flow {index}',
                 'campaign_id': other_campaign['id'],
-                'rule': flow_rule,
                 'order_value': index + 10,
-                'action_type': 'redirect',
                 'redirect_url': f'https://example.com/other/{index}',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
 
@@ -186,47 +172,35 @@ def test_flows_list__filters_by_campaign(client, authorization, campaign, campai
     }
 
 
-def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign, flow_rule, write_to_db):
+def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign, flow_rule, write_to_db, flow_payload):
     first = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Flow A',
             'campaign_id': campaign['id'],
-            'rule': flow_rule,
             'order_value': 2,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/a',
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
     second = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Flow B',
             'campaign_id': campaign['id'],
-            'rule': flow_rule,
             'order_value': -1,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/b',
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
     third = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Flow C',
             'campaign_id': campaign['id'],
-            'rule': flow_rule,
             'order_value': 10,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/c',
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
 
@@ -282,20 +256,17 @@ def test_flows_list__ordered_by_order_value_desc(client, authorization, campaign
     }
 
 
-def test_flows_list__filter_out_deleted(client, authorization, campaign, flow_rule, write_to_db):
+def test_flows_list__filter_out_deleted(client, authorization, campaign, flow_rule, write_to_db, flow_payload):
     for index in range(25):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': f'Flow {index}',
                 'campaign_id': campaign['id'],
-                'rule': flow_rule,
                 'order_value': index + 1,
-                'action_type': 'redirect',
                 'redirect_url': f'https://example.com/{index}',
-                'is_enabled': True,
                 'is_deleted': True,
-                'show_once_per_visitor': False,
             },
         )
 
@@ -311,19 +282,17 @@ def test_flows_list__filter_out_deleted(client, authorization, campaign, flow_ru
     }
 
 
-def test_flows_list__render_action_response_format(client, authorization, campaign, flow_rule, write_to_db):
+def test_flows_list__render_action_response_format(
+    client, authorization, campaign, flow_rule, write_to_db, flow_payload
+):
     flow = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Render Flow',
             'campaign_id': campaign['id'],
-            'rule': flow_rule,
-            'order_value': 1,
             'action_type': 'render',
             'redirect_url': None,
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
 
@@ -832,19 +801,15 @@ def test_update_flow__without_rule_clears_rule(client, authorization, flow, read
     assert updated['rule'] is None
 
 
-def test_get_flow__without_rule(client, authorization, campaign, write_to_db):
+def test_get_flow__without_rule(client, authorization, campaign, write_to_db, flow_payload):
     flow = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'No Rule Flow',
             'campaign_id': campaign['id'],
             'rule': None,
-            'order_value': 1,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/no-rule',
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
 
@@ -869,18 +834,15 @@ def test_get_flow__without_rule(client, authorization, campaign, write_to_db):
     }
 
 
-def test_get_flow__returns_show_once_per_visitor(client, authorization, campaign, write_to_db):
+def test_get_flow__returns_show_once_per_visitor(client, authorization, campaign, write_to_db, flow_payload):
     flow = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Show-once flow',
             'campaign_id': campaign['id'],
             'rule': None,
-            'order_value': 1,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/show-once',
-            'is_enabled': True,
-            'is_deleted': False,
             'show_once_per_visitor': True,
         },
     )
@@ -1107,63 +1069,46 @@ def test_update_flow__rejects_unsupported_rule_term(client, authorization, flow)
 
 
 def test_bulk_update_flow_order_values(
-    client, authorization, campaign, campaign_payload, flow_rule, write_to_db, read_from_db
+    client, authorization, campaign, campaign_payload, flow_rule, write_to_db, flow_payload, read_from_db
 ):
     flow_one = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Flow 1',
             'campaign_id': campaign['id'],
-            'rule': flow_rule,
-            'order_value': 1,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/1',
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
     flow_two = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Flow 2',
             'campaign_id': campaign['id'],
-            'rule': flow_rule,
             'order_value': 2,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/2',
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
     flow_three = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Flow 3',
             'campaign_id': campaign['id'],
-            'rule': flow_rule,
             'order_value': 3,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/3',
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
     other_campaign = write_to_db('campaign', campaign_payload | {'name': 'Other Campaign'})
     other_flow = write_to_db(
         'flow',
-        {
+        flow_payload
+        | {
             'name': 'Other Flow',
             'campaign_id': other_campaign['id'],
-            'rule': flow_rule,
             'order_value': 9,
-            'action_type': 'redirect',
             'redirect_url': 'https://example.com/other',
-            'is_enabled': True,
-            'is_deleted': False,
-            'show_once_per_visitor': False,
         },
     )
 

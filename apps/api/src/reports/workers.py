@@ -2,9 +2,10 @@ import logging
 from queue import Empty
 from time import monotonic
 
-from peewee import JOIN
+from peewee import JOIN, fn
 
 from src.core.supervisor import WorkerContext, register_worker
+from src.core.utils import utcnow
 from src.reports.entities import ReportLead
 from src.tracker.entities import TrackClick, TrackPostback
 from src.tracker.enums import TrackSource
@@ -78,6 +79,7 @@ def _upsert_report_leads_for_leads(click_ids: set) -> None:
         return
 
     select_query = TrackClick.select(
+        fn.UNIX_TIMESTAMP(),
         TrackClick.click_id,
         TrackClick.campaign_id,
         TrackClick.created_at,
@@ -86,6 +88,7 @@ def _upsert_report_leads_for_leads(click_ids: set) -> None:
     insert_query = ReportLead.insert_from(
         select_query,
         fields=[
+            ReportLead.created_at,
             ReportLead.click_id,
             ReportLead.campaign_id,
             ReportLead.click_created_at,
@@ -122,6 +125,7 @@ def _upsert_report_leads_for_postbacks(click_ids: set) -> None:
         processed_click_ids.add(click_id)
         rows.append(
             {
+                'created_at': utcnow(),
                 'click_id': row['click_id'],
                 'campaign_id': row['campaign_id'],
                 'click_created_at': row['created_at'],

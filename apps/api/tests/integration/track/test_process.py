@@ -31,33 +31,28 @@ def ip2location_mock(environment):
 
 class TestTrackRedirect:
     def test_track_redirect__evaluates_current_flow_first_when_cookie_flow_is_valid(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Higher priority fallback',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/higher',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         current_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Current repeatable flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/current',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
         cookie_flow_id = write_to_db(
@@ -72,48 +67,41 @@ class TestTrackRedirect:
         assert response.headers['Location'] == current_flow['redirect_url']
 
     def test_track_redirect__skips_show_once_current_flow_after_visit(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Already passed show-once flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 30,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/previous',
-                'is_enabled': True,
-                'is_deleted': False,
                 'show_once_per_visitor': True,
             },
         )
         current_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Current show-once flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/current',
-                'is_enabled': True,
-                'is_deleted': False,
                 'show_once_per_visitor': True,
             },
         )
         next_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Next repeatable flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/next',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
         cookie_flow_id = write_to_db(
@@ -128,34 +116,29 @@ class TestTrackRedirect:
         assert response.headers['Location'] == next_flow['redirect_url']
 
     def test_track_redirect__keeps_show_once_current_flow_with_valid_timestamp_cookie(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         current_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Current show-once flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/current',
-                'is_enabled': True,
-                'is_deleted': False,
                 'show_once_per_visitor': True,
             },
         )
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Next repeatable flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/next',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
 
@@ -169,34 +152,29 @@ class TestTrackRedirect:
         assert second_response.headers['Location'] == current_flow['redirect_url']
 
     def test_track_redirect__skips_show_once_current_flow_after_timestamp_expires(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         current_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Current show-once flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/current',
-                'is_enabled': True,
-                'is_deleted': False,
                 'show_once_per_visitor': True,
             },
         )
         next_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Next repeatable flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/next',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
 
@@ -227,34 +205,37 @@ class TestTrackRedirect:
 
     @pytest.mark.parametrize('timestamp_cookie_value', ['not-base62!', '0000', '1'])
     def test_track_redirect__malformed_timestamp_cookie_resets_when_flow_is_selected(
-        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock, timestamp_cookie_value
+        self,
+        client,
+        campaign,
+        domain,
+        write_to_db,
+        flow_payload,
+        read_from_db,
+        ip2location_mock,
+        timestamp_cookie_value,
     ):
         current_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Current show-once flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/current',
-                'is_enabled': True,
-                'is_deleted': False,
                 'show_once_per_visitor': True,
             },
         )
         next_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Next repeatable flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/next',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
         cookie_flow_id = write_to_db(
@@ -281,33 +262,28 @@ class TestTrackRedirect:
         assert refreshed_timestamp_cookie.value != timestamp_cookie_value
 
     def test_track_redirect__skips_current_flow_when_rule_no_longer_matches(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         current_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Current non-matching flow',
                 'campaign_id': campaign['id'],
                 'rule': 'country == "US"',
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/current',
-                'is_enabled': True,
-                'is_deleted': False,
-                'show_once_per_visitor': False,
             },
         )
         next_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Next matching flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/next',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         cookie_flow_id = write_to_db(
@@ -322,32 +298,28 @@ class TestTrackRedirect:
         assert response.headers['Location'] == next_flow['redirect_url']
 
     def test_track_redirect__invalid_cookie_resets_to_first_visit_selection(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         first_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'First flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/first',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Second flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/second',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         cookie_flow_id = write_to_db(
@@ -362,33 +334,29 @@ class TestTrackRedirect:
         assert response.headers['Location'] == first_flow['redirect_url']
 
     def test_track_redirect__returns_no_match_when_remaining_progression_flows_are_blocked(
-        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, read_from_db, ip2location_mock
     ):
         current_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Current show-once flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/current',
-                'is_enabled': True,
-                'is_deleted': False,
                 'show_once_per_visitor': True,
             },
         )
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Remaining non-matching flow',
                 'campaign_id': campaign['id'],
-                'rule': 'country == "US"',  # ip2location_mock resolves the request IP to MD
+                'rule': 'country == "US"',
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/remaining',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         cookie_flow_id = write_to_db(
@@ -405,33 +373,38 @@ class TestTrackRedirect:
         assert read_from_db('track_discard')['click_id'] == click_id
 
     def test_track_redirect__uses_default_flow_when_no_normal_flow_matches(
-        self, client, authorization, campaign, domain, write_to_db, read_from_db, set_default_flow_id, ip2location_mock
+        self,
+        client,
+        authorization,
+        campaign,
+        domain,
+        write_to_db,
+        flow_payload,
+        read_from_db,
+        set_default_flow_id,
+        ip2location_mock,
     ):
         click_id = uuid4()
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'US only',
                 'campaign_id': campaign['id'],
                 'rule': 'country == "US"',
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/us',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         default_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Campaign default',
                 'campaign_id': campaign['id'],
                 'rule': 'country == "US"',
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/default',
-                'is_enabled': True,
-                'is_deleted': False,
                 'show_once_per_visitor': True,
             },
         )
@@ -463,32 +436,28 @@ class TestTrackRedirect:
         }
 
     def test_track_redirect__normal_match_takes_precedence_over_default_flow(
-        self, client, authorization, campaign, domain, write_to_db, set_default_flow_id, ip2location_mock
+        self, client, authorization, campaign, domain, write_to_db, flow_payload, set_default_flow_id, ip2location_mock
     ):
         normal_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Normal match',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/normal',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         default_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Campaign default',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/default',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         set_default_flow_id(campaign['id'], default_flow['id'])
@@ -512,6 +481,7 @@ class TestTrackRedirect:
         campaign,
         domain,
         write_to_db,
+        flow_payload,
         read_from_db,
         set_default_flow_id,
         ip2location_mock,
@@ -520,12 +490,12 @@ class TestTrackRedirect:
         click_id = uuid4()
         default_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Unrunnable default',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/default',
                 **default_flow_values,
             },
@@ -566,20 +536,18 @@ class TestTrackRedirect:
         assert read_from_db('track_discard')['click_id'] == click_id
 
     def test_track_redirect__tracks_discard_when_no_flow_matches(
-        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, read_from_db, ip2location_mock
     ):
         click_id = uuid4()
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'US only',
                 'campaign_id': campaign['id'],
                 'rule': 'country == "US"',
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/us',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
 
@@ -708,20 +676,18 @@ class TestTrackRedirect:
         }
 
     def test_track_redirect__persists_matched_flow_and_client_context(
-        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, read_from_db, ip2location_mock
     ):
         ip2location_mock.get_country_short.return_value = 'FR'
         france_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'France flow',
                 'campaign_id': campaign['id'],
                 'rule': 'country == "FR"',
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/fr',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         click_id = uuid4()
@@ -754,31 +720,29 @@ class TestTrackRedirect:
             'tracker_os_family': 'iOS',
         }
 
-    def test_track_redirect__matches_flow_without_rule(self, client, campaign, domain, write_to_db, ip2location_mock):
+    def test_track_redirect__matches_flow_without_rule(
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
+    ):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'US only',
                 'campaign_id': campaign['id'],
                 'rule': 'country == "US"',
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/us',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         fallback_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'No rule',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 5,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/any',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
 
@@ -795,45 +759,41 @@ class TestTrackRedirect:
         assert response.headers['Location'] == flow['redirect_url']
 
     def test_track_redirect__ignores_disabled_and_deleted_flows(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Disabled fallback',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 50,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/disabled',
                 'is_enabled': False,
-                'is_deleted': False,
             },
         )
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Deleted fallback',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 40,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/deleted',
-                'is_enabled': True,
                 'is_deleted': True,
             },
         )
         runnable_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Runnable fallback',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 30,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/runnable',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
 
@@ -843,31 +803,29 @@ class TestTrackRedirect:
         assert response.headers['Location'] == runnable_flow['redirect_url']
 
     def test_track_redirect__returns_no_match_when_only_non_runnable_flows_remain(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Disabled fallback',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 50,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/disabled',
                 'is_enabled': False,
-                'is_deleted': False,
             },
         )
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Deleted fallback',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 40,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/deleted',
-                'is_enabled': True,
                 'is_deleted': True,
             },
         )
@@ -879,32 +837,28 @@ class TestTrackRedirect:
 
     @pytest.mark.usefixtures('ip2location_unavailable')
     def test_track_redirect__skips_country_rule_flow_when_ip2location_is_unavailable(
-        self, client, campaign, domain, write_to_db
+        self, client, campaign, domain, write_to_db, flow_payload
     ):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Country flow',
                 'campaign_id': campaign['id'],
                 'rule': 'country == "MD"',
                 'order_value': 20,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/country',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         fallback_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Fallback flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/fallback',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
 
@@ -923,19 +877,17 @@ class TestTrackRedirect:
         assert read_from_db('track_discard') is None
 
     def test_track_redirect__generates_click_id_when_missing(
-        self, client, campaign, domain, write_to_db, read_from_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, read_from_db, ip2location_mock
     ):
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'US only',
                 'campaign_id': campaign['id'],
                 'rule': 'country == "US"',
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/us',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
 
@@ -969,32 +921,28 @@ class TestTrackRedirect:
         assert discard['click_id'] == click['click_id']
 
     def test_track_redirect__uses_deterministic_order_for_runnable_flows(
-        self, client, campaign, domain, write_to_db, ip2location_mock
+        self, client, campaign, domain, write_to_db, flow_payload, ip2location_mock
     ):
         first_inserted_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'First runnable fallback',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/first',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Second runnable fallback',
                 'campaign_id': campaign['id'],
                 'rule': None,
                 'order_value': 10,
-                'action_type': 'redirect',
                 'redirect_url': 'https://example.com/second',
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
 
@@ -1012,12 +960,14 @@ class TestTrackLanding:
     @pytest.fixture
     def flow_payload(self, flow_rule):
         return {
+            'name': 'White flow',
             'order_value': 1,
             'rule': flow_rule,
             'action_type': 'render',
             'redirect_url': None,
             'is_enabled': True,
             'is_deleted': False,
+            'show_once_per_visitor': False,
         }
 
     @pytest.fixture
@@ -1133,19 +1083,26 @@ class TestTrackLanding:
         assert renderer_request.content == b''
 
     def test_track_landing__sets_domain_sticky_cookie_on_first_visit(
-        self, client, campaign, domain, environment, write_to_db, read_from_db, ip2location_mock, respx_mock
+        self,
+        client,
+        campaign,
+        domain,
+        environment,
+        write_to_db,
+        flow_payload,
+        read_from_db,
+        ip2location_mock,
+        respx_mock,
     ):
         render_flow = write_to_db(
             'flow',
-            {
+            flow_payload
+            | {
                 'name': 'Render flow',
                 'campaign_id': campaign['id'],
                 'rule': None,
-                'order_value': 1,
                 'action_type': 'render',
                 'redirect_url': None,
-                'is_enabled': True,
-                'is_deleted': False,
             },
         )
         respx_mock.get(f'{environment["LANDING_PAGE_RENDERER_BASE_URL"]}/{render_flow["id"]}/').mock(

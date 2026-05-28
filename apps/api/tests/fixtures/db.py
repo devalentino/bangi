@@ -1,4 +1,5 @@
 import json
+import time
 from uuid import UUID
 
 import pytest
@@ -21,12 +22,17 @@ def cast_read_value(value):
 
 @pytest.fixture
 def write_to_db(mysql):
-    def _write_to_db(table, payload, returning=True):
-        column_names = payload.keys()
-        value_placeholders = [f"%({key})s" for key in payload.keys()]
+    def _write_to_db(table, payload, returning=True, skip_created_at=False):
+        column_names = list(payload.keys())
+        if not skip_created_at and 'created_at' not in column_names:
+            column_names.append('created_at')
 
-        query = f'INSERT INTO {table} ({", ".join(column_names)}) VALUES ({", ".join(value_placeholders)})'
         values = {k: cast_db_value(v) for k, v in payload.items()}
+        if not skip_created_at:
+            values.setdefault('created_at', int(time.time()))
+
+        value_placeholders = [f"%({key})s" for key in values]
+        query = f'INSERT INTO {table} ({", ".join(column_names)}) VALUES ({", ".join(value_placeholders)})'
 
         with mysql.cursor(cursors.DictCursor) as cur:
             cur.execute(query, values)

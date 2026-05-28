@@ -17,6 +17,7 @@ from playhouse.shortcuts import model_to_dict
 
 from src.core.enums import CostModel, Currency, FlowActionType
 from src.core.peewee import JSONField, UTCTimestampField
+from src.core.utils import utcnow
 
 database_proxy = DatabaseProxy()
 
@@ -34,7 +35,7 @@ class Model(PeeweeModel):
 
 class Entity(Model):
     id = AutoField(primary_key=True)
-    created_at = UTCTimestampField(null=True, utc=True)
+    created_at = UTCTimestampField(default=utcnow, utc=True)
 
     class Meta:
         evolve = False
@@ -42,16 +43,16 @@ class Entity(Model):
 
 class Campaign(Entity):
     name = CharField()
-    cost_model = CharField(null=True, default=CostModel.cpa.value)
-    cost_value = DecimalField(null=True, default=Decimal('0.00'))
-    currency = CharField(null=True, default=Currency.usd.value)
+    cost_model = CharField(default=CostModel.cpa.value)
+    cost_value = DecimalField(default=Decimal('0.00'))
+    currency = CharField(default=Currency.usd.value)
     status_mapper = JSONField(null=True)
     expenses_distribution_parameter = CharField(null=True)
     default_flow_id = IntegerField(null=True)
 
 
 class Flow(Entity):
-    name = CharField(null=True)
+    name = CharField()
     campaign = ForeignKeyField(Campaign)
     rule = TextField(null=True)
     order_value = IntegerField(null=False)
