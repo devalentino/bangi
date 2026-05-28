@@ -83,6 +83,26 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
             table_name = "facebook_pacs_business_portfolio_access_url"
 
     @migrator.create_model
+    class Executor(pw.Model):
+        id = pw.AutoField()
+        created_at = pw.TimestampField()
+        name = pw.CharField(max_length=255)
+        is_banned = pw.BooleanField()
+
+        class Meta:
+            table_name = "facebook_pacs_executor"
+
+    @migrator.create_model
+    class BusinessPortfolioExecutorThrough(pw.Model):
+        id = pw.AutoField()
+        businessportfolio = pw.ForeignKeyField(column_name='businessportfolio_id', field='id', model=migrator.orm['facebook_pacs_business_portfolio'])
+        executor = pw.ForeignKeyField(column_name='executor_id', field='id', model=migrator.orm['facebook_pacs_executor'])
+
+        class Meta:
+            table_name = "facebook_pacs_business_portfolio2executor"
+            indexes = [(('businessportfolio', 'executor'), True)]
+
+    @migrator.create_model
     class Campaign(pw.Model):
         id = pw.AutoField()
         created_at = pw.TimestampField()
@@ -96,16 +116,6 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
 
         class Meta:
             table_name = "campaign"
-
-    @migrator.create_model
-    class Executor(pw.Model):
-        id = pw.AutoField()
-        created_at = pw.TimestampField()
-        name = pw.CharField(max_length=255)
-        is_banned = pw.BooleanField()
-
-        class Meta:
-            table_name = "facebook_pacs_executor"
 
     @migrator.create_model
     class Campaign(pw.Model):
@@ -321,9 +331,11 @@ def rollback(migrator: Migrator, database: pw.Database, *, fake=False):
 
     migrator.remove_model('facebook_pacs_ad_campaign')
 
-    migrator.remove_model('facebook_pacs_executor')
-
     migrator.remove_model('campaign')
+
+    migrator.remove_model('facebook_pacs_business_portfolio2executor')
+
+    migrator.remove_model('facebook_pacs_executor')
 
     migrator.remove_model('facebook_pacs_business_portfolio_access_url')
 

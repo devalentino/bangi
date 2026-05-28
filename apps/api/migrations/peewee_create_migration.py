@@ -4,6 +4,7 @@ from importlib import import_module
 from inspect import getmembers, isclass
 from pathlib import Path
 
+import peewee as pw
 from peewee_migrate.cli import get_router
 
 api_dir = Path(__file__).resolve().parent.parent
@@ -53,9 +54,11 @@ def load_entity_models():
     for entities_module_name in iter_entity_module_names():
         entities_module = import_module(entities_module_name)
         for _, model in getmembers(entities_module, isclass):
-            if model.__module__ != entities_module_name:
+            is_entity_model = issubclass(model, model_base)
+            is_through_model = issubclass(model, pw.Model) and model.__name__.endswith('Through')
+            if model in excluded_models or not (is_entity_model or is_through_model):
                 continue
-            if model in excluded_models or not issubclass(model, model_base):
+            if model.__module__ != entities_module_name and model.__name__.endswith('Through') is False:
                 continue
             models.append(model)
 
