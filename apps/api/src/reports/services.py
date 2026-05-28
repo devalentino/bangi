@@ -291,6 +291,7 @@ class ReportService:
 
         for date_distribution in date_distributions:
             Expense.insert(
+                created_at=utcnow(),
                 campaign=campaign,
                 date=date_distribution['date'],
                 distribution=date_distribution['distribution'],
