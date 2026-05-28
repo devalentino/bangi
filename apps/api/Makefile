@@ -38,4 +38,4 @@ migrate:
 
 generate-migration:
 	echo "=== Generating Migration ==="
-	python scripts/generate_migration.py --database "mysql://$(MARIADB_USER):$(MARIADB_PASSWORD)@$(MARIADB_HOST):$(MARIADB_PORT)/$(MARIADB_DATABASE)" --directory migrations $(name)
+	pw_migrate create  --auto  --auto-source src --directory migrations --database "mysql://$(MARIADB_USER):$(MARIADB_PASSWORD)@$(MARIADB_HOST):$(MARIADB_PORT)/$(MARIADB_DATABASE)" $(name)
