@@ -20,6 +20,8 @@ bangi_install_compose() {
         || bangi_fatal "Runtime environment file is missing or empty: ${BANGI_RUNTIME_ENV_FILE}"
     [[ -f "${BANGI_RELEASE_MARIADB_DIR}/low-memory.cnf" ]] \
         || bangi_fatal "MariaDB low-memory config is missing: ${BANGI_RELEASE_MARIADB_DIR}/low-memory.cnf"
+    [[ -f "${BANGI_SHARED_LANDING_RENDERER_DIR}/php.ini" ]] \
+        || bangi_fatal "Landing renderer PHP config is missing: ${BANGI_SHARED_LANDING_RENDERER_DIR}/php.ini"
 
     bangi_compose config >/dev/null \
         || bangi_fatal "Production compose configuration validation failed"

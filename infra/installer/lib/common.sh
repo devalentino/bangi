@@ -62,6 +62,7 @@ bangi_detect_existing_state() {
         "${BANGI_SHARED_ENV_DIR}"
         "${BANGI_SHARED_MARIADB_DIR}"
         "${BANGI_SHARED_LANDINGS_DIR}"
+        "${BANGI_SHARED_LANDING_RENDERER_DIR}"
         "${BANGI_SHARED_IP2LOCATION_DIR}"
         "${BANGI_SHARED_FIREWALL_DIR}"
         "${BANGI_ROOT_DIR}/ops"
