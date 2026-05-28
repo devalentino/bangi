@@ -236,7 +236,7 @@ Render flows use the same shape with:
 
 ```bash
 EXPECTED_STATUSES=200
-EXPECTED_CONTENT_TYPE='text/html; charset=utf-8'
+EXPECTED_CONTENT_TYPE='text/html; charset=UTF-8'
 ```
 
 ## Reading Results
