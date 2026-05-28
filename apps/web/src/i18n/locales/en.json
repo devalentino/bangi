@@ -101,6 +101,7 @@
   "domains.newManaged": "New Managed Domain",
   "domains.noCampaign": "No campaign",
   "domains.notFound": "No domains found.",
+  "domains.openTarget": "Open live domain",
   "domains.purpose": "Purpose",
   "domains.set": "Set",
   "domains.state": "State",
