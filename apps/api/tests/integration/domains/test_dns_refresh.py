@@ -20,7 +20,7 @@ class TestDnsRefreshWorker:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': None,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 

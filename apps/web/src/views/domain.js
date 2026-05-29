@@ -228,17 +228,17 @@ class DomainView {
                       ]),
                       m(".form-check.my-3", [
                         m("input.form-check-input", {
-                          id: "domainDisabled",
+                          id: "domainEnabled",
                           type: "checkbox",
-                          checked: this.model.form.isDisabled,
+                          checked: this.model.form.isEnabled,
                           onchange: function (event) {
-                            this.model.form.isDisabled = event.target.checked;
+                            this.model.form.isEnabled = event.target.checked;
                           }.bind(this),
                         }),
                         m(
                           "label.form-check-label",
-                          { for: "domainDisabled" },
-                          i18n.t("common.disabled"),
+                          { for: "domainEnabled" },
+                          i18n.t("common.enabled"),
                         ),
                       ]),
                       m(

@@ -28,15 +28,15 @@ class DomainsView {
     return i18n.t("domains.unchecked");
   }
 
-  _disabledBadge(domain) {
-    return domain.isDisabled
+  _enabledBadge(domain) {
+    return domain.isEnabled
       ? m("i", {
-          class: "fa fa-ban text-danger",
-          title: i18n.t("common.disabled"),
-        })
-      : m("i", {
           class: "fa fa-check text-success",
           title: i18n.t("common.enabled"),
+        })
+      : m("i", {
+          class: "fa fa-ban text-danger",
+          title: i18n.t("common.disabled"),
         });
   }
 
@@ -168,7 +168,7 @@ class DomainsView {
                                   m("td", this._campaignBadge(domain)),
                                   m("td", this._aRecordBadge(domain)),
                                   m("td", this._certificateBadge(domain)),
-                                  m("td", this._disabledBadge(domain)),
+                                  m("td", this._enabledBadge(domain)),
                                 ]);
                               }.bind(this),
                             ),

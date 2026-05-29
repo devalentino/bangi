@@ -523,7 +523,7 @@ class TestTrackRedirect:
                 'purpose': 'campaign',
                 'campaign_id': campaign_with_missing_default['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -1142,7 +1142,7 @@ class TestTrackLanding:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': True,
+                'is_enabled': False,
             },
         )
 

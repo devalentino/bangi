@@ -224,7 +224,7 @@ class TestDomainNginxPublication:
         request_payload = {
             'hostname': 'Example.COM.',
             'purpose': 'campaign',
-            'isDisabled': False,
+            'isEnabled': True,
         }
 
         response = client.post('/api/v2/domains', headers={'Authorization': authorization}, json=request_payload)
@@ -249,7 +249,7 @@ class TestDomainNginxPublication:
         request_payload = {
             'hostname': 'Example.COM.',
             'purpose': 'campaign',
-            'isDisabled': False,
+            'isEnabled': True,
         }
 
         response = client.post('/api/v2/domains', headers={'Authorization': authorization}, json=request_payload)
@@ -286,7 +286,7 @@ class TestDomainNginxPublication:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -333,7 +333,7 @@ class TestDomainNginxPublication:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -388,7 +388,7 @@ class TestDomainNginxPublication:
         request_payload = {
             'hostname': 'dashboard.example.com',
             'purpose': 'dashboard',
-            'isDisabled': False,
+            'isEnabled': True,
         }
 
         response = client.post('/api/v2/domains', headers={'Authorization': authorization}, json=request_payload)
@@ -399,7 +399,7 @@ class TestDomainNginxPublication:
         response = client.patch(
             f'/api/v2/domains/{domain["id"]}',
             headers={'Authorization': authorization},
-            json={'isDisabled': True},
+            json={'isEnabled': True},
         )
 
         assert response.status_code == 200, response.text
@@ -431,7 +431,7 @@ class TestDomainNginxConfigurations:
         response = client.post(
             '/api/v2/domains',
             headers={'Authorization': authorization},
-            json={'hostname': hostname, 'purpose': 'campaign', 'isDisabled': False},
+            json={'hostname': hostname, 'purpose': 'campaign', 'isEnabled': True},
         )
 
         assert response.status_code == 201, response.text
@@ -453,7 +453,7 @@ class TestDomainNginxConfigurations:
         response = client.post(
             '/api/v2/domains',
             headers={'Authorization': authorization},
-            json={'hostname': hostname, 'purpose': 'campaign', 'campaignId': campaign['id'], 'isDisabled': False},
+            json={'hostname': hostname, 'purpose': 'campaign', 'campaignId': campaign['id'], 'isEnabled': True},
         )
 
         assert response.status_code == 201, response.text
@@ -494,7 +494,7 @@ class TestDomainNginxConfigurations:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -540,7 +540,7 @@ class TestDomainNginxConfigurations:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -572,7 +572,7 @@ class TestDomainNginxConfigurations:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -594,7 +594,7 @@ class TestDomainNginxConfigurations:
         response = client.post(
             '/api/v2/domains',
             headers={'Authorization': authorization},
-            json={'hostname': hostname, 'purpose': 'dashboard', 'isDisabled': False},
+            json={'hostname': hostname, 'purpose': 'dashboard', 'isEnabled': True},
         )
 
         assert response.status_code == 201, response.text
@@ -619,7 +619,7 @@ class TestDomainNginxConfigurations:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -653,7 +653,7 @@ class TestDomainNginxConfigurations:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -702,7 +702,7 @@ class TestDomainNginxConfigurations:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         write_to_db(
@@ -762,7 +762,7 @@ class TestDomainNginxConfigurations:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         write_to_db(
@@ -817,7 +817,7 @@ class TestDomainNginxConfigurations:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         write_to_db(

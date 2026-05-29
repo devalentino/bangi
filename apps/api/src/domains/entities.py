@@ -9,7 +9,7 @@ class Domain(Entity):
     purpose = CharField(max_length=32)
     campaign = ForeignKeyField(Campaign, null=True, unique=True)
     is_a_record_set = BooleanField(null=True)
-    is_disabled = BooleanField(default=False)
+    is_enabled = BooleanField(default=True)
 
     class Meta:
         table_name = 'domain'

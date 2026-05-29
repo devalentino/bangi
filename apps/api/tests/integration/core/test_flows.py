@@ -338,7 +338,7 @@ def test_get_flow(client, authorization, campaign, flow):
         'orderValue': flow['order_value'],
         'actionType': flow['action_type'],
         'redirectUrl': flow['redirect_url'],
-        'isEnabled': bool(flow['is_enabled']),
+        'isEnabled': flow['is_enabled'],
         'showOncePerVisitor': False,
         'hasLandingPage': False,
     }
@@ -828,7 +828,7 @@ def test_get_flow__without_rule(client, authorization, campaign, write_to_db, fl
         'orderValue': flow['order_value'],
         'actionType': flow['action_type'],
         'redirectUrl': flow['redirect_url'],
-        'isEnabled': bool(flow['is_enabled']),
+        'isEnabled': flow['is_enabled'],
         'showOncePerVisitor': False,
         'hasLandingPage': False,
     }
