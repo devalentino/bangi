@@ -9,7 +9,7 @@ class TestDomains:
         request_payload = {
             'hostname': 'Example.COM.',
             'purpose': 'campaign',
-            'isDisabled': False,
+            'isEnabled': True,
         }
 
         response = client.post('/api/v2/domains', headers={'Authorization': authorization}, json=request_payload)
@@ -22,7 +22,7 @@ class TestDomains:
             'campaignId': None,
             'campaignName': None,
             'isARecordSet': None,
-            'isDisabled': False,
+            'isEnabled': True,
             'certificateStatus': None,
         }
 
@@ -34,7 +34,7 @@ class TestDomains:
             'purpose': 'campaign',
             'campaign_id': None,
             'is_a_record_set': None,
-            'is_disabled': False,
+            'is_enabled': True,
         }
         assert read_from_db('domain_certificate') is None
 
@@ -46,7 +46,7 @@ class TestDomains:
                 'hostname': 'campaign.example.com',
                 'purpose': 'campaign',
                 'campaignId': campaign['id'],
-                'isDisabled': False,
+                'isEnabled': True,
             },
         )
 
@@ -58,7 +58,7 @@ class TestDomains:
             'campaignId': campaign['id'],
             'campaignName': campaign['name'],
             'isARecordSet': None,
-            'isDisabled': False,
+            'isEnabled': True,
             'certificateStatus': None,
         }
 
@@ -70,7 +70,7 @@ class TestDomains:
             'purpose': 'campaign',
             'campaign_id': campaign['id'],
             'is_a_record_set': None,
-            'is_disabled': False,
+            'is_enabled': True,
         }
 
     def test_create_dashboard_domain_rejects_campaign_binding(self, client, authorization, campaign):
@@ -111,7 +111,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -137,7 +137,7 @@ class TestDomains:
                     'purpose': 'campaign',
                     'campaign_id': None,
                     'is_a_record_set': None,
-                    'is_disabled': False,
+                    'is_enabled': True,
                 },
             )
         campaign_domain = write_to_db(
@@ -147,7 +147,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         campaign_domain_certificate = write_to_db(
@@ -176,7 +176,7 @@ class TestDomains:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': None,
-                'is_disabled': True,
+                'is_enabled': True,
             },
         )
 
@@ -191,7 +191,7 @@ class TestDomains:
             'campaignId': None,
             'campaignName': None,
             'isARecordSet': None,
-            'isDisabled': False,
+            'isEnabled': True,
             'certificateStatus': None,
         }
         assert response.json['content'][-1] == {
@@ -201,7 +201,7 @@ class TestDomains:
             'campaignId': campaign_domain['campaign_id'],
             'campaignName': campaign['name'],
             'isARecordSet': campaign_domain['is_a_record_set'],
-            'isDisabled': campaign_domain['is_disabled'],
+            'isEnabled': campaign_domain['is_enabled'],
             'certificateStatus': campaign_domain_certificate['status'],
         }
         assert dashboard_domain['hostname'] not in {item['hostname'] for item in response.json['content']}
@@ -221,7 +221,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': None,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         second = write_to_db(
@@ -231,7 +231,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': None,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         third = write_to_db(
@@ -241,7 +241,7 @@ class TestDomains:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': None,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -261,7 +261,7 @@ class TestDomains:
                     'campaignId': third['campaign_id'],
                     'campaignName': None,
                     'isARecordSet': third['is_a_record_set'],
-                    'isDisabled': third['is_disabled'],
+                    'isEnabled': third['is_enabled'],
                     'certificateStatus': None,
                 },
                 {
@@ -271,7 +271,7 @@ class TestDomains:
                     'campaignId': first['campaign_id'],
                     'campaignName': None,
                     'isARecordSet': first['is_a_record_set'],
-                    'isDisabled': first['is_disabled'],
+                    'isEnabled': first['is_enabled'],
                     'certificateStatus': None,
                 },
                 {
@@ -281,7 +281,7 @@ class TestDomains:
                     'campaignId': second['campaign_id'],
                     'campaignName': None,
                     'isARecordSet': second['is_a_record_set'],
-                    'isDisabled': second['is_disabled'],
+                    'isEnabled': second['is_enabled'],
                     'certificateStatus': None,
                 },
             ],
@@ -299,7 +299,7 @@ class TestDomains:
             'campaignId': domain['campaign_id'],
             'campaignName': campaign['name'],
             'isARecordSet': domain['is_a_record_set'],
-            'isDisabled': domain['is_disabled'],
+            'isEnabled': domain['is_enabled'],
             'certificateStatus': None,
         }
 
@@ -334,7 +334,7 @@ class TestDomains:
             'campaignId': domain['campaign_id'],
             'campaignName': campaign['name'],
             'isARecordSet': domain['is_a_record_set'],
-            'isDisabled': domain['is_disabled'],
+            'isEnabled': domain['is_enabled'],
             'certificateStatus': certificate['status'],
         }
 
@@ -403,7 +403,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -423,7 +423,7 @@ class TestDomains:
             'campaignId': None,
             'campaignName': None,
             'isARecordSet': None,
-            'isDisabled': False,
+            'isEnabled': True,
             'certificateStatus': None,
         }
 
@@ -435,7 +435,7 @@ class TestDomains:
             'purpose': 'campaign',
             'campaign_id': None,
             'is_a_record_set': None,
-            'is_disabled': False,
+            'is_enabled': True,
         }
 
         old_enabled_link = Path(nginx_workspace_base_dir) / 'sites-enabled' / 'old.example.com.conf'
@@ -470,7 +470,7 @@ class TestDomains:
         response = client.patch(
             f'/api/v2/domains/{domain["id"]}',
             headers={'Authorization': authorization},
-            json={'isDisabled': True, 'campaignId': domain['campaign_id']},
+            json={'isEnabled': False, 'campaignId': domain['campaign_id']},
         )
 
         assert response.status_code == 200, response.text
@@ -481,7 +481,7 @@ class TestDomains:
             'campaignId': domain['campaign_id'],
             'campaignName': campaign['name'],
             'isARecordSet': True,
-            'isDisabled': True,
+            'isEnabled': False,
             'certificateStatus': 'active',
         }
         assert read_from_db('domain_certificate', filters={'id': certificate['id']}) == certificate
@@ -494,7 +494,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -514,7 +514,7 @@ class TestDomains:
             'campaignId': campaign['id'],
             'campaignName': campaign['name'],
             'isARecordSet': True,
-            'isDisabled': False,
+            'isEnabled': True,
             'certificateStatus': None,
         }
 
@@ -526,7 +526,7 @@ class TestDomains:
             'purpose': 'campaign',
             'campaign_id': campaign['id'],
             'is_a_record_set': True,
-            'is_disabled': False,
+            'is_enabled': True,
         }
 
     def test_update_domain_rejects_dashboard_domain_campaign_binding(
@@ -539,7 +539,7 @@ class TestDomains:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': None,
-                'is_disabled': True,
+                'is_enabled': True,
             },
         )
 
@@ -560,7 +560,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         second_domain = write_to_db(
@@ -570,7 +570,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': False,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -616,7 +616,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': None,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -626,7 +626,7 @@ class TestDomains:
             json={
                 'hostname': 'Example.COM.',
                 'purpose': 'campaign',
-                'isDisabled': False,
+                'isEnabled': True,
             },
         )
 
@@ -643,7 +643,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -661,7 +661,7 @@ class TestDomains:
             'campaignId': None,
             'campaignName': None,
             'isARecordSet': True,
-            'isDisabled': False,
+            'isEnabled': True,
             'certificateStatus': None,
         }
 
@@ -673,7 +673,7 @@ class TestDomains:
             'purpose': 'dashboard',
             'campaign_id': None,
             'is_a_record_set': True,
-            'is_disabled': False,
+            'is_enabled': True,
         }
 
     def test_update_domain_rejects_switching_attached_campaign_domain_to_dashboard(
@@ -686,7 +686,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -707,7 +707,7 @@ class TestDomains:
                 'purpose': 'campaign',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
 
@@ -725,7 +725,7 @@ class TestDomains:
             'campaignId': None,
             'campaignName': None,
             'isARecordSet': True,
-            'isDisabled': False,
+            'isEnabled': True,
             'certificateStatus': None,
         }
 
@@ -737,5 +737,5 @@ class TestDomains:
             'purpose': 'dashboard',
             'campaign_id': None,
             'is_a_record_set': True,
-            'is_disabled': False,
+            'is_enabled': True,
         }

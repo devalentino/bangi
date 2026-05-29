@@ -23,12 +23,12 @@ def certificate_worker_settings(monkeypatch):
 
 
 @pytest.fixture
-def is_disabled():
-    return False
+def is_enabled():
+    return True
 
 
 @pytest.fixture
-def dashboard_domain(is_disabled, write_to_db):
+def dashboard_domain(is_enabled, write_to_db):
     return write_to_db(
         'domain',
         {
@@ -36,7 +36,7 @@ def dashboard_domain(is_disabled, write_to_db):
             'purpose': 'dashboard',
             'campaign_id': None,
             'is_a_record_set': True,
-            'is_disabled': is_disabled,
+            'is_enabled': is_enabled,
         },
     )
 
@@ -208,8 +208,8 @@ class TestCertificateRenewalWorker:
 @pytest.mark.usefixtures('certificate_worker_settings', 'dns_resolver_mock')
 class TestCertificateRenewalWorkerDisabledDomains:
     @pytest.fixture
-    def is_disabled(self):
-        return True
+    def is_enabled(self):
+        return False
 
     @pytest.fixture
     def active_certificate(self, dashboard_domain, write_to_db):
@@ -254,7 +254,7 @@ class TestCertificateRenewalWorkerCandidateLimit:
                     'purpose': 'dashboard',
                     'campaign_id': None,
                     'is_a_record_set': True,
-                    'is_disabled': False,
+                    'is_enabled': True,
                 },
             )
         mock_subprocess_run.return_value.returncode = 1

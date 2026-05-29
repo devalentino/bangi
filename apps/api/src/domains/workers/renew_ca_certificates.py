@@ -36,13 +36,13 @@ def _fetch_certificate_candidates(database, now: int) -> list[dict[str, object]]
     cursor = database.execute_sql(
         (
             'SELECT domain.id, domain.hostname, domain.purpose, domain.campaign_id, '
-            'domain.is_a_record_set, domain.is_disabled, '
+            'domain.is_a_record_set, domain.is_enabled, '
             'domain_certificate.id AS certificate_id, domain_certificate.status AS certificate_status, '
             'domain_certificate.certificate_path, domain_certificate.private_key_path, '
             'domain_certificate.expires_at, domain_certificate.next_retry_at '
             'FROM domain '
             'LEFT JOIN domain_certificate ON domain_certificate.domain_id = domain.id '
-            'WHERE domain.is_disabled = FALSE '
+            'WHERE domain.is_enabled = TRUE '
             'AND ('
             '  (domain_certificate.id IS NOT NULL '
             '    AND domain_certificate.status IN (%s, %s) '

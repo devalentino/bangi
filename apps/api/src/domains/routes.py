@@ -46,7 +46,7 @@ class Domains(MethodView):
             payload['hostname'],
             payload['purpose'],
             campaign_id=payload.get('campaignId'),
-            is_disabled=payload.get('isDisabled', False),
+            is_enabled=payload.get('isEnabled', True),
         )
         return humps.camelize(
             {
@@ -55,8 +55,8 @@ class Domains(MethodView):
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
                 'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
-                'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
-                'is_disabled': bool(domain.is_disabled),
+                'is_a_record_set': domain.is_a_record_set,
+                'is_enabled': domain.is_enabled,
                 'certificate_status': None,
             }
         )
@@ -83,8 +83,8 @@ class Domain(MethodView):
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
                 'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
-                'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
-                'is_disabled': bool(domain.is_disabled),
+                'is_a_record_set': domain.is_a_record_set,
+                'is_enabled': domain.is_enabled,
                 'certificate_status': certificate_status,
             }
         )
@@ -101,7 +101,7 @@ class Domain(MethodView):
             hostname=payload.get('hostname'),
             purpose=payload.get('purpose'),
             campaign_id=payload.get('campaignId'),
-            is_disabled=payload.get('isDisabled'),
+            is_enabled=payload.get('isEnabled'),
         )
 
         try:
@@ -116,8 +116,8 @@ class Domain(MethodView):
                 'purpose': domain.purpose,
                 'campaign_id': domain.campaign_id,
                 'campaign_name': None if domain.campaign_id is None else domain.campaign.name,
-                'is_a_record_set': None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
-                'is_disabled': bool(domain.is_disabled),
+                'is_a_record_set': domain.is_a_record_set,
+                'is_enabled': domain.is_enabled,
                 'certificate_status': certificate_status,
             }
         )

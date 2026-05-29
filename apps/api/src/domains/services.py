@@ -146,7 +146,7 @@ class WebserverService(Protocol):
         purpose: str,
         campaign_id: int | None,
         flow_id_cookie_name: str | None,
-        is_disabled: bool,
+        is_enabled: bool,
         is_a_record_set: bool | None,
         certificate_path: str | None = None,
         private_key_path: str | None = None,
@@ -276,7 +276,7 @@ class DomainService:
                 Domain.campaign_id.alias('campaign_id'),
                 Campaign.name.alias('campaign_name'),
                 Domain.is_a_record_set.alias('is_a_record_set'),
-                Domain.is_disabled.alias('is_disabled'),
+                Domain.is_enabled.alias('is_enabled'),
                 DomainCertificate.status.alias('certificate_status'),
             )
             .join(Campaign, JOIN.LEFT_OUTER)
@@ -291,7 +291,7 @@ class DomainService:
     def count(self):
         return Domain.select(fn.count(Domain.id)).scalar()
 
-    def create(self, hostname, purpose, campaign_id=None, is_disabled=False):
+    def create(self, hostname, purpose, campaign_id=None, is_enabled=True):
         if Domain.select(fn.count(Domain.id)).where(Domain.hostname == hostname).scalar():
             raise DomainAlreadyExistsError()
 
@@ -306,7 +306,7 @@ class DomainService:
             hostname=hostname,
             purpose=purpose.value,
             campaign=campaign,
-            is_disabled=is_disabled,
+            is_enabled=is_enabled,
             is_a_record_set=None,
         )
         domain.save()
@@ -319,7 +319,7 @@ class DomainService:
         hostname=None,
         purpose=None,
         campaign_id=None,
-        is_disabled=None,
+        is_enabled=None,
     ):
         domain = self.get(domain_id)
         previous_hostname = domain.hostname
@@ -353,8 +353,8 @@ class DomainService:
                 raise DashboardDomainCannotAttachCampaignError()
             domain.purpose = purpose.value
 
-        if is_disabled is not None:
-            domain.is_disabled = is_disabled
+        if is_enabled is not None:
+            domain.is_enabled = is_enabled
 
         domain.save()
         snapshot = self._publish_domain(domain)
@@ -364,9 +364,7 @@ class DomainService:
 
     def get_by_campaign_id(self, campaign_id):
         domain = Domain.get_or_none(
-            (Domain.campaign == campaign_id)
-            & (Domain.purpose == DomainPurpose.campaign)
-            & (Domain.is_disabled == False)
+            (Domain.campaign == campaign_id) & (Domain.purpose == DomainPurpose.campaign) & (Domain.is_enabled == True)
         )
         if domain is None:
             raise DomainDoesNotExistError()
@@ -408,8 +406,8 @@ class DomainService:
             domain.purpose,
             domain.campaign_id,
             flow_id_cookie_name,
-            bool(domain.is_disabled),
-            None if domain.is_a_record_set is None else bool(domain.is_a_record_set),
+            domain.is_enabled,
+            domain.is_a_record_set,
             certificate_path,
             private_key_path,
         )
@@ -647,7 +645,7 @@ class NginxService:
         purpose: str,
         campaign_id: int | None,
         flow_id_cookie_name: str | None,
-        is_disabled: bool,
+        is_enabled: bool,
         is_a_record_set: bool | None,
         certificate_path: str | None = None,
         private_key_path: str | None = None,
@@ -663,7 +661,7 @@ class NginxService:
             purpose=purpose,
             campaign_id=campaign_id,
             flow_id_cookie_name=flow_id_cookie_name,
-            is_disabled=is_disabled,
+            is_enabled=is_enabled,
             is_a_record_set=is_a_record_set,
             certificate_path=certificate_path,
             private_key_path=private_key_path,
@@ -724,12 +722,12 @@ class NginxService:
         purpose: str,
         campaign_id: int | None,
         flow_id_cookie_name: str | None,
-        is_disabled: bool,
+        is_enabled: bool,
         is_a_record_set: bool | None,
         certificate_path: str | None,
         private_key_path: str | None,
     ) -> str:
-        if is_disabled or is_a_record_set is False or (purpose == 'campaign' and campaign_id is None):
+        if not is_enabled or is_a_record_set is False or (purpose == 'campaign' and campaign_id is None):
             return self.render_disabled_domain_config(hostname)
 
         has_active_certificate = certificate_path is not None and private_key_path is not None
