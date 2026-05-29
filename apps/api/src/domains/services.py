@@ -364,9 +364,7 @@ class DomainService:
 
     def get_by_campaign_id(self, campaign_id):
         domain = Domain.get_or_none(
-            (Domain.campaign == campaign_id)
-            & (Domain.purpose == DomainPurpose.campaign)
-            & (Domain.is_enabled == True)
+            (Domain.campaign == campaign_id) & (Domain.purpose == DomainPurpose.campaign) & (Domain.is_enabled == True)
         )
         if domain is None:
             raise DomainDoesNotExistError()
