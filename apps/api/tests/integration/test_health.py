@@ -371,7 +371,7 @@ class TestCertificateHealthDiagnostics:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_enabled': False,
+                'is_enabled': True,
             },
         )
         failed_issuance_domain = write_to_db(
@@ -421,7 +421,7 @@ class TestCertificateHealthDiagnostics:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_enabled': True,
+                'is_enabled': False,
             },
         )
 
