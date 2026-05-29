@@ -14,5 +14,5 @@ COPY src /app/src
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD pw_migrate migrate --database mysql://$MARIADB_USER:$MARIADB_PASSWORD@$MARIADB_HOST:$MARIADB_PORT/$MARIADB_DATABASE \
+CMD PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}/app" pw_migrate migrate --database mysql://$MARIADB_USER:$MARIADB_PASSWORD@$MARIADB_HOST:$MARIADB_PORT/$MARIADB_DATABASE \
     && gunicorn --bind 0.0.0.0:5000 src.api:app
