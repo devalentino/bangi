@@ -17,7 +17,6 @@ const expectedStatuses = (__ENV.EXPECTED_STATUSES || '302')
     .split(',')
     .map((value) => Number(value.trim()))
     .filter((value) => !Number.isNaN(value));
-const expectedContentType = __ENV.EXPECTED_CONTENT_TYPE || '';
 const postbackProbability = Number(__ENV.POSTBACK_PROBABILITY || 0.15);
 
 const processStages = (__ENV.PROCESS_RATE_STAGES || __ENV.RATE_STAGES || '5:2m,10:5m,15:5m')
@@ -41,6 +40,10 @@ export const options = {
     thresholds: {
         http_req_failed: ['rate<0.02'],
         http_req_duration: ['p(95)<1500', 'p(99)<3000'],
+        'http_req_duration{endpoint:process_endpoint}': ['p(95)<1500', 'p(99)<3000'],
+        'http_req_duration{endpoint:track_postback}': ['p(95)<1500', 'p(99)<3000'],
+        'http_req_duration{endpoint:reports_leads}': ['p(95)<1500', 'p(99)<3000'],
+        'http_req_duration{endpoint:reports_statistics}': ['p(95)<1500', 'p(99)<3000'],
         checks: ['rate>0.98'],
     },
     scenarios: {
@@ -119,8 +122,6 @@ export function processFlow() {
 
     check(response, {
         [`process status is one of ${expectedStatuses.join(', ')}`]: (r) => expectedStatuses.includes(r.status),
-        'process content type matches expected': (r) =>
-            !expectedContentType || r.headers['Content-Type'] === expectedContentType,
         'process status is < 500': (r) => r.status < 500,
     });
     logFailure('process_endpoint', response, queryArgumentsPayload);

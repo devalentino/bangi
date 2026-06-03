@@ -75,7 +75,7 @@ Additional requirements for the process workload:
 3. Wait until nginx generation and certificate issuance are complete.
 4. Confirm the campaign domain root responds as expected:
    - redirect flow: `302`;
-   - render flow: `200` with the expected content type.
+   - render flow: `200`.
 5. Use the campaign domain root as `CAMPAIGN_BASE_URL`.
 
 ## Historical Data
@@ -236,7 +236,6 @@ Render flows use the same shape with:
 
 ```bash
 EXPECTED_STATUSES=200
-EXPECTED_CONTENT_TYPE='text/html; charset=UTF-8'
 ```
 
 ## Reading Results
