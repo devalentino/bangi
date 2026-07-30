@@ -12,7 +12,7 @@ With Bangi you can:
 - Compare clicks, leads, payouts, expenses, profit, and ROI in the statistics report.
 - Monitor system health, certificates, and campaign discards from the dashboard.
 
-This repository holds the application code (API and web UI). End-user documentation — installation, dashboard domain setup, campaign/flow setup, and more — lives in the companion `bangi-docs` repository.
+This repository holds the application code (API and web UI).
 
 This monorepo is organized with separate application boundaries for the API and web UI.
 
