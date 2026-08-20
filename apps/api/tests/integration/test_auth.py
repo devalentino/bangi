@@ -1,8 +1,6 @@
 import hashlib
 from unittest import mock
 
-import pytest
-
 
 def test_authentication(client, authorization):
     response = client.post('/api/v2/auth/authenticate', headers={'Authorization': authorization})
@@ -145,8 +143,12 @@ class TestRevokePatToken:
 
         assert response.status_code == 204, response.text
 
-    @pytest.mark.parametrize('method', ['post', 'get', 'delete'])
-    def test_token_routes_require_basic_auth(self, client, method):
-        response = getattr(client, method)('/api/v2/auth/tokens' if method != 'delete' else '/api/v2/auth/tokens/1')
+    def test_token_routes_require_basic_auth(self, client):
+        response = client.get('/api/v2/auth/tokens')
+        assert response.status_code == 401, response.text
 
+        response = client.post('/api/v2/auth/tokens', json={'name': 'Claude Desktop'})
+        assert response.status_code == 401, response.text
+
+        response = client.delete('/api/v2/auth/tokens/1')
         assert response.status_code == 401, response.text
