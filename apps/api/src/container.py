@@ -6,7 +6,7 @@ from wireup import create_sync_container
 
 from src.alerts.repositories import BusinessPortfolioRepository
 from src.alerts.services import AlertService
-from src.auth.services import AuthenticationService
+from src.auth.services import AuthenticationService, BasicAuthenticationService, PatTokenService
 from src.core.db import database
 from src.core.entities import database_proxy
 from src.core.repositories import CampaignRepository
@@ -77,6 +77,8 @@ container = create_sync_container(
         StatisticsReportRepository,
         AlertService,
         AuthenticationService,
+        BasicAuthenticationService,
+        PatTokenService,
         CampaignRepository,
         CampaignService,
         ClientService,
