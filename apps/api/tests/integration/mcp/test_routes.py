@@ -1,3 +1,5 @@
+from tests.fixtures.utils import click_uuid
+
 INSTRUCTIONS = (
     "Whenever discussing or analyzing a campaign with the user, start the conversation by calling the "
     "summary tool — it is the only tool that surfaces active alerts, so calling it first ensures the "
@@ -241,4 +243,331 @@ class TestRequestBodyValidation:
             'code': 422,
             'errors': {'json': {'method': ['Missing data for required field.']}},
             'status': 'Unprocessable Entity',
+        }
+
+
+class TestSummaryTool:
+    def test_summary_returns_paginated_campaigns_with_activity_in_the_last_7_days(
+        self, client, mcp_headers, timestamp, write_to_db, alert_free_campaign
+    ):
+        recent_campaign = alert_free_campaign('Recent campaign')
+        dormant_campaign = alert_free_campaign('Dormant campaign')
+
+        write_to_db(
+            'track_click',
+            {
+                'campaign_id': recent_campaign['id'],
+                'click_id': click_uuid(1),
+                'parameters': {},
+                'created_at': timestamp - 60,
+            },
+        )
+        write_to_db(
+            'track_click',
+            {
+                'campaign_id': dormant_campaign['id'],
+                'click_id': click_uuid(2),
+                'parameters': {},
+                'created_at': timestamp - 8 * 24 * 60 * 60,
+            },
+        )
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'summary'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'summary', 'arguments': {'page': 1, 'pageSize': 20}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {
+                    'id': recent_campaign['id'],
+                    'name': recent_campaign['name'],
+                    'summary': {'clickCount': 1, 'clickShare': 0.5, 'lastActivityAt': timestamp - 60},
+                },
+            ],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 1},
+            'alerts': [],
+        }
+
+    def test_summary_paginates_recent_campaigns_ordered_by_last_activity(
+        self, client, mcp_headers, timestamp, write_to_db, alert_free_campaign
+    ):
+        campaigns = [alert_free_campaign(f'Campaign {i}') for i in range(3)]
+        for index, campaign in enumerate(campaigns):
+            write_to_db(
+                'track_click',
+                {
+                    'campaign_id': campaign['id'],
+                    'click_id': click_uuid(index + 1),
+                    'parameters': {},
+                    'created_at': timestamp - index,
+                },
+            )
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'summary'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'summary', 'arguments': {'page': 2, 'pageSize': 2}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json['pagination'] == {'page': 2, 'pageSize': 2, 'total': 3}
+        assert [c['id'] for c in response.json['content']] == [campaigns[2]['id']]
+
+    def test_summary_bundles_the_current_alert_feed_on_every_call(self, client, mcp_headers, authorization, campaign):
+        alerts_response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
+        assert alerts_response.json['content'] != []  # campaign has missing default flow
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'summary'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': 'summary', 'arguments': {}}},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json['alerts'] == alerts_response.json['content']
+
+
+class TestCampaignListTool:
+    def test_campaign_list_matches_the_campaigns_endpoint_and_includes_dormant_campaigns(
+        self, client, mcp_headers, authorization, timestamp, write_to_db
+    ):
+        active_campaign = write_to_db(
+            'campaign', {'name': 'Active campaign', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'}
+        )
+        write_to_db('campaign', {'name': 'Dormant campaign', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'})
+        write_to_db(
+            'track_click',
+            {
+                'campaign_id': active_campaign['id'],
+                'click_id': click_uuid(1),
+                'parameters': {},
+                'created_at': timestamp - 8 * 24 * 60 * 60,
+            },
+        )
+
+        rest_response = client.get('/api/v2/core/campaigns', headers={'Authorization': authorization})
+        assert rest_response.status_code == 200, rest_response.text
+        assert len(rest_response.json['content']) == 2
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_list'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'campaign_list', 'arguments': {}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': [
+                {'id': campaign['id'], 'name': campaign['name'], 'summary': campaign['summary']}
+                for campaign in rest_response.json['content']
+            ],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 2},
+        }
+
+    def test_campaign_list_honors_pagination_and_sort_parameters(self, client, mcp_headers, authorization, write_to_db):
+        for i in range(3):
+            write_to_db('campaign', {'name': f'Campaign {i}', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'})
+
+        rest_response = client.get(
+            '/api/v2/core/campaigns',
+            headers={'Authorization': authorization},
+            query_string={'page': 2, 'pageSize': 1, 'sortBy': 'id', 'sortOrder': 'desc'},
+        )
+        assert rest_response.status_code == 200, rest_response.text
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_list'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'campaign_list',
+                    'arguments': {'page': 2, 'pageSize': 1, 'sortBy': 'id', 'sortOrder': 'desc'},
+                },
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert [c['id'] for c in response.json['content']] == [c['id'] for c in rest_response.json['content']]
+        assert response.json['pagination'] == {'page': 2, 'pageSize': 1, 'total': 3}
+
+
+class TestCampaignStatisticsTool:
+    def test_campaign_statistics_reports_the_days_click_count(
+        self, client, mcp_headers, campaign, today, timestamp, write_to_db
+    ):
+        for i in range(3):
+            write_to_db(
+                'track_click',
+                {
+                    'campaign_id': campaign['id'],
+                    'click_id': click_uuid(i + 1),
+                    'parameters': {'ad_name': 'Ad 1'},
+                    'created_at': timestamp - i,
+                },
+            )
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_statistics'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'campaign_statistics',
+                    'arguments': {
+                        'campaignId': campaign['id'],
+                        'periodStart': today.isoformat(),
+                        'periodEnd': today.isoformat(),
+                    },
+                },
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': {
+                'report': {
+                    today.isoformat(): {
+                        'expenses': 0,
+                        'roi_accepted': 0,
+                        'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
+                        'statuses': {
+                            'accept': {'leads': 0, 'payouts': 0},
+                            'expect': {'leads': 0, 'payouts': 0},
+                            'reject': {'leads': 0, 'payouts': 0},
+                            'trash': {'leads': 0, 'payouts': 0},
+                        },
+                        'clicks': 3,
+                    },
+                },
+                'total': {
+                    'clicks': 3,
+                    'statuses': {
+                        'accept': {'leads': 0, 'payouts': 0},
+                        'expect': {'leads': 0, 'payouts': 0},
+                        'reject': {'leads': 0, 'payouts': 0},
+                        'trash': {'leads': 0, 'payouts': 0},
+                    },
+                    'expenses': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
+                    'roi_accepted': 0,
+                    'roi_expected': 0,
+                },
+                'parameters': ['ad_name'],
+                'groupParameters': [],
+            }
+        }
+
+    def test_campaign_statistics_groups_clicks_by_the_requested_parameter(
+        self, client, mcp_headers, campaign, today, timestamp, write_to_db
+    ):
+        for click_id, ad_name in ((1, 'Ad 1'), (2, 'Ad 1'), (3, 'Ad 2')):
+            write_to_db(
+                'track_click',
+                {
+                    'campaign_id': campaign['id'],
+                    'click_id': click_uuid(click_id),
+                    'parameters': {'ad_name': ad_name},
+                    'created_at': timestamp,
+                },
+            )
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_statistics'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'campaign_statistics',
+                    'arguments': {
+                        'campaignId': campaign['id'],
+                        'periodStart': today.isoformat(),
+                        'periodEnd': today.isoformat(),
+                        'groupParameters': ['ad_name'],
+                    },
+                },
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'content': {
+                'report': {
+                    today.isoformat(): {
+                        'expenses': 0,
+                        'roi_accepted': 0,
+                        'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
+                        'Ad 1': {
+                            'statuses': {
+                                'accept': {'leads': 0, 'payouts': 0},
+                                'expect': {'leads': 0, 'payouts': 0},
+                                'reject': {'leads': 0, 'payouts': 0},
+                                'trash': {'leads': 0, 'payouts': 0},
+                            },
+                            'clicks': 2,
+                        },
+                        'Ad 2': {
+                            'statuses': {
+                                'accept': {'leads': 0, 'payouts': 0},
+                                'expect': {'leads': 0, 'payouts': 0},
+                                'reject': {'leads': 0, 'payouts': 0},
+                                'trash': {'leads': 0, 'payouts': 0},
+                            },
+                            'clicks': 1,
+                        },
+                    },
+                },
+                'total': {
+                    'clicks': 3,
+                    'statuses': {
+                        'accept': {'leads': 0, 'payouts': 0},
+                        'expect': {'leads': 0, 'payouts': 0},
+                        'reject': {'leads': 0, 'payouts': 0},
+                        'trash': {'leads': 0, 'payouts': 0},
+                    },
+                    'expenses': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
+                    'roi_accepted': 0,
+                    'roi_expected': 0,
+                },
+                'parameters': ['ad_name'],
+                'groupParameters': ['ad_name'],
+            }
         }
