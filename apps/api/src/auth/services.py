@@ -45,12 +45,12 @@ class PatTokenService:
 
 @injectable
 class AuthenticationService:
-    def __init__(self, basic: BasicAuthenticationService, pat_token_service: PatTokenService):
-        self._basic = basic
-        self._pat_token_service = pat_token_service
+    def __init__(self, basic_auth_service: BasicAuthenticationService, pat_token_service: PatTokenService):
+        self.basic_auth_service = basic_auth_service
+        self.pat_token_service = pat_token_service
 
     def authenticate_basic_auth(self, username: str, password: str) -> bool:
-        return self._basic.authenticate(username, password)
+        return self.basic_auth_service.authenticate(username, password)
 
     def authenticate_pat_token(self, token: str) -> bool:
-        return self._pat_token_service.verify(token)
+        return self.pat_token_service.verify(token)

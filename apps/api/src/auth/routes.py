@@ -27,13 +27,10 @@ class PatTokens(MethodView):
         return {
             'content': [
                 humps.camelize(
-                    {
-                        'id': token.id,
-                        'name': token.name,
+                    token.to_dict()
+                    | {
                         'created_at': int(token.created_at.timestamp()),
                         'revoked_at': None if token.revoked_at is None else int(token.revoked_at.timestamp()),
-                        'token_prefix': token.token_prefix,
-                        'token_suffix': token.token_suffix,
                     }
                 )
                 for token in pat_token_service.list()

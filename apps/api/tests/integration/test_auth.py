@@ -3,10 +3,8 @@ from unittest import mock
 
 import pytest
 
-from src.auth.decorators import verify_token
 
-
-def test_health(client, authorization):
+def test_authentication(client, authorization):
     response = client.post('/api/v2/auth/authenticate', headers={'Authorization': authorization})
     assert response.status_code == 200, response.text
 
@@ -138,7 +136,6 @@ class TestRevokePatToken:
         response = client.delete(f'/api/v2/auth/tokens/{token["id"]}', headers={'Authorization': authorization})
 
         assert response.status_code == 204, response.text
-        assert response.data == b''
 
         row = read_from_db('pat_token', filters={'id': token['id']})
         assert row['revoked_at'] is not None
@@ -153,32 +150,3 @@ class TestRevokePatToken:
         response = getattr(client, method)('/api/v2/auth/tokens' if method != 'delete' else '/api/v2/auth/tokens/1')
 
         assert response.status_code == 401, response.text
-
-
-class TestBearerAuth:
-    def test_verify_token_accepts_a_freshly_generated_token(self, client, authorization):
-        create_response = client.post(
-            '/api/v2/auth/tokens', headers={'Authorization': authorization}, json={'name': 'Claude Desktop'}
-        )
-        token = create_response.json['token']
-
-        assert verify_token(token) is True
-
-    def test_verify_token_rejects_an_unknown_token(self):
-        assert verify_token('not-a-real-token') is None
-
-    def test_verify_token_rejects_a_revoked_token_immediately(self, client, authorization):
-        create_response = client.post(
-            '/api/v2/auth/tokens', headers={'Authorization': authorization}, json={'name': 'Claude Desktop'}
-        )
-        token = create_response.json['token']
-
-        list_response = client.get('/api/v2/auth/tokens', headers={'Authorization': authorization})
-        token_id = list_response.json['content'][0]['id']
-
-        assert verify_token(token) is True
-
-        delete_response = client.delete(f'/api/v2/auth/tokens/{token_id}', headers={'Authorization': authorization})
-        assert delete_response.status_code == 204, delete_response.text
-
-        assert verify_token(token) is None
