@@ -37,7 +37,7 @@ class DomainCertificate(Entity):
     expires_at = UTCTimestampField(null=True, utc=True)
     last_attempted_at = UTCTimestampField(null=True, utc=True)
     last_issued_at = UTCTimestampField(null=True, utc=True)
-    last_renewed_at = UTCTimestampField(null=True, utc=True)
+    last_renewed_at = UTCTimestampField(null=True, default=None, utc=True)
     next_retry_at = UTCTimestampField(null=True, utc=True)
     failure_count = IntegerField(default=0)
     failure_reason = TextField(null=True)
