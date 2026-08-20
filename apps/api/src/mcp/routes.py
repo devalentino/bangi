@@ -1,14 +1,28 @@
+import time
+
+import humps
 from flask import request
 from flask.views import MethodView
 
+from src.alerts.services import AlertService
 from src.auth import token_auth
+from src.container import container
 from src.core.blueprint import Blueprint
+from src.core.repositories import CampaignRepository
 from src.mcp import protocol
-from src.mcp.schemas import JsonRpcRequestSchema
+from src.mcp.schemas import (
+    CampaignListArgumentsSchema,
+    CampaignStatisticsArgumentsSchema,
+    JsonRpcRequestSchema,
+    SummaryArgumentsSchema,
+)
+from src.reports.services import ReportService
 
 blueprint = Blueprint('mcp', __name__, description='MCP')
 
 _KNOWN_TOOL_NAMES = {tool['name'] for tool in protocol.TOOL_DEFINITIONS}
+
+_SUMMARY_ACTIVITY_WINDOW_SECONDS = 7 * 24 * 60 * 60
 
 
 @blueprint.route('')
@@ -39,4 +53,88 @@ def call_tool(params):
     if name not in _KNOWN_TOOL_NAMES:
         return protocol.error_response(protocol.ProtocolError(-32602, 'InvalidParams', 400))
 
+    if name == 'summary':
+        return summary_tool(arguments)
+    if name == 'campaign_list':
+        return campaign_list_tool(arguments)
+    if name == 'campaign_statistics':
+        return campaign_statistics_tool(arguments)
+
     return {'name': name, 'arguments': arguments}
+
+
+def summary_tool(arguments):
+    arguments = SummaryArgumentsSchema().load(arguments)
+    campaign_repository = container.get(CampaignRepository)
+    alert_service = container.get(AlertService)
+
+    since = int(time.time()) - _SUMMARY_ACTIVITY_WINDOW_SECONDS
+    campaigns = campaign_repository.list_with_recent_activity(since, arguments['page'], arguments['pageSize'])
+    total = campaign_repository.count_with_recent_activity(since)
+    click_stats = campaign_repository.get_click_stats([campaign.id for campaign in campaigns])
+    total_click_count = campaign_repository.total_click_count()
+
+    return {
+        'content': [serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
+        'pagination': {'page': arguments['page'], 'pageSize': arguments['pageSize'], 'total': total},
+        'alerts': alert_service.serialize(alert_service.collect(container)),
+    }
+
+
+def campaign_list_tool(arguments):
+    arguments = CampaignListArgumentsSchema().load(arguments)
+    campaign_repository = container.get(CampaignRepository)
+
+    campaigns = campaign_repository.list(
+        arguments['page'],
+        arguments['pageSize'],
+        humps.decamelize(arguments['sortBy'].value),
+        arguments['sortOrder'],
+    )
+    total = campaign_repository.count()
+    click_stats = campaign_repository.get_click_stats([campaign.id for campaign in campaigns])
+    total_click_count = campaign_repository.total_click_count()
+
+    return {
+        'content': [serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
+        'pagination': {'page': arguments['page'], 'pageSize': arguments['pageSize'], 'total': total},
+    }
+
+
+def campaign_statistics_tool(arguments):
+    arguments = CampaignStatisticsArgumentsSchema().load(arguments)
+    report_service = container.get(ReportService)
+
+    report, total, available_parameters, group_parameters = report_service.statistics_report(
+        {
+            'campaign_id': arguments['campaignId'],
+            'period_start': arguments['periodStart'],
+            'period_end': arguments.get('periodEnd'),
+            'group_parameters': arguments['groupParameters'],
+            'skip_clicks_without_parameters': False,
+        }
+    )
+
+    return {
+        'content': {
+            'report': {dt.isoformat(): stats for dt, stats in report.items()},
+            'total': total,
+            'parameters': available_parameters,
+            'groupParameters': group_parameters,
+        }
+    }
+
+
+def serialize_campaign(campaign, click_stats, total_click_count):
+    stats = click_stats.get(campaign.id, {})
+    click_count = stats.get('click_count', 0)
+    last_activity_at = stats.get('last_activity_at')
+    return {
+        'id': campaign.id,
+        'name': campaign.name,
+        'summary': {
+            'clickCount': click_count,
+            'clickShare': click_count / total_click_count if total_click_count else 0.0,
+            'lastActivityAt': int(last_activity_at.timestamp()) if last_activity_at else None,
+        },
+    }

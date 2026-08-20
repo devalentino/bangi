@@ -27,6 +27,18 @@ class CampaignRepository:
 
         return list(query.order_by(order_by, Campaign.id).limit(page_size).offset((page - 1) * page_size))
 
+    def list_with_recent_activity(self, since, page, page_size):
+        return list(
+            self._campaigns_with_click_stats()
+            .where(SQL('last_activity_at') >= since)
+            .order_by(SQL('last_activity_at').desc())
+            .limit(page_size)
+            .offset((page - 1) * page_size)
+        )
+
+    def count_with_recent_activity(self, since):
+        return self._campaigns_with_click_stats().where(SQL('last_activity_at') >= since).count()
+
     def all(self):
         return [campaign for campaign in Campaign.select()]
 
