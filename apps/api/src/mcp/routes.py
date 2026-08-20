@@ -50,19 +50,20 @@ def call_tool(params):
     name = params.get('name')
     arguments = params.get('arguments', {})
 
+    if name not in _KNOWN_TOOL_NAMES:
+        return protocol.error_response(protocol.ProtocolError(-32602, 'InvalidParams', 400))
+
     if name == 'summary':
-        return _summary_tool(arguments)
+        return summary_tool(arguments)
     if name == 'campaign_list':
-        return _campaign_list_tool(arguments)
+        return campaign_list_tool(arguments)
     if name == 'campaign_statistics':
-        return _campaign_statistics_tool(arguments)
-    if name in _KNOWN_TOOL_NAMES:
-        return {'name': name, 'arguments': arguments}
+        return campaign_statistics_tool(arguments)
 
-    return protocol.error_response(protocol.ProtocolError(-32602, 'InvalidParams', 400))
+    return {'name': name, 'arguments': arguments}
 
 
-def _summary_tool(arguments):
+def summary_tool(arguments):
     arguments = SummaryArgumentsSchema().load(arguments)
     campaign_repository = container.get(CampaignRepository)
     alert_service = container.get(AlertService)
@@ -74,13 +75,13 @@ def _summary_tool(arguments):
     total_click_count = campaign_repository.total_click_count()
 
     return {
-        'content': [_serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
+        'content': [serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
         'pagination': {'page': arguments['page'], 'pageSize': arguments['pageSize'], 'total': total},
         'alerts': alert_service.serialize(alert_service.collect(container)),
     }
 
 
-def _campaign_list_tool(arguments):
+def campaign_list_tool(arguments):
     arguments = CampaignListArgumentsSchema().load(arguments)
     campaign_repository = container.get(CampaignRepository)
 
@@ -95,12 +96,12 @@ def _campaign_list_tool(arguments):
     total_click_count = campaign_repository.total_click_count()
 
     return {
-        'content': [_serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
+        'content': [serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
         'pagination': {'page': arguments['page'], 'pageSize': arguments['pageSize'], 'total': total},
     }
 
 
-def _campaign_statistics_tool(arguments):
+def campaign_statistics_tool(arguments):
     arguments = CampaignStatisticsArgumentsSchema().load(arguments)
     report_service = container.get(ReportService)
 
@@ -124,7 +125,7 @@ def _campaign_statistics_tool(arguments):
     }
 
 
-def _serialize_campaign(campaign, click_stats, total_click_count):
+def serialize_campaign(campaign, click_stats, total_click_count):
     stats = click_stats.get(campaign.id, {})
     click_count = stats.get('click_count', 0)
     last_activity_at = stats.get('last_activity_at')
