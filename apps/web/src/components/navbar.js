@@ -49,6 +49,12 @@ class Navbar {
             m(
               ".dropdown-menu.dropdown-menu-end.bg-light.border-0.rounded-0.rounded-bottom.m-0",
               [
+                m(
+                  "a.dropdown-item",
+                  { href: "#!/settings/tokens" },
+                  i18n.t("nav.account.tokens"),
+                ),
+                m(".dropdown-divider"),
                 m("h6.dropdown-header", i18n.t("language.label")),
                 languageItem("en"),
                 languageItem("uk"),
