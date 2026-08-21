@@ -647,7 +647,7 @@ class TestSearchNotesTool:
             {
                 'session_id': uuid4(),
                 'note_text': note_summary,
-                'embedding': np.zeros(64, dtype=np.float32).tobytes(),
+                'embedding': np.arange(1, 65, dtype=np.float32).tobytes(),
                 'updated_at': timestamp,
             },
             returning=False,
