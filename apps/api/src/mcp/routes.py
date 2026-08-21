@@ -1,4 +1,5 @@
 import time
+import uuid
 
 import humps
 from flask import request
@@ -14,8 +15,11 @@ from src.mcp.schemas import (
     CampaignListArgumentsSchema,
     CampaignStatisticsArgumentsSchema,
     JsonRpcRequestSchema,
+    SearchNotesArgumentsSchema,
+    StoreAnalysisNoteArgumentsSchema,
     SummaryArgumentsSchema,
 )
+from src.mcp.services import AgentNoteService, EmbeddingService
 from src.reports.services import ReportService
 
 blueprint = Blueprint('mcp', __name__, description='MCP')
@@ -59,8 +63,10 @@ def call_tool(params):
         return campaign_list_tool(arguments)
     if name == 'campaign_statistics':
         return campaign_statistics_tool(arguments)
-
-    return {'name': name, 'arguments': arguments}
+    if name == 'store_analysis_note':
+        return store_analysis_note_tool(arguments)
+    if name == 'search_notes':
+        return search_notes_tool(arguments)
 
 
 def summary_tool(arguments):
@@ -122,6 +128,31 @@ def campaign_statistics_tool(arguments):
             'parameters': available_parameters,
             'groupParameters': group_parameters,
         }
+    }
+
+
+def store_analysis_note_tool(arguments):
+    arguments = StoreAnalysisNoteArgumentsSchema().load(arguments)
+    embedding_service = container.get(EmbeddingService)
+    agent_note_service = container.get(AgentNoteService)
+
+    session_id = arguments['sessionId'] or str(uuid.uuid4())
+    embedding = embedding_service.compute(arguments['summary'])
+    agent_note_service.upsert(session_id, arguments['summary'], embedding)
+
+    return {'content': {'sessionId': session_id}}
+
+
+def search_notes_tool(arguments):
+    arguments = SearchNotesArgumentsSchema().load(arguments)
+    embedding_service = container.get(EmbeddingService)
+    agent_note_service = container.get(AgentNoteService)
+
+    query_embedding = embedding_service.compute(arguments['query'])
+    notes = agent_note_service.search(query_embedding)
+
+    return {
+        'content': [{'noteText': note['note_text'], 'updatedAt': int(note['updated_at'].timestamp())} for note in notes]
     }
 
 

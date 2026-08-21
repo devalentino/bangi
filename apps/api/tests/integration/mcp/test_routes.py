@@ -1,3 +1,8 @@
+from unittest import mock
+from uuid import UUID, uuid4
+
+import numpy as np
+
 from tests.fixtures.utils import click_uuid
 
 INSTRUCTIONS = (
@@ -128,23 +133,6 @@ class TestToolsList:
 
 
 class TestToolsCall:
-    def test_recognized_tool_name_dispatches_with_its_arguments(self, client, mcp_headers):
-        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
-
-        response = client.post(
-            '/mcp',
-            headers=headers,
-            json={
-                'jsonrpc': '2.0',
-                'id': 1,
-                'method': 'tools/call',
-                'params': {'name': 'search_notes', 'arguments': {'query': 'facebook geo US'}},
-            },
-        )
-
-        assert response.status_code == 200, response.text
-        assert response.json == {'name': 'search_notes', 'arguments': {'query': 'facebook geo US'}}
-
     def test_unrecognized_tool_name_returns_invalid_params(self, client, mcp_headers):
         headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'delete_campaign'}
 
@@ -571,3 +559,129 @@ class TestCampaignStatisticsTool:
                 'groupParameters': ['ad_name'],
             }
         }
+
+
+class TestStoreAnalysisNoteTool:
+    def test_first_call_without_a_session_id_mints_a_new_one_and_persists_the_note(
+        self, client, mcp_headers, read_from_db
+    ):
+        summary = 'Campaign X is scaling well on Facebook.'
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'store_analysis_note'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'store_analysis_note',
+                    'arguments': {'summary': summary},
+                },
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {'content': {'sessionId': mock.ANY}}
+
+        stored = read_from_db('agent_note', filters={'session_id': UUID(response.json['content']['sessionId'])})
+        assert stored == {
+            'embedding': mock.ANY,
+            'note_text': 'Campaign X is scaling well on Facebook.',
+            'session_id': mock.ANY,
+            'updated_at': mock.ANY,
+        }
+
+    def test_calling_again_with_the_same_session_id_replaces_rather_than_duplicates_the_note(
+        self, client, mcp_headers, read_from_db
+    ):
+        updated_summary = 'Updated analysis with more detail.'
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'store_analysis_note'}
+        first_response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'store_analysis_note',
+                    'arguments': {'summary': 'First draft of the analysis.'},
+                },
+            },
+        )
+        session_id = first_response.json['content']['sessionId']
+
+        second_response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'store_analysis_note',
+                    'arguments': {'summary': updated_summary, 'sessionId': session_id},
+                },
+            },
+        )
+
+        assert second_response.status_code == 200, second_response.text
+        assert second_response.json == {'content': {'sessionId': session_id}}
+
+        rows = read_from_db('agent_note', filters={'session_id': UUID(session_id)}, fetchall=True)
+        assert len(rows) == 1
+        assert rows[0] == {
+            'embedding': mock.ANY,
+            'note_text': updated_summary,
+            'session_id': mock.ANY,
+            'updated_at': mock.ANY,
+        }
+
+
+class TestSearchNotesTool:
+    def test_search_notes_returns_the_stored_note_matching_the_query(self, client, mcp_headers, write_to_db, timestamp):
+        note_summary = 'Facebook campaign targeting Germany is underperforming this week.'
+        write_to_db(
+            'agent_note',
+            {
+                'session_id': uuid4(),
+                'note_text': note_summary,
+                'embedding': np.zeros(64, dtype=np.float32).tobytes(),
+                'updated_at': timestamp,
+            },
+            returning=False,
+            skip_created_at=True,
+        )
+
+        search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+        response = client.post(
+            '/mcp',
+            headers=search_headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'search_notes', 'arguments': {'query': 'Facebook Germany campaign performance'}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {'content': [{'noteText': note_summary, 'updatedAt': timestamp}]}
+
+    def test_search_notes_returns_no_content_when_no_notes_are_stored(self, client, mcp_headers):
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'search_notes', 'arguments': {'query': 'anything'}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {'content': []}
