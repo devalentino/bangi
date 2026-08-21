@@ -216,6 +216,7 @@ __marimo__/
 landings
 perf/out
 IP2LOCATION*BIN
+model2vec
 *.iml
 _dashmin-1.0.0
 

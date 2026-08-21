@@ -21,6 +21,7 @@ BANGI_INSTALLER_MODULES=(
     env.sh
     acme.sh
     ip2location.sh
+    model2vec.sh
     firewall.sh
     compose.sh
     nginx.sh
@@ -102,6 +103,8 @@ source "${INSTALLER_LIB_DIR}/env.sh"
 source "${INSTALLER_LIB_DIR}/acme.sh"
 # shellcheck source=infra/installer/lib/ip2location.sh
 source "${INSTALLER_LIB_DIR}/ip2location.sh"
+# shellcheck source=infra/installer/lib/model2vec.sh
+source "${INSTALLER_LIB_DIR}/model2vec.sh"
 # shellcheck source=infra/installer/lib/firewall.sh
 source "${INSTALLER_LIB_DIR}/firewall.sh"
 # shellcheck source=infra/installer/lib/compose.sh
@@ -129,6 +132,7 @@ main() {
     bangi_write_environment
     bangi_install_acme
     bangi_install_ip2location_database
+    bangi_install_model2vec_model
     bangi_install_firewall
     bangi_install_ops_user
     bangi_install_compose
