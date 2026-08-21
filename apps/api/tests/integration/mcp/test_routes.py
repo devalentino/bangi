@@ -2,6 +2,7 @@ from unittest import mock
 from uuid import UUID, uuid4
 
 import numpy as np
+import pytest
 
 from tests.fixtures.utils import click_uuid
 
@@ -640,20 +641,26 @@ class TestStoreAnalysisNoteTool:
 
 
 class TestSearchNotesTool:
-    def test_search_notes_returns_the_stored_note_matching_the_query(self, client, mcp_headers, write_to_db, timestamp):
+    @pytest.fixture
+    def stored_note(self, mysql, timestamp):
         note_summary = 'Facebook campaign targeting Germany is underperforming this week.'
-        write_to_db(
-            'agent_note',
-            {
-                'session_id': uuid4(),
-                'note_text': note_summary,
-                'embedding': np.arange(1, 65, dtype=np.float32).tobytes(),
-                'updated_at': timestamp,
-            },
-            returning=False,
-            skip_created_at=True,
-        )
+        embedding_hex = np.arange(1, 65, dtype=np.float32).tobytes().hex()
 
+        # write_to_db can't be used here: its underlying pymysql connection sends bytes params
+        # without the `_binary` marker, which VECTOR columns reject outright (unlike BINARY(16)).
+        # UNHEX() on a hex string sidesteps that; raw connection since write_to_db builds queries
+        # from plain %(key)s placeholders and can't wrap one column in UNHEX(...).
+        with mysql.cursor() as cursor:
+            cursor.execute(
+                'INSERT INTO agent_note (session_id, note_text, embedding, updated_at) '
+                'VALUES (UNHEX(%s), %s, UNHEX(%s), %s)',
+                (uuid4().hex, note_summary, embedding_hex, timestamp),
+            )
+        mysql.commit()
+
+        return note_summary
+
+    def test_search_notes_returns_the_stored_note_matching_the_query(self, client, mcp_headers, stored_note, timestamp):
         search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
         response = client.post(
             '/mcp',
@@ -667,7 +674,7 @@ class TestSearchNotesTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json == {'content': [{'noteText': note_summary, 'updatedAt': timestamp}]}
+        assert response.json == {'content': [{'noteText': stored_note, 'updatedAt': timestamp}]}
 
     def test_search_notes_returns_no_content_when_no_notes_are_stored(self, client, mcp_headers):
         headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}

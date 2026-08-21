@@ -3,7 +3,7 @@ from typing import Annotated
 from peewee import fn
 from wireup import Inject, injectable
 
-from src.core.utils import utcnow
+from src.core.utils import log_execution_time, utcnow
 from src.mcp.entities import AgentNote
 
 
@@ -12,6 +12,7 @@ class EmbeddingService:
     def __init__(self, embedding_model_path: Annotated[str, Inject(config='EMBEDDING_MODEL_PATH')]):
         self.embedding_model_path = embedding_model_path
 
+    @log_execution_time
     def compute(self, text: str) -> list[float]:
         from model2vec import StaticModel
 
