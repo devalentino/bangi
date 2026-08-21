@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/devalentino/bangi-web:0.0.1a72
+    image: ghcr.io/devalentino/bangi-web:0.0.1a73
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
@@ -10,13 +10,14 @@ services:
       - bangi
 
   api:
-    image: ghcr.io/devalentino/bangi-api:0.0.1a72
+    image: ghcr.io/devalentino/bangi-api:0.0.1a73
     restart: always
     env_file:
       - /opt/bangi/shared/env/.env
     environment:
       MARIADB_HOST: mariadb
       INTERNAL_PROCESS_BASE_URL: http://localhost:8000/process
+      EMBEDDING_MODEL_PATH: /opt/bangi/shared/model2vec/potion-base-2M
       BANGI_HOST_OPS_SSH_USER: bangi-ops
       BANGI_HOST_OPS_SSH_HOST: host.docker.internal
       BANGI_HOST_OPS_SSH_KEY_PATH: /run/secrets/bangi_ops_ssh_key
@@ -26,6 +27,7 @@ services:
     volumes:
       - /opt/bangi/shared/landings:/opt/bangi/shared/landings
       - /opt/bangi/shared/ip2location:/opt/bangi/shared/ip2location:ro
+      - /opt/bangi/shared/model2vec:/opt/bangi/shared/model2vec:ro
       - /etc/nginx/bangi:/etc/nginx/bangi
     secrets:
       - source: bangi_ops_ssh_key

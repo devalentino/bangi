@@ -26,6 +26,7 @@ from src.facebook_pacs.services import BusinessPortfolioService as FacebookPacsB
 from src.facebook_pacs.services import CampaignService as FacebookPacsCampaignService
 from src.facebook_pacs.services import ExecutorService as FacebookPacsExecutorService
 from src.health.services import HealthService
+from src.mcp.services import EmbeddingService
 from src.reports.repositories import StatisticsReportRepository
 from src.reports.services import ReportHelperService, ReportService
 from src.tracker.services import TrackService
@@ -54,6 +55,7 @@ container = create_sync_container(
         'ACCESS_URL_EXPIRING_SOON_DAYS': _get_env('ACCESS_URL_EXPIRING_SOON_DAYS', int, 5),
         'LANDING_PAGES_BASE_PATH': _get_env('LANDING_PAGES_BASE_PATH'),
         'IP2LOCATION_DB_PATH': _get_env('IP2LOCATION_DB_PATH'),
+        'EMBEDDING_MODEL_PATH': _get_env('EMBEDDING_MODEL_PATH'),
         'LANDING_PAGE_RENDERER_BASE_URL': _get_env('LANDING_PAGE_RENDERER_BASE_URL'),
         'INTERNAL_PROCESS_BASE_URL': _get_env('INTERNAL_PROCESS_BASE_URL'),
         'NGINX_WORKSPACE_BASE_DIR': _get_env('NGINX_WORKSPACE_BASE_DIR', str, '/etc/nginx/bangi'),
@@ -95,6 +97,7 @@ container = create_sync_container(
         FacebookPacsCampaignService,
         FacebookPacsExecutorService,
         HealthService,
+        EmbeddingService,
         Ip2LocationLocator,
         ReportHelperService,
         ReportService,
