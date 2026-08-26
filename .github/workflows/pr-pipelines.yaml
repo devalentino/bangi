@@ -100,6 +100,20 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+      - name: Cache model2vec embedding model
+        id: model2vec-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/model2vec/potion-base-2M
+          key: model2vec-potion-base-2M
+      - name: Download model2vec embedding model
+        if: steps.model2vec-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/model2vec/potion-base-2M
+          for file in config.json model.safetensors modules.json special_tokens_map.json tokenizer.json tokenizer_config.json vocab.txt; do
+            curl -fL --max-time 300 "https://huggingface.co/minishlab/potion-base-2M/resolve/main/${file}" -o "/tmp/model2vec/potion-base-2M/${file}"
+          done
       - run: pip install -r requirements.txt && pip install -r requirements-dev.txt && cp env-ci .env && make pytest
         working-directory: apps/api
     env:

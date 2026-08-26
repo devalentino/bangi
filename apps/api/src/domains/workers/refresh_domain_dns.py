@@ -23,7 +23,7 @@ def _fetch_domains_needing_refresh(database):
     cursor = database.execute_sql(
         (
             'SELECT domain.id, domain.hostname, domain.purpose, domain.campaign_id, '
-            'domain.is_a_record_set, domain.is_disabled, '
+            'domain.is_a_record_set, domain.is_enabled, '
             'domain_certificate.certificate_path, domain_certificate.private_key_path '
             'FROM domain '
             'LEFT JOIN domain_certificate '
@@ -155,12 +155,12 @@ def refresh_domain_dns_worker(context: WorkerContext) -> None:
         purpose,
         campaign_id,
         is_a_record_set,
-        is_disabled,
+        is_enabled,
         certificate_path,
         private_key_path,
     ) in _fetch_domains_needing_refresh(database):
         current_state = DnsService.has_a_record(hostname, public_host_ip)
-        previous_state = None if is_a_record_set is None else bool(is_a_record_set)
+        previous_state = is_a_record_set
 
         if previous_state is not None and previous_state == current_state:
             continue
@@ -175,7 +175,7 @@ def refresh_domain_dns_worker(context: WorkerContext) -> None:
                 purpose,
                 campaign_id,
                 flow_id_cookie_name,
-                bool(is_disabled),
+                is_enabled,
                 current_state,
                 certificate_path,
                 private_key_path,

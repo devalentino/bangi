@@ -14,6 +14,7 @@ from src.core.supervisor import WorkerSupervisor
 from src.domains.routes import blueprint as domains_blueprint
 from src.facebook_pacs.routes import blueprint as facebook_pacs_blueprint
 from src.health.routes import blueprint as health_blueprint
+from src.mcp.routes import blueprint as mcp_blueprint
 from src.reports.routes import blueprint as reports_blueprint
 from src.tracker.routes import blueprint as track_blueprint
 from src.tracker.routes import process_blueprint
@@ -63,6 +64,7 @@ api.register_blueprint(reports_blueprint, url_prefix='/api/v2/reports')
 api.register_blueprint(track_blueprint, url_prefix='/api/v2/track')
 api.register_blueprint(process_blueprint, url_prefix='/process')
 api.register_blueprint(health_blueprint, url_prefix='/api/v2/health')
+api.register_blueprint(mcp_blueprint, url_prefix='/mcp')
 
 
 @app.errorhandler(ApplicationError)

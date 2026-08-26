@@ -32,6 +32,7 @@ var facebookPacsCampaignsView = require("./src/views/facebook_pacs_campaigns");
 var facebookPacsCampaignView = require("./src/views/facebook_pacs_campaign");
 var facebookPacsBusinessPagesView = require("./src/views/facebook_pacs_business_pages");
 var facebookPacsBusinessPageView = require("./src/views/facebook_pacs_business_page");
+var patTokensView = require("./src/views/pat_tokens");
 
 var auth = session.auth;
 var alerts = session.alerts;
@@ -285,6 +286,16 @@ m.route(document.getElementById("content"), "/statistics", {
     },
     render: function () {
       return m(AuthenticatedPage, { page: facebookPacsBusinessPageView, auth: auth, alerts: alerts });
+    },
+  },
+  "/settings/tokens": {
+    onmatch: function () {
+      if (!auth.isAuthenticated) {
+        m.route.set("/sign-in");
+      }
+    },
+    render: function () {
+      return m(AuthenticatedPage, { page: patTokensView, auth: auth, alerts: alerts });
     },
   },
 });

@@ -123,9 +123,6 @@ fi
 if [[ -n "${EXPECTED_STATUSES:-}" ]]; then
   docker_args+=(-e "EXPECTED_STATUSES=$EXPECTED_STATUSES")
 fi
-if [[ -n "${EXPECTED_CONTENT_TYPE:-}" ]]; then
-  docker_args+=(-e "EXPECTED_CONTENT_TYPE=$EXPECTED_CONTENT_TYPE")
-fi
 if [[ -n "${PROCESS_RATE_STAGES:-}" ]]; then
   docker_args+=(-e "PROCESS_RATE_STAGES=$PROCESS_RATE_STAGES")
 fi

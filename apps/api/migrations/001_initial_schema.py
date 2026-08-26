@@ -151,7 +151,7 @@ def migrate(migrator: Migrator, database: pw.Database, *, fake=False):
         purpose = pw.CharField(max_length=32)
         campaign = pw.ForeignKeyField(column_name='campaign_id', field='id', model=migrator.orm['campaign'], null=True, unique=True)
         is_a_record_set = pw.BooleanField(null=True)
-        is_disabled = pw.BooleanField(default=False)
+        is_enabled = pw.BooleanField(default=True)
 
         class Meta:
             table_name = "domain"

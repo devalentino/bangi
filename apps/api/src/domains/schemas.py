@@ -51,14 +51,14 @@ class DomainUpsertRequestSchema(Schema):
 class DomainCreateRequestSchema(DomainUpsertRequestSchema):
     purpose = fields.Enum(DomainPurpose, by_value=True, required=True)
     campaignId = fields.Integer(allow_none=True, load_default=None)
-    isDisabled = fields.Boolean(load_default=False)
+    isEnabled = fields.Boolean(load_default=True)
 
 
 class DomainUpdateRequestSchema(DomainUpsertRequestSchema):
     hostname = fields.String(validate=validate_hostname)
     purpose = fields.Enum(DomainPurpose, by_value=True)
     campaignId = fields.Integer(allow_none=True, load_default=None)
-    isDisabled = fields.Boolean()
+    isEnabled = fields.Boolean()
 
 
 class DomainResponseSchema(Schema):
@@ -68,7 +68,7 @@ class DomainResponseSchema(Schema):
     campaignId = fields.Integer(allow_none=True)
     campaignName = fields.String(allow_none=True)
     isARecordSet = fields.Boolean(allow_none=True)
-    isDisabled = fields.Boolean(required=True)
+    isEnabled = fields.Boolean(required=True)
     certificateStatus = fields.String(allow_none=True)
 
 

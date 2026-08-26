@@ -1,6 +1,7 @@
 import base64
 import functools
 import gc
+import hashlib
 import os
 import pathlib
 import shutil
@@ -125,6 +126,27 @@ def client():
 def authorization():
     payload = f'{os.getenv("BASIC_AUTHENTICATION_USERNAME")}:{os.getenv("BASIC_AUTHENTICATION_PASSWORD")}'.encode()
     return f'Basic {base64.b64encode(payload).decode()}'
+
+
+@pytest.fixture
+def pat_token(write_to_db):
+    token = 'test-pat-token-0123456789abcdef'
+    write_to_db(
+        'pat_token',
+        {
+            'name': 'Test PAT token',
+            'token_hash': hashlib.sha256(token.encode()).hexdigest(),
+            'token_prefix': token[:8],
+            'token_suffix': token[-4:],
+            'revoked_at': None,
+        },
+    )
+    return token
+
+
+@pytest.fixture
+def bearer_authorization(pat_token):
+    return f'Bearer {pat_token}'
 
 
 @pytest.fixture

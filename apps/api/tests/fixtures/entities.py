@@ -20,6 +20,6 @@ def domain(write_to_db, campaign):
             'purpose': 'campaign',
             'campaign_id': campaign['id'],
             'is_a_record_set': True,
-            'is_disabled': False,
+            'is_enabled': True,
         },
     )

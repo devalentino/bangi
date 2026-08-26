@@ -210,7 +210,7 @@ class HealthService:
             )
             .join(DomainCertificate, JOIN.LEFT_OUTER)
             .where(
-                (Domain.is_disabled == False)
+                (Domain.is_enabled == True)
                 & (
                     (Domain.is_a_record_set != True)
                     | DomainCertificate.id.is_null(True)
