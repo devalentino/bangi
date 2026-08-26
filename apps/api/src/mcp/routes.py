@@ -29,7 +29,7 @@ _KNOWN_TOOL_NAMES = {tool['name'] for tool in protocol.TOOL_DEFINITIONS}
 _SUMMARY_ACTIVITY_WINDOW_SECONDS = 7 * 24 * 60 * 60
 
 
-@blueprint.route('')
+@blueprint.route('', strict_slashes=False)
 class Mcp(MethodView):
     @blueprint.arguments(JsonRpcRequestSchema)
     @blueprint.response(200)
