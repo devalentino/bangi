@@ -1,3 +1,4 @@
+import hashlib
 from unittest import mock
 from uuid import UUID, uuid4
 
@@ -221,6 +222,72 @@ class TestAuthentication:
         )
 
         assert response.status_code == 401, response.text
+
+    def test_valid_token_via_query_parameter_authenticates_when_no_header_is_present(self, client, pat_token):
+        response = client.post(
+            '/mcp',
+            query_string={'token': pat_token},
+            headers={'MCP-Protocol-Version': '2026-07-28'},
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'server/discover', 'params': {}},
+        )
+
+        assert response.status_code == 200, response.text
+
+    def test_invalid_token_via_query_parameter_is_rejected(self, client):
+        response = client.post(
+            '/mcp',
+            query_string={'token': 'not-a-real-token'},
+            headers={'MCP-Protocol-Version': '2026-07-28'},
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'server/discover', 'params': {}},
+        )
+
+        assert response.status_code == 401, response.text
+
+    def test_revoked_token_via_query_parameter_is_rejected(self, client, write_to_db):
+        revoked_token = 'revoked-query-param-token-0123456789'
+        write_to_db(
+            'pat_token',
+            {
+                'name': 'Revoked token',
+                'token_hash': hashlib.sha256(revoked_token.encode()).hexdigest(),
+                'token_prefix': revoked_token[:8],
+                'token_suffix': revoked_token[-4:],
+                'revoked_at': 1778587200,
+            },
+        )
+
+        response = client.post(
+            '/mcp',
+            query_string={'token': revoked_token},
+            headers={'MCP-Protocol-Version': '2026-07-28'},
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'server/discover', 'params': {}},
+        )
+
+        assert response.status_code == 401, response.text
+
+    def test_header_takes_precedence_over_query_parameter_when_both_are_present(
+        self, client, bearer_authorization, write_to_db
+    ):
+        revoked_token = 'revoked-query-param-token-0123456789'
+        write_to_db(
+            'pat_token',
+            {
+                'name': 'Revoked token',
+                'token_hash': hashlib.sha256(revoked_token.encode()).hexdigest(),
+                'token_prefix': revoked_token[:8],
+                'token_suffix': revoked_token[-4:],
+                'revoked_at': 1778587200,
+            },
+        )
+
+        response = client.post(
+            '/mcp',
+            query_string={'token': revoked_token},
+            headers={'Authorization': bearer_authorization, 'MCP-Protocol-Version': '2026-07-28'},
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'server/discover', 'params': {}},
+        )
+
+        assert response.status_code == 200, response.text
 
 
 class TestRequestBodyValidation:
