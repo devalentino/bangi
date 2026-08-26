@@ -2,7 +2,8 @@ import datetime
 import json
 import uuid
 
-from peewee import Field, TextField, TimestampField
+import numpy as np
+from peewee import SQL, Field, TextField, TimestampField
 
 
 class JSONField(TextField):
@@ -40,3 +41,24 @@ class BinaryUUIDField(Field):
         if isinstance(value, (bytes, bytearray)):
             return uuid.UUID(bytes=bytes(value))
         return uuid.UUID(str(value))
+
+
+class VectorField(Field):
+    field_type = 'VECTOR'
+
+    def __init__(self, dimensions: int, *args, **kwargs):
+        self.dimensions = dimensions
+        super().__init__(*args, **kwargs)
+
+    def db_value(self, value):
+        if value is None:
+            return None
+        return np.asarray(value, dtype=np.float32).tobytes()
+
+    def python_value(self, value):
+        if value is None:
+            return None
+        return np.frombuffer(value, dtype=np.float32).tolist()
+
+    def ddl_datatype(self, ctx):
+        return SQL(f'VECTOR({self.dimensions})')

@@ -20,7 +20,7 @@ class DomainModel {
       hostname: "",
       purpose: "campaign",
       campaignId: "",
-      isDisabled: false,
+      isEnabled: true,
       isARecordSet: null,
     };
   }
@@ -29,7 +29,7 @@ class DomainModel {
     this.form.hostname = payload.hostname || "";
     this.form.purpose = payload.purpose || "campaign";
     this.form.campaignId = payload.campaignId === null || payload.campaignId === undefined ? "" : String(payload.campaignId);
-    this.form.isDisabled = Boolean(payload.isDisabled);
+    this.form.isEnabled = payload.isEnabled === undefined ? true : Boolean(payload.isEnabled);
     this.form.isARecordSet = payload.isARecordSet === undefined ? null : payload.isARecordSet;
   }
 
@@ -119,7 +119,7 @@ class DomainModel {
   buildPayload() {
     let payload = {
       hostname: this.form.hostname.trim(),
-      isDisabled: Boolean(this.form.isDisabled),
+      isEnabled: Boolean(this.form.isEnabled),
       purpose: this.form.purpose,
     };
 

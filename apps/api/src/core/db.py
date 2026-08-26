@@ -23,4 +23,5 @@ def database(
         password=password,
         host=host,
         port=port,
+        binary_prefix=True,
     )

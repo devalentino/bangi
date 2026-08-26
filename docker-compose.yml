@@ -35,6 +35,7 @@ services:
       MARIADB_HOST: mariadb
       LANDING_PAGES_BASE_PATH: /app/landings
       INTERNAL_PROCESS_BASE_URL: http://localhost:8000/process
+      EMBEDDING_MODEL_PATH: /app/model2vec/potion-base-2M
     ports:
       - '8000:5000'
     volumes:
@@ -42,6 +43,7 @@ services:
       - ./.env:/app/.env
       - ./landings:/app/landings
       - ./infra/IP2LOCATION-LITE-DB1.IPV6.BIN:/app/IP2LOCATION-LITE-DB1.IPV6.BIN
+      - ./infra/model2vec/potion-base-2M:/app/model2vec/potion-base-2M:ro
     links:
       - mariadb
     depends_on:

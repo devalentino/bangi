@@ -18,7 +18,7 @@ class DomainSortBy(str, Enum):
     purpose = 'purpose'
     campaignId = 'campaignId'
     isARecordSet = 'isARecordSet'
-    isDisabled = 'isDisabled'
+    isEnabled = 'isEnabled'
 
 
 class DomainCertificateStatus(str, Enum):

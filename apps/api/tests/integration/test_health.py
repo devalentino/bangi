@@ -371,7 +371,7 @@ class TestCertificateHealthDiagnostics:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         failed_issuance_domain = write_to_db(
@@ -381,7 +381,7 @@ class TestCertificateHealthDiagnostics:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         failed_renewal_domain = write_to_db(
@@ -391,7 +391,7 @@ class TestCertificateHealthDiagnostics:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         expired_domain = write_to_db(
@@ -401,7 +401,7 @@ class TestCertificateHealthDiagnostics:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         dns_not_ready_domain = write_to_db(
@@ -411,7 +411,7 @@ class TestCertificateHealthDiagnostics:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': False,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         disabled_domain = write_to_db(
@@ -421,7 +421,7 @@ class TestCertificateHealthDiagnostics:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': True,
+                'is_enabled': False,
             },
         )
 
@@ -573,7 +573,7 @@ class TestCertificateAlerts:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         write_to_db(
@@ -612,7 +612,7 @@ class TestCertificateAlerts:
                 'purpose': 'campaign',
                 'campaign_id': campaign['id'],
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         write_to_db(
@@ -668,7 +668,7 @@ class TestCertificateAlerts:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         write_to_db(
@@ -724,7 +724,7 @@ class TestCertificateAlerts:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         write_to_db(
@@ -778,7 +778,7 @@ class TestCertificateAlerts:
                 'purpose': 'dashboard',
                 'campaign_id': None,
                 'is_a_record_set': True,
-                'is_disabled': False,
+                'is_enabled': True,
             },
         )
         write_to_db(
