@@ -34,6 +34,18 @@ class TestDiscover:
             'instructions': INSTRUCTIONS,
         }
 
+    def test_discover_route_accepts_trailing_slash(self, client, mcp_headers):
+        response = client.post(
+            '/mcp/', headers=mcp_headers, json={'jsonrpc': '2.0', 'id': 1, 'method': 'server/discover', 'params': {}}
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'protocolVersions': ['2026-07-28'],
+            'capabilities': {'tools': {'listChanged': False}},
+            'instructions': INSTRUCTIONS,
+        }
+
 
 class TestToolsList:
     def test_tools_list_returns_the_five_tool_definitions_with_schemas(self, client, mcp_headers):
