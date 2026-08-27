@@ -29,9 +29,13 @@ class TestDiscover:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'protocolVersions': ['2025-11-25', '2026-07-28'],
-            'capabilities': {'tools': {'listChanged': False}},
-            'instructions': INSTRUCTIONS,
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'protocolVersions': ['2025-11-25', '2026-07-28'],
+                'capabilities': {'tools': {'listChanged': False}},
+                'instructions': INSTRUCTIONS,
+            },
         }
 
     def test_discover_route_accepts_trailing_slash(self, client, mcp_headers):
@@ -41,9 +45,13 @@ class TestDiscover:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'protocolVersions': ['2025-11-25', '2026-07-28'],
-            'capabilities': {'tools': {'listChanged': False}},
-            'instructions': INSTRUCTIONS,
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'protocolVersions': ['2025-11-25', '2026-07-28'],
+                'capabilities': {'tools': {'listChanged': False}},
+                'instructions': INSTRUCTIONS,
+            },
         }
 
 
@@ -62,10 +70,14 @@ class TestInitialize:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'protocolVersion': '2025-11-25',
-            'capabilities': {'tools': {'listChanged': False}},
-            'serverInfo': {'name': 'bangi', 'version': '1.0.0'},
-            'instructions': INSTRUCTIONS,
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'protocolVersion': '2025-11-25',
+                'capabilities': {'tools': {'listChanged': False}},
+                'serverInfo': {'name': 'bangi', 'version': '1.0.0'},
+                'instructions': INSTRUCTIONS,
+            },
         }
 
     def test_initialize_ignores_an_unsupported_requested_version(self, client, bearer_authorization):
@@ -81,7 +93,16 @@ class TestInitialize:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json['protocolVersion'] == '2025-11-25'
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'protocolVersion': '2025-11-25',
+                'capabilities': {'tools': {'listChanged': False}},
+                'serverInfo': {'name': 'bangi', 'version': '1.0.0'},
+                'instructions': INSTRUCTIONS,
+            },
+        }
 
     def test_initialize_ignores_a_missing_protocol_version(self, client, bearer_authorization):
         response = client.post(
@@ -91,7 +112,16 @@ class TestInitialize:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json['protocolVersion'] == '2025-11-25'
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'protocolVersion': '2025-11-25',
+                'capabilities': {'tools': {'listChanged': False}},
+                'serverInfo': {'name': 'bangi', 'version': '1.0.0'},
+                'instructions': INSTRUCTIONS,
+            },
+        }
 
     def test_initialize_does_not_require_the_protocol_version_header(self, client, bearer_authorization):
         response = client.post(
@@ -125,94 +155,98 @@ class TestToolsList:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'tools': [
-                {
-                    'name': 'summary',
-                    'description': (
-                        'Campaigns with activity in the last 7 days, together with the current alert feed. '
-                        'The entry point for any campaign-analysis conversation.'
-                    ),
-                    'inputSchema': {
-                        'type': 'object',
-                        'additionalProperties': False,
-                        'properties': {
-                            'page': {'title': 'page', 'type': 'integer'},
-                            'pageSize': {'title': 'pageSize', 'type': 'integer'},
-                        },
-                    },
-                },
-                {
-                    'name': 'campaign_list',
-                    'description': 'Paginated list of all campaigns on this Bangi instance, active or dormant.',
-                    'inputSchema': {
-                        'type': 'object',
-                        'additionalProperties': False,
-                        'properties': {
-                            'page': {'title': 'page', 'type': 'integer', 'default': 1},
-                            'pageSize': {'title': 'pageSize', 'type': 'integer', 'default': 20},
-                            'sortBy': {
-                                'title': 'sortBy',
-                                'type': 'string',
-                                'default': 'id',
-                                'enum': ['id', 'createdAt', 'clickCount', 'clickShare', 'lastActivityAt'],
-                            },
-                            'sortOrder': {
-                                'title': 'sortOrder',
-                                'type': 'string',
-                                'default': 'asc',
-                                'enum': ['asc', 'desc'],
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'tools': [
+                    {
+                        'name': 'summary',
+                        'description': (
+                            'Campaigns with activity in the last 7 days, together with the current alert feed. '
+                            'The entry point for any campaign-analysis conversation.'
+                        ),
+                        'inputSchema': {
+                            'type': 'object',
+                            'additionalProperties': False,
+                            'properties': {
+                                'page': {'title': 'page', 'type': 'integer'},
+                                'pageSize': {'title': 'pageSize', 'type': 'integer'},
                             },
                         },
                     },
-                },
-                {
-                    'name': 'campaign_statistics',
-                    'description': (
-                        'The statistics report for one campaign over a period, matching the Bangi dashboard.'
-                    ),
-                    'inputSchema': {
-                        'type': 'object',
-                        'additionalProperties': False,
-                        'properties': {
-                            'campaignId': {'title': 'campaignId', 'type': 'integer'},
-                            'periodStart': {'title': 'periodStart', 'type': 'string', 'format': 'date'},
-                            'periodEnd': {'title': 'periodEnd', 'type': 'string', 'format': 'date'},
-                            'groupParameters': {
-                                'title': 'groupParameters',
-                                'type': 'array',
-                                'default': [],
-                                'items': {'title': 'groupParameters', 'type': 'string'},
+                    {
+                        'name': 'campaign_list',
+                        'description': 'Paginated list of all campaigns on this Bangi instance, active or dormant.',
+                        'inputSchema': {
+                            'type': 'object',
+                            'additionalProperties': False,
+                            'properties': {
+                                'page': {'title': 'page', 'type': 'integer', 'default': 1},
+                                'pageSize': {'title': 'pageSize', 'type': 'integer', 'default': 20},
+                                'sortBy': {
+                                    'title': 'sortBy',
+                                    'type': 'string',
+                                    'default': 'id',
+                                    'enum': ['id', 'createdAt', 'clickCount', 'clickShare', 'lastActivityAt'],
+                                },
+                                'sortOrder': {
+                                    'title': 'sortOrder',
+                                    'type': 'string',
+                                    'default': 'asc',
+                                    'enum': ['asc', 'desc'],
+                                },
                             },
                         },
-                        'required': ['campaignId', 'periodStart'],
                     },
-                },
-                {
-                    'name': 'store_analysis_note',
-                    'description': 'Persist a running summary of the current analysis conversation.',
-                    'inputSchema': {
-                        'type': 'object',
-                        'additionalProperties': False,
-                        'properties': {
-                            'summary': {'title': 'summary', 'type': 'string'},
-                            'sessionId': {'title': 'sessionId', 'type': ['string', 'null']},
+                    {
+                        'name': 'campaign_statistics',
+                        'description': (
+                            'The statistics report for one campaign over a period, matching the Bangi dashboard.'
+                        ),
+                        'inputSchema': {
+                            'type': 'object',
+                            'additionalProperties': False,
+                            'properties': {
+                                'campaignId': {'title': 'campaignId', 'type': 'integer'},
+                                'periodStart': {'title': 'periodStart', 'type': 'string', 'format': 'date'},
+                                'periodEnd': {'title': 'periodEnd', 'type': 'string', 'format': 'date'},
+                                'groupParameters': {
+                                    'title': 'groupParameters',
+                                    'type': 'array',
+                                    'default': [],
+                                    'items': {'title': 'groupParameters', 'type': 'string'},
+                                },
+                            },
+                            'required': ['campaignId', 'periodStart'],
                         },
-                        'required': ['summary'],
                     },
-                },
-                {
-                    'name': 'search_notes',
-                    'description': (
-                        'Search stored conversation summaries by semantic similarity to a free-text query.'
-                    ),
-                    'inputSchema': {
-                        'type': 'object',
-                        'additionalProperties': False,
-                        'properties': {'query': {'title': 'query', 'type': 'string'}},
-                        'required': ['query'],
+                    {
+                        'name': 'store_analysis_note',
+                        'description': 'Persist a running summary of the current analysis conversation.',
+                        'inputSchema': {
+                            'type': 'object',
+                            'additionalProperties': False,
+                            'properties': {
+                                'summary': {'title': 'summary', 'type': 'string'},
+                                'sessionId': {'title': 'sessionId', 'type': ['string', 'null']},
+                            },
+                            'required': ['summary'],
+                        },
                     },
-                },
-            ]
+                    {
+                        'name': 'search_notes',
+                        'description': (
+                            'Search stored conversation summaries by semantic similarity to a free-text query.'
+                        ),
+                        'inputSchema': {
+                            'type': 'object',
+                            'additionalProperties': False,
+                            'properties': {'query': {'title': 'query', 'type': 'string'}},
+                            'required': ['query'],
+                        },
+                    },
+                ]
+            },
         }
 
 
@@ -227,7 +261,7 @@ class TestToolsCall:
         )
 
         assert response.status_code == 400, response.text
-        assert response.json == {'error': {'code': -32602, 'message': 'InvalidParams'}}
+        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'error': {'code': -32602, 'message': 'InvalidParams'}}
 
 
 class TestUnknownMethod:
@@ -237,7 +271,65 @@ class TestUnknownMethod:
         )
 
         assert response.status_code == 404, response.text
-        assert response.json == {'error': {'code': -32601, 'message': 'MethodNotFound'}}
+        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'error': {'code': -32601, 'message': 'MethodNotFound'}}
+
+
+class TestJsonRpcEnvelope:
+    def test_success_response_wraps_the_result_and_echoes_a_numeric_request_id(self, client, mcp_headers):
+        response = client.post(
+            '/mcp', headers=mcp_headers, json={'jsonrpc': '2.0', 'id': 7, 'method': 'server/discover', 'params': {}}
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 7,
+            'result': {
+                'protocolVersions': ['2025-11-25', '2026-07-28'],
+                'capabilities': {'tools': {'listChanged': False}},
+                'instructions': INSTRUCTIONS,
+            },
+        }
+
+    def test_success_response_echoes_a_string_request_id(self, client, mcp_headers):
+        response = client.post(
+            '/mcp',
+            headers=mcp_headers,
+            json={'jsonrpc': '2.0', 'id': 'req-abc', 'method': 'server/discover', 'params': {}},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 'req-abc',
+            'result': {
+                'protocolVersions': ['2025-11-25', '2026-07-28'],
+                'capabilities': {'tools': {'listChanged': False}},
+                'instructions': INSTRUCTIONS,
+            },
+        }
+
+    def test_error_response_wraps_the_error_and_echoes_the_request_id(self, client, mcp_headers):
+        response = client.post(
+            '/mcp', headers=mcp_headers, json={'jsonrpc': '2.0', 'id': 'req-err', 'method': 'server/ping', 'params': {}}
+        )
+
+        assert response.status_code == 404, response.text
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 'req-err',
+            'error': {'code': -32601, 'message': 'MethodNotFound'},
+        }
+
+    def test_error_response_before_dispatch_still_carries_the_request_id(self, client, bearer_authorization):
+        response = client.post(
+            '/mcp',
+            headers={'Authorization': bearer_authorization},
+            json={'jsonrpc': '2.0', 'id': 99, 'method': 'tools/list', 'params': {}},
+        )
+
+        assert response.status_code == 400, response.text
+        assert response.json == {'jsonrpc': '2.0', 'id': 99, 'error': {'code': -32020, 'message': 'HeaderMismatch'}}
 
 
 class TestHeaderValidation:
@@ -249,7 +341,7 @@ class TestHeaderValidation:
         )
 
         assert response.status_code == 400, response.text
-        assert response.json == {'error': {'code': -32020, 'message': 'HeaderMismatch'}}
+        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'error': {'code': -32020, 'message': 'HeaderMismatch'}}
 
     def test_unsupported_protocol_version_header_is_rejected(self, client, bearer_authorization):
         response = client.post(
@@ -259,7 +351,7 @@ class TestHeaderValidation:
         )
 
         assert response.status_code == 400, response.text
-        assert response.json == {'error': {'code': -32020, 'message': 'HeaderMismatch'}}
+        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'error': {'code': -32020, 'message': 'HeaderMismatch'}}
 
     def test_tools_call_with_mismatched_mcp_method_header_is_rejected_before_dispatch(self, client, mcp_headers):
         headers = mcp_headers | {'Mcp-Method': 'tools/list', 'Mcp-Name': 'summary'}
@@ -271,7 +363,7 @@ class TestHeaderValidation:
         )
 
         assert response.status_code == 400, response.text
-        assert response.json == {'error': {'code': -32020, 'message': 'HeaderMismatch'}}
+        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'error': {'code': -32020, 'message': 'HeaderMismatch'}}
 
     def test_tools_call_with_mismatched_mcp_name_header_is_rejected_before_dispatch(self, client, mcp_headers):
         headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_list'}
@@ -283,7 +375,7 @@ class TestHeaderValidation:
         )
 
         assert response.status_code == 400, response.text
-        assert response.json == {'error': {'code': -32020, 'message': 'HeaderMismatch'}}
+        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'error': {'code': -32020, 'message': 'HeaderMismatch'}}
 
 
 class TestAuthentication:
@@ -424,15 +516,19 @@ class TestSummaryTool:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'content': [
-                {
-                    'id': recent_campaign['id'],
-                    'name': recent_campaign['name'],
-                    'summary': {'clickCount': 1, 'clickShare': 0.5, 'lastActivityAt': timestamp - 60},
-                },
-            ],
-            'pagination': {'page': 1, 'pageSize': 20, 'total': 1},
-            'alerts': [],
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'content': [
+                    {
+                        'id': recent_campaign['id'],
+                        'name': recent_campaign['name'],
+                        'summary': {'clickCount': 1, 'clickShare': 0.5, 'lastActivityAt': timestamp - 60},
+                    },
+                ],
+                'pagination': {'page': 1, 'pageSize': 20, 'total': 1},
+                'alerts': [],
+            },
         }
 
     def test_summary_paginates_recent_campaigns_ordered_by_last_activity(
@@ -463,8 +559,8 @@ class TestSummaryTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json['pagination'] == {'page': 2, 'pageSize': 2, 'total': 3}
-        assert [c['id'] for c in response.json['content']] == [campaigns[2]['id']]
+        assert response.json['result']['pagination'] == {'page': 2, 'pageSize': 2, 'total': 3}
+        assert [c['id'] for c in response.json['result']['content']] == [campaigns[2]['id']]
 
     def test_summary_bundles_the_current_alert_feed_on_every_call(self, client, mcp_headers, authorization, campaign):
         alerts_response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
@@ -478,7 +574,7 @@ class TestSummaryTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json['alerts'] == alerts_response.json['content']
+        assert response.json['result']['alerts'] == alerts_response.json['content']
 
 
 class TestCampaignListTool:
@@ -517,11 +613,15 @@ class TestCampaignListTool:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'content': [
-                {'id': campaign['id'], 'name': campaign['name'], 'summary': campaign['summary']}
-                for campaign in rest_response.json['content']
-            ],
-            'pagination': {'page': 1, 'pageSize': 20, 'total': 2},
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'content': [
+                    {'id': campaign['id'], 'name': campaign['name'], 'summary': campaign['summary']}
+                    for campaign in rest_response.json['content']
+                ],
+                'pagination': {'page': 1, 'pageSize': 20, 'total': 2},
+            },
         }
 
     def test_campaign_list_honors_pagination_and_sort_parameters(self, client, mcp_headers, authorization, write_to_db):
@@ -551,8 +651,8 @@ class TestCampaignListTool:
         )
 
         assert response.status_code == 200, response.text
-        assert [c['id'] for c in response.json['content']] == [c['id'] for c in rest_response.json['content']]
-        assert response.json['pagination'] == {'page': 2, 'pageSize': 1, 'total': 3}
+        assert [c['id'] for c in response.json['result']['content']] == [c['id'] for c in rest_response.json['content']]
+        assert response.json['result']['pagination'] == {'page': 2, 'pageSize': 1, 'total': 3}
 
 
 class TestCampaignStatisticsTool:
@@ -591,40 +691,44 @@ class TestCampaignStatisticsTool:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'content': {
-                'report': {
-                    today.isoformat(): {
-                        'expenses': 0,
-                        'roi_accepted': 0,
-                        'roi_expected': 0,
-                        'profit_accepted': 0,
-                        'profit_expected': 0,
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'content': {
+                    'report': {
+                        today.isoformat(): {
+                            'expenses': 0,
+                            'roi_accepted': 0,
+                            'roi_expected': 0,
+                            'profit_accepted': 0,
+                            'profit_expected': 0,
+                            'statuses': {
+                                'accept': {'leads': 0, 'payouts': 0},
+                                'expect': {'leads': 0, 'payouts': 0},
+                                'reject': {'leads': 0, 'payouts': 0},
+                                'trash': {'leads': 0, 'payouts': 0},
+                            },
+                            'clicks': 3,
+                        },
+                    },
+                    'total': {
+                        'clicks': 3,
                         'statuses': {
                             'accept': {'leads': 0, 'payouts': 0},
                             'expect': {'leads': 0, 'payouts': 0},
                             'reject': {'leads': 0, 'payouts': 0},
                             'trash': {'leads': 0, 'payouts': 0},
                         },
-                        'clicks': 3,
+                        'expenses': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
+                        'roi_accepted': 0,
+                        'roi_expected': 0,
                     },
-                },
-                'total': {
-                    'clicks': 3,
-                    'statuses': {
-                        'accept': {'leads': 0, 'payouts': 0},
-                        'expect': {'leads': 0, 'payouts': 0},
-                        'reject': {'leads': 0, 'payouts': 0},
-                        'trash': {'leads': 0, 'payouts': 0},
-                    },
-                    'expenses': 0,
-                    'profit_accepted': 0,
-                    'profit_expected': 0,
-                    'roi_accepted': 0,
-                    'roi_expected': 0,
-                },
-                'parameters': ['ad_name'],
-                'groupParameters': [],
-            }
+                    'parameters': ['ad_name'],
+                    'groupParameters': [],
+                }
+            },
         }
 
     def test_campaign_statistics_groups_clicks_by_the_requested_parameter(
@@ -663,51 +767,55 @@ class TestCampaignStatisticsTool:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'content': {
-                'report': {
-                    today.isoformat(): {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {
+                'content': {
+                    'report': {
+                        today.isoformat(): {
+                            'expenses': 0,
+                            'roi_accepted': 0,
+                            'roi_expected': 0,
+                            'profit_accepted': 0,
+                            'profit_expected': 0,
+                            'Ad 1': {
+                                'statuses': {
+                                    'accept': {'leads': 0, 'payouts': 0},
+                                    'expect': {'leads': 0, 'payouts': 0},
+                                    'reject': {'leads': 0, 'payouts': 0},
+                                    'trash': {'leads': 0, 'payouts': 0},
+                                },
+                                'clicks': 2,
+                            },
+                            'Ad 2': {
+                                'statuses': {
+                                    'accept': {'leads': 0, 'payouts': 0},
+                                    'expect': {'leads': 0, 'payouts': 0},
+                                    'reject': {'leads': 0, 'payouts': 0},
+                                    'trash': {'leads': 0, 'payouts': 0},
+                                },
+                                'clicks': 1,
+                            },
+                        },
+                    },
+                    'total': {
+                        'clicks': 3,
+                        'statuses': {
+                            'accept': {'leads': 0, 'payouts': 0},
+                            'expect': {'leads': 0, 'payouts': 0},
+                            'reject': {'leads': 0, 'payouts': 0},
+                            'trash': {'leads': 0, 'payouts': 0},
+                        },
                         'expenses': 0,
-                        'roi_accepted': 0,
-                        'roi_expected': 0,
                         'profit_accepted': 0,
                         'profit_expected': 0,
-                        'Ad 1': {
-                            'statuses': {
-                                'accept': {'leads': 0, 'payouts': 0},
-                                'expect': {'leads': 0, 'payouts': 0},
-                                'reject': {'leads': 0, 'payouts': 0},
-                                'trash': {'leads': 0, 'payouts': 0},
-                            },
-                            'clicks': 2,
-                        },
-                        'Ad 2': {
-                            'statuses': {
-                                'accept': {'leads': 0, 'payouts': 0},
-                                'expect': {'leads': 0, 'payouts': 0},
-                                'reject': {'leads': 0, 'payouts': 0},
-                                'trash': {'leads': 0, 'payouts': 0},
-                            },
-                            'clicks': 1,
-                        },
+                        'roi_accepted': 0,
+                        'roi_expected': 0,
                     },
-                },
-                'total': {
-                    'clicks': 3,
-                    'statuses': {
-                        'accept': {'leads': 0, 'payouts': 0},
-                        'expect': {'leads': 0, 'payouts': 0},
-                        'reject': {'leads': 0, 'payouts': 0},
-                        'trash': {'leads': 0, 'payouts': 0},
-                    },
-                    'expenses': 0,
-                    'profit_accepted': 0,
-                    'profit_expected': 0,
-                    'roi_accepted': 0,
-                    'roi_expected': 0,
-                },
-                'parameters': ['ad_name'],
-                'groupParameters': ['ad_name'],
-            }
+                    'parameters': ['ad_name'],
+                    'groupParameters': ['ad_name'],
+                }
+            },
         }
 
 
@@ -732,9 +840,11 @@ class TestStoreAnalysisNoteTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json == {'content': {'sessionId': mock.ANY}}
+        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'result': {'content': {'sessionId': mock.ANY}}}
 
-        stored = read_from_db('agent_note', filters={'session_id': UUID(response.json['content']['sessionId'])})
+        stored = read_from_db(
+            'agent_note', filters={'session_id': UUID(response.json['result']['content']['sessionId'])}
+        )
         assert stored == {
             'embedding': mock.ANY,
             'note_text': 'Campaign X is scaling well on Facebook.',
@@ -760,7 +870,7 @@ class TestStoreAnalysisNoteTool:
                 },
             },
         )
-        session_id = first_response.json['content']['sessionId']
+        session_id = first_response.json['result']['content']['sessionId']
 
         second_response = client.post(
             '/mcp',
@@ -777,7 +887,7 @@ class TestStoreAnalysisNoteTool:
         )
 
         assert second_response.status_code == 200, second_response.text
-        assert second_response.json == {'content': {'sessionId': session_id}}
+        assert second_response.json == {'jsonrpc': '2.0', 'id': 1, 'result': {'content': {'sessionId': session_id}}}
 
         rows = read_from_db('agent_note', filters={'session_id': UUID(session_id)}, fetchall=True)
         assert len(rows) == 1
@@ -823,7 +933,11 @@ class TestSearchNotesTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json == {'content': [{'noteText': stored_note, 'updatedAt': timestamp}]}
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'noteText': stored_note, 'updatedAt': timestamp}]},
+        }
 
     def test_search_notes_returns_no_content_when_no_notes_are_stored(self, client, mcp_headers):
         headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
@@ -840,4 +954,4 @@ class TestSearchNotesTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json == {'content': []}
+        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'result': {'content': []}}

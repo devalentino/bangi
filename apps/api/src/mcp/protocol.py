@@ -110,5 +110,10 @@ def list_tools_response():
     return {'tools': TOOL_DEFINITIONS}
 
 
-def error_response(error):
-    return {'error': {'code': error.code, 'message': error.message}}, error.http_status
+def success_response(request_id, result):
+    return {'jsonrpc': '2.0', 'id': request_id, 'result': result}
+
+
+def error_response(error, request_id=None):
+    body = {'jsonrpc': '2.0', 'id': request_id, 'error': {'code': error.code, 'message': error.message}}
+    return body, error.http_status
