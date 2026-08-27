@@ -35,23 +35,24 @@ class Mcp(MethodView):
     @blueprint.response(200)
     @token_auth.login_required
     def post(self, body):
+        request_id = body['id']
         try:
             protocol.validate_headers(request.headers, body)
+
+            if body['method'] == 'initialize':
+                return protocol.success_response(request_id, protocol.initialize_response())
+            if body['method'] == 'notifications/initialized':
+                return Response(status=202)
+            if body['method'] == 'server/discover':
+                return protocol.success_response(request_id, protocol.discover_response())
+            if body['method'] == 'tools/list':
+                return protocol.success_response(request_id, protocol.list_tools_response())
+            if body['method'] == 'tools/call':
+                return protocol.success_response(request_id, call_tool(body['params']))
+
+            raise protocol.ProtocolError(-32601, 'MethodNotFound', 404)
         except protocol.ProtocolError as error:
-            return protocol.error_response(error)
-
-        if body['method'] == 'initialize':
-            return protocol.initialize_response()
-        if body['method'] == 'notifications/initialized':
-            return Response(status=202)
-        if body['method'] == 'server/discover':
-            return protocol.discover_response()
-        if body['method'] == 'tools/list':
-            return protocol.list_tools_response()
-        if body['method'] == 'tools/call':
-            return call_tool(body['params'])
-
-        return protocol.error_response(protocol.ProtocolError(-32601, 'MethodNotFound', 404))
+            return protocol.error_response(error, request_id)
 
 
 def call_tool(params):
@@ -59,7 +60,7 @@ def call_tool(params):
     arguments = params.get('arguments', {})
 
     if name not in _KNOWN_TOOL_NAMES:
-        return protocol.error_response(protocol.ProtocolError(-32602, 'InvalidParams', 400))
+        raise protocol.ProtocolError(-32602, 'InvalidParams', 400)
 
     if name == 'summary':
         return summary_tool(arguments)
