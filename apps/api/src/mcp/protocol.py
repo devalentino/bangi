@@ -8,7 +8,11 @@ from src.mcp.schemas import (
     SummaryArgumentsSchema,
 )
 
-SUPPORTED_PROTOCOL_VERSIONS = {'2026-07-28'}
+SUPPORTED_PROTOCOL_VERSIONS = {'2025-11-25', '2026-07-28'}
+
+# 2026-07-28 removes the initialize handshake entirely, so a client speaking it never sends
+# initialize — 2025-11-25 is the only supported version for which a handshake exists at all.
+HANDSHAKE_PROTOCOL_VERSION = '2025-11-25'
 
 INSTRUCTIONS = (
     'Whenever discussing or analyzing a campaign with the user, start the conversation by calling the '
@@ -72,6 +76,9 @@ class ProtocolError(Exception):
 
 
 def validate_headers(headers, body):
+    if body['method'] in ('initialize', 'notifications/initialized'):
+        return
+
     if headers.get('MCP-Protocol-Version') not in SUPPORTED_PROTOCOL_VERSIONS:
         raise ProtocolError(-32020, 'HeaderMismatch')
 
@@ -82,9 +89,18 @@ def validate_headers(headers, body):
             raise ProtocolError(-32020, 'HeaderMismatch')
 
 
+def initialize_response():
+    return {
+        'protocolVersion': HANDSHAKE_PROTOCOL_VERSION,
+        'capabilities': {'tools': {'listChanged': False}},
+        'serverInfo': {'name': 'bangi', 'version': '1.0.0'},
+        'instructions': INSTRUCTIONS,
+    }
+
+
 def discover_response():
     return {
-        'protocolVersions': list(SUPPORTED_PROTOCOL_VERSIONS),
+        'protocolVersions': sorted(SUPPORTED_PROTOCOL_VERSIONS),
         'capabilities': {'tools': {'listChanged': False}},
         'instructions': INSTRUCTIONS,
     }
