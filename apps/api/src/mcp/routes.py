@@ -2,7 +2,7 @@ import time
 import uuid
 
 import humps
-from flask import request
+from flask import Response, request
 from flask.views import MethodView
 
 from src.alerts.services import AlertService
@@ -40,6 +40,10 @@ class Mcp(MethodView):
         except protocol.ProtocolError as error:
             return protocol.error_response(error)
 
+        if body['method'] == 'initialize':
+            return protocol.initialize_response()
+        if body['method'] == 'notifications/initialized':
+            return Response(status=202)
         if body['method'] == 'server/discover':
             return protocol.discover_response()
         if body['method'] == 'tools/list':

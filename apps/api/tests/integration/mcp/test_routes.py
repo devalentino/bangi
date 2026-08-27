@@ -29,7 +29,7 @@ class TestDiscover:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'protocolVersions': ['2026-07-28'],
+            'protocolVersions': ['2025-11-25', '2026-07-28'],
             'capabilities': {'tools': {'listChanged': False}},
             'instructions': INSTRUCTIONS,
         }
@@ -41,10 +41,80 @@ class TestDiscover:
 
         assert response.status_code == 200, response.text
         assert response.json == {
-            'protocolVersions': ['2026-07-28'],
+            'protocolVersions': ['2025-11-25', '2026-07-28'],
             'capabilities': {'tools': {'listChanged': False}},
             'instructions': INSTRUCTIONS,
         }
+
+
+class TestInitialize:
+    def test_initialize_responds_with_the_handshake_protocol_version(self, client, bearer_authorization):
+        response = client.post(
+            '/mcp',
+            headers={'Authorization': bearer_authorization},
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'initialize',
+                'params': {'protocolVersion': '2025-11-25', 'capabilities': {}, 'clientInfo': {'name': 'test-client'}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'protocolVersion': '2025-11-25',
+            'capabilities': {'tools': {'listChanged': False}},
+            'serverInfo': {'name': 'bangi', 'version': '1.0.0'},
+            'instructions': INSTRUCTIONS,
+        }
+
+    def test_initialize_ignores_an_unsupported_requested_version(self, client, bearer_authorization):
+        response = client.post(
+            '/mcp',
+            headers={'Authorization': bearer_authorization},
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'initialize',
+                'params': {'protocolVersion': '1999-01-01', 'capabilities': {}, 'clientInfo': {'name': 'test-client'}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json['protocolVersion'] == '2025-11-25'
+
+    def test_initialize_ignores_a_missing_protocol_version(self, client, bearer_authorization):
+        response = client.post(
+            '/mcp',
+            headers={'Authorization': bearer_authorization},
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {}},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json['protocolVersion'] == '2025-11-25'
+
+    def test_initialize_does_not_require_the_protocol_version_header(self, client, bearer_authorization):
+        response = client.post(
+            '/mcp',
+            headers={'Authorization': bearer_authorization},
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {'protocolVersion': '2025-11-25'}},
+        )
+
+        assert response.status_code == 200, response.text
+
+
+class TestNotificationsInitialized:
+    def test_notifications_initialized_returns_an_empty_202_without_the_protocol_version_header(
+        self, client, bearer_authorization
+    ):
+        response = client.post(
+            '/mcp',
+            headers={'Authorization': bearer_authorization},
+            json={'jsonrpc': '2.0', 'method': 'notifications/initialized'},
+        )
+
+        assert response.status_code == 202, response.text
+        assert response.data == b''
 
 
 class TestToolsList:
