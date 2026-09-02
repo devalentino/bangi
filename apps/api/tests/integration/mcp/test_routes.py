@@ -1,4 +1,5 @@
 import hashlib
+import json
 from unittest import mock
 from uuid import UUID, uuid4
 
@@ -518,17 +519,18 @@ class TestSummaryTool:
         assert response.json == {
             'jsonrpc': '2.0',
             'id': 1,
-            'result': {
-                'content': [
-                    {
-                        'id': recent_campaign['id'],
-                        'name': recent_campaign['name'],
-                        'summary': {'clickCount': 1, 'clickShare': 0.5, 'lastActivityAt': timestamp - 60},
-                    },
-                ],
-                'pagination': {'page': 1, 'pageSize': 20, 'total': 1},
-                'alerts': [],
-            },
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [
+                {
+                    'id': recent_campaign['id'],
+                    'name': recent_campaign['name'],
+                    'summary': {'clickCount': 1, 'clickShare': 0.5, 'lastActivityAt': timestamp - 60},
+                },
+            ],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 1},
+            'alerts': [],
         }
 
     def test_summary_paginates_recent_campaigns_ordered_by_last_activity(
@@ -559,8 +561,22 @@ class TestSummaryTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json['result']['pagination'] == {'page': 2, 'pageSize': 2, 'total': 3}
-        assert [c['id'] for c in response.json['result']['content']] == [campaigns[2]['id']]
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [
+                {
+                    'id': campaigns[2]['id'],
+                    'name': campaigns[2]['name'],
+                    'summary': {'clickCount': 1, 'clickShare': 1 / 3, 'lastActivityAt': timestamp - 2},
+                },
+            ],
+            'pagination': {'page': 2, 'pageSize': 2, 'total': 3},
+            'alerts': [],
+        }
 
     def test_summary_bundles_the_current_alert_feed_on_every_call(self, client, mcp_headers, authorization, campaign):
         alerts_response = client.get('/api/v2/alerts', headers={'Authorization': authorization})
@@ -574,17 +590,48 @@ class TestSummaryTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json['result']['alerts'] == alerts_response.json['content']
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 0},
+            'alerts': alerts_response.json['content'],
+        }
+
+    def test_summary_returns_a_schema_valid_result_when_there_are_no_campaigns(self, client, mcp_headers):
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'summary'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': 'summary', 'arguments': {}}},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 0},
+            'alerts': [],
+        }
 
 
 class TestCampaignListTool:
     def test_campaign_list_matches_the_campaigns_endpoint_and_includes_dormant_campaigns(
-        self, client, mcp_headers, authorization, timestamp, write_to_db
+        self, client, mcp_headers, timestamp, write_to_db
     ):
         active_campaign = write_to_db(
             'campaign', {'name': 'Active campaign', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'}
         )
-        write_to_db('campaign', {'name': 'Dormant campaign', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'})
+        dormant_campaign = write_to_db(
+            'campaign', {'name': 'Dormant campaign', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'}
+        )
         write_to_db(
             'track_click',
             {
@@ -594,10 +641,6 @@ class TestCampaignListTool:
                 'created_at': timestamp - 8 * 24 * 60 * 60,
             },
         )
-
-        rest_response = client.get('/api/v2/core/campaigns', headers={'Authorization': authorization})
-        assert rest_response.status_code == 200, rest_response.text
-        assert len(rest_response.json['content']) == 2
 
         headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_list'}
         response = client.post(
@@ -615,25 +658,29 @@ class TestCampaignListTool:
         assert response.json == {
             'jsonrpc': '2.0',
             'id': 1,
-            'result': {
-                'content': [
-                    {'id': campaign['id'], 'name': campaign['name'], 'summary': campaign['summary']}
-                    for campaign in rest_response.json['content']
-                ],
-                'pagination': {'page': 1, 'pageSize': 20, 'total': 2},
-            },
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [
+                {
+                    'id': active_campaign['id'],
+                    'name': active_campaign['name'],
+                    'summary': {'clickCount': 1, 'clickShare': 1.0, 'lastActivityAt': timestamp - 8 * 24 * 60 * 60},
+                },
+                {
+                    'id': dormant_campaign['id'],
+                    'name': dormant_campaign['name'],
+                    'summary': {'clickCount': 0, 'clickShare': 0.0, 'lastActivityAt': None},
+                },
+            ],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 2},
         }
 
-    def test_campaign_list_honors_pagination_and_sort_parameters(self, client, mcp_headers, authorization, write_to_db):
-        for i in range(3):
+    def test_campaign_list_honors_pagination_and_sort_parameters(self, client, mcp_headers, write_to_db):
+        campaigns = [
             write_to_db('campaign', {'name': f'Campaign {i}', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'})
-
-        rest_response = client.get(
-            '/api/v2/core/campaigns',
-            headers={'Authorization': authorization},
-            query_string={'page': 2, 'pageSize': 1, 'sortBy': 'id', 'sortOrder': 'desc'},
-        )
-        assert rest_response.status_code == 200, rest_response.text
+            for i in range(3)
+        ]
 
         headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_list'}
         response = client.post(
@@ -651,8 +698,46 @@ class TestCampaignListTool:
         )
 
         assert response.status_code == 200, response.text
-        assert [c['id'] for c in response.json['result']['content']] == [c['id'] for c in rest_response.json['content']]
-        assert response.json['result']['pagination'] == {'page': 2, 'pageSize': 1, 'total': 3}
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [
+                {
+                    'id': campaigns[1]['id'],
+                    'name': campaigns[1]['name'],
+                    'summary': {'clickCount': 0, 'clickShare': 0.0, 'lastActivityAt': None},
+                },
+            ],
+            'pagination': {'page': 2, 'pageSize': 1, 'total': 3},
+        }
+
+    def test_campaign_list_returns_a_schema_valid_result_when_there_are_no_campaigns(self, client, mcp_headers):
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_list'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'campaign_list', 'arguments': {}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert response.json['result']['content'][0]['text'] != ''
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 0},
+        }
 
 
 class TestCampaignStatisticsTool:
@@ -693,42 +778,43 @@ class TestCampaignStatisticsTool:
         assert response.json == {
             'jsonrpc': '2.0',
             'id': 1,
-            'result': {
-                'content': {
-                    'report': {
-                        today.isoformat(): {
-                            'expenses': 0,
-                            'roi_accepted': 0,
-                            'roi_expected': 0,
-                            'profit_accepted': 0,
-                            'profit_expected': 0,
-                            'statuses': {
-                                'accept': {'leads': 0, 'payouts': 0},
-                                'expect': {'leads': 0, 'payouts': 0},
-                                'reject': {'leads': 0, 'payouts': 0},
-                                'trash': {'leads': 0, 'payouts': 0},
-                            },
-                            'clicks': 3,
-                        },
-                    },
-                    'total': {
-                        'clicks': 3,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': {
+                'report': {
+                    today.isoformat(): {
+                        'expenses': 0,
+                        'roi_accepted': 0,
+                        'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
                         'statuses': {
                             'accept': {'leads': 0, 'payouts': 0},
                             'expect': {'leads': 0, 'payouts': 0},
                             'reject': {'leads': 0, 'payouts': 0},
                             'trash': {'leads': 0, 'payouts': 0},
                         },
-                        'expenses': 0,
-                        'profit_accepted': 0,
-                        'profit_expected': 0,
-                        'roi_accepted': 0,
-                        'roi_expected': 0,
+                        'clicks': 3,
                     },
-                    'parameters': ['ad_name'],
-                    'groupParameters': [],
-                }
-            },
+                },
+                'total': {
+                    'clicks': 3,
+                    'statuses': {
+                        'accept': {'leads': 0, 'payouts': 0},
+                        'expect': {'leads': 0, 'payouts': 0},
+                        'reject': {'leads': 0, 'payouts': 0},
+                        'trash': {'leads': 0, 'payouts': 0},
+                    },
+                    'expenses': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
+                    'roi_accepted': 0,
+                    'roi_expected': 0,
+                },
+                'parameters': ['ad_name'],
+                'groupParameters': [],
+            }
         }
 
     def test_campaign_statistics_groups_clicks_by_the_requested_parameter(
@@ -769,57 +855,77 @@ class TestCampaignStatisticsTool:
         assert response.json == {
             'jsonrpc': '2.0',
             'id': 1,
-            'result': {
-                'content': {
-                    'report': {
-                        today.isoformat(): {
-                            'expenses': 0,
-                            'roi_accepted': 0,
-                            'roi_expected': 0,
-                            'profit_accepted': 0,
-                            'profit_expected': 0,
-                            'Ad 1': {
-                                'statuses': {
-                                    'accept': {'leads': 0, 'payouts': 0},
-                                    'expect': {'leads': 0, 'payouts': 0},
-                                    'reject': {'leads': 0, 'payouts': 0},
-                                    'trash': {'leads': 0, 'payouts': 0},
-                                },
-                                'clicks': 2,
-                            },
-                            'Ad 2': {
-                                'statuses': {
-                                    'accept': {'leads': 0, 'payouts': 0},
-                                    'expect': {'leads': 0, 'payouts': 0},
-                                    'reject': {'leads': 0, 'payouts': 0},
-                                    'trash': {'leads': 0, 'payouts': 0},
-                                },
-                                'clicks': 1,
-                            },
-                        },
-                    },
-                    'total': {
-                        'clicks': 3,
-                        'statuses': {
-                            'accept': {'leads': 0, 'payouts': 0},
-                            'expect': {'leads': 0, 'payouts': 0},
-                            'reject': {'leads': 0, 'payouts': 0},
-                            'trash': {'leads': 0, 'payouts': 0},
-                        },
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': {
+                'report': {
+                    today.isoformat(): {
                         'expenses': 0,
-                        'profit_accepted': 0,
-                        'profit_expected': 0,
                         'roi_accepted': 0,
                         'roi_expected': 0,
+                        'profit_accepted': 0,
+                        'profit_expected': 0,
+                        'Ad 1': {
+                            'statuses': {
+                                'accept': {'leads': 0, 'payouts': 0},
+                                'expect': {'leads': 0, 'payouts': 0},
+                                'reject': {'leads': 0, 'payouts': 0},
+                                'trash': {'leads': 0, 'payouts': 0},
+                            },
+                            'clicks': 2,
+                        },
+                        'Ad 2': {
+                            'statuses': {
+                                'accept': {'leads': 0, 'payouts': 0},
+                                'expect': {'leads': 0, 'payouts': 0},
+                                'reject': {'leads': 0, 'payouts': 0},
+                                'trash': {'leads': 0, 'payouts': 0},
+                            },
+                            'clicks': 1,
+                        },
                     },
-                    'parameters': ['ad_name'],
-                    'groupParameters': ['ad_name'],
-                }
-            },
+                },
+                'total': {
+                    'clicks': 3,
+                    'statuses': {
+                        'accept': {'leads': 0, 'payouts': 0},
+                        'expect': {'leads': 0, 'payouts': 0},
+                        'reject': {'leads': 0, 'payouts': 0},
+                        'trash': {'leads': 0, 'payouts': 0},
+                    },
+                    'expenses': 0,
+                    'profit_accepted': 0,
+                    'profit_expected': 0,
+                    'roi_accepted': 0,
+                    'roi_expected': 0,
+                },
+                'parameters': ['ad_name'],
+                'groupParameters': ['ad_name'],
+            }
         }
 
 
 class TestStoreAnalysisNoteTool:
+    @pytest.fixture
+    def existing_note(self, mysql, timestamp):
+        session_id = uuid4()
+        embedding_hex = np.arange(1, 65, dtype=np.float32).tobytes().hex()
+
+        # write_to_db can't be used here: its underlying pymysql connection sends bytes params
+        # without the `_binary` marker, which VECTOR columns reject outright (unlike BINARY(16)).
+        # UNHEX() on a hex string sidesteps that; raw connection since write_to_db builds queries
+        # from plain %(key)s placeholders and can't wrap one column in UNHEX(...).
+        with mysql.cursor() as cursor:
+            cursor.execute(
+                'INSERT INTO agent_note (session_id, note_text, embedding, updated_at) '
+                'VALUES (UNHEX(%s), %s, UNHEX(%s), %s)',
+                (session_id.hex, 'First draft of the analysis.', embedding_hex, timestamp),
+            )
+        mysql.commit()
+
+        return session_id
+
     def test_first_call_without_a_session_id_mints_a_new_one_and_persists_the_note(
         self, client, mcp_headers, read_from_db
     ):
@@ -840,11 +946,15 @@ class TestStoreAnalysisNoteTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'result': {'content': {'sessionId': mock.ANY}}}
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        payload = json.loads(response.json['result']['content'][0]['text'])
+        assert payload == {'content': {'sessionId': mock.ANY}}
 
-        stored = read_from_db(
-            'agent_note', filters={'session_id': UUID(response.json['result']['content']['sessionId'])}
-        )
+        stored = read_from_db('agent_note', filters={'session_id': UUID(payload['content']['sessionId'])})
         assert stored == {
             'embedding': mock.ANY,
             'note_text': 'Campaign X is scaling well on Facebook.',
@@ -853,11 +963,12 @@ class TestStoreAnalysisNoteTool:
         }
 
     def test_calling_again_with_the_same_session_id_replaces_rather_than_duplicates_the_note(
-        self, client, mcp_headers, read_from_db
+        self, client, mcp_headers, read_from_db, existing_note
     ):
+        session_id = existing_note
         updated_summary = 'Updated analysis with more detail.'
         headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'store_analysis_note'}
-        first_response = client.post(
+        response = client.post(
             '/mcp',
             headers=headers,
             json={
@@ -866,37 +977,28 @@ class TestStoreAnalysisNoteTool:
                 'method': 'tools/call',
                 'params': {
                     'name': 'store_analysis_note',
-                    'arguments': {'summary': 'First draft of the analysis.'},
-                },
-            },
-        )
-        session_id = first_response.json['result']['content']['sessionId']
-
-        second_response = client.post(
-            '/mcp',
-            headers=headers,
-            json={
-                'jsonrpc': '2.0',
-                'id': 1,
-                'method': 'tools/call',
-                'params': {
-                    'name': 'store_analysis_note',
-                    'arguments': {'summary': updated_summary, 'sessionId': session_id},
+                    'arguments': {'summary': updated_summary, 'sessionId': str(session_id)},
                 },
             },
         )
 
-        assert second_response.status_code == 200, second_response.text
-        assert second_response.json == {'jsonrpc': '2.0', 'id': 1, 'result': {'content': {'sessionId': session_id}}}
-
-        rows = read_from_db('agent_note', filters={'session_id': UUID(session_id)}, fetchall=True)
-        assert len(rows) == 1
-        assert rows[0] == {
-            'embedding': mock.ANY,
-            'note_text': updated_summary,
-            'session_id': mock.ANY,
-            'updated_at': mock.ANY,
+        assert response.status_code == 200, response.text
+        assert json.loads(response.json['result']['content'][0]['text']) == {'content': {'sessionId': str(session_id)}}
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
         }
+
+        rows = read_from_db('agent_note', filters={'session_id': session_id}, fetchall=True)
+        assert rows == [
+            {
+                'embedding': mock.ANY,
+                'note_text': updated_summary,
+                'session_id': session_id,
+                'updated_at': mock.ANY,
+            }
+        ]
 
 
 class TestSearchNotesTool:
@@ -936,7 +1038,10 @@ class TestSearchNotesTool:
         assert response.json == {
             'jsonrpc': '2.0',
             'id': 1,
-            'result': {'content': [{'noteText': stored_note, 'updatedAt': timestamp}]},
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [{'noteText': stored_note, 'updatedAt': timestamp}]
         }
 
     def test_search_notes_returns_no_content_when_no_notes_are_stored(self, client, mcp_headers):
@@ -954,4 +1059,9 @@ class TestSearchNotesTool:
         )
 
         assert response.status_code == 200, response.text
-        assert response.json == {'jsonrpc': '2.0', 'id': 1, 'result': {'content': []}}
+        assert response.json == {
+            'jsonrpc': '2.0',
+            'id': 1,
+            'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
+        }
+        assert json.loads(response.json['result']['content'][0]['text']) == {'content': []}

@@ -85,11 +85,13 @@ def summary_tool(arguments):
     click_stats = campaign_repository.get_click_stats([campaign.id for campaign in campaigns])
     total_click_count = campaign_repository.total_click_count()
 
-    return {
-        'content': [serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
-        'pagination': {'page': arguments['page'], 'pageSize': arguments['pageSize'], 'total': total},
-        'alerts': alert_service.serialize(alert_service.collect(container)),
-    }
+    return protocol.tool_result(
+        {
+            'content': [serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
+            'pagination': {'page': arguments['page'], 'pageSize': arguments['pageSize'], 'total': total},
+            'alerts': alert_service.serialize(alert_service.collect(container)),
+        }
+    )
 
 
 def campaign_list_tool(arguments):
@@ -106,10 +108,12 @@ def campaign_list_tool(arguments):
     click_stats = campaign_repository.get_click_stats([campaign.id for campaign in campaigns])
     total_click_count = campaign_repository.total_click_count()
 
-    return {
-        'content': [serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
-        'pagination': {'page': arguments['page'], 'pageSize': arguments['pageSize'], 'total': total},
-    }
+    return protocol.tool_result(
+        {
+            'content': [serialize_campaign(campaign, click_stats, total_click_count) for campaign in campaigns],
+            'pagination': {'page': arguments['page'], 'pageSize': arguments['pageSize'], 'total': total},
+        }
+    )
 
 
 def campaign_statistics_tool(arguments):
@@ -126,14 +130,16 @@ def campaign_statistics_tool(arguments):
         }
     )
 
-    return {
-        'content': {
-            'report': {dt.isoformat(): stats for dt, stats in report.items()},
-            'total': total,
-            'parameters': available_parameters,
-            'groupParameters': group_parameters,
+    return protocol.tool_result(
+        {
+            'content': {
+                'report': {dt.isoformat(): stats for dt, stats in report.items()},
+                'total': total,
+                'parameters': available_parameters,
+                'groupParameters': group_parameters,
+            }
         }
-    }
+    )
 
 
 def store_analysis_note_tool(arguments):
@@ -145,7 +151,7 @@ def store_analysis_note_tool(arguments):
     embedding = embedding_service.compute(arguments['summary'])
     agent_note_service.upsert(session_id, arguments['summary'], embedding)
 
-    return {'content': {'sessionId': session_id}}
+    return protocol.tool_result({'content': {'sessionId': session_id}})
 
 
 def search_notes_tool(arguments):
@@ -156,9 +162,13 @@ def search_notes_tool(arguments):
     query_embedding = embedding_service.compute(arguments['query'])
     notes = agent_note_service.search(query_embedding)
 
-    return {
-        'content': [{'noteText': note['note_text'], 'updatedAt': int(note['updated_at'].timestamp())} for note in notes]
-    }
+    return protocol.tool_result(
+        {
+            'content': [
+                {'noteText': note['note_text'], 'updatedAt': int(note['updated_at'].timestamp())} for note in notes
+            ]
+        }
+    )
 
 
 def serialize_campaign(campaign, click_stats, total_click_count):
