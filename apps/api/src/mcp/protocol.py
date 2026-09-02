@@ -1,3 +1,4 @@
+import simplejson
 from marshmallow_jsonschema import JSONSchema
 
 from src.mcp.schemas import (
@@ -108,6 +109,12 @@ def discover_response():
 
 def list_tools_response():
     return {'tools': TOOL_DEFINITIONS}
+
+
+def tool_result(payload):
+    # simplejson matches the app JSON provider (src/api.py), so Decimal report values
+    # serialize the same way the enclosing response does.
+    return {'content': [{'type': 'text', 'text': simplejson.dumps(payload)}]}
 
 
 def success_response(request_id, result):
