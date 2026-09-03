@@ -284,7 +284,10 @@ class TestToolsList:
                         'name': 'search_notes',
                         'description': (
                             'Search stored conversation summaries by semantic similarity to a free-text query, '
-                            'optionally scoped to a single campaign via campaignId.'
+                            'optionally scoped to a single campaign via campaignId. Results are ordered best '
+                            'match first; each result carries a score (cosine similarity, 1.0 = near-identical, '
+                            '~0 = unrelated). Paginate with page and pageSize (default 5, max 25) to search '
+                            'deeper — page further while the scores stay useful, and stop once they fall off.'
                         ),
                         'inputSchema': {
                             'type': 'object',
@@ -292,6 +295,8 @@ class TestToolsList:
                             'properties': {
                                 'query': {'title': 'query', 'type': 'string'},
                                 'campaignId': {'title': 'campaignId', 'type': ['integer', 'null']},
+                                'page': {'title': 'page', 'type': 'integer'},
+                                'pageSize': {'title': 'pageSize', 'type': 'integer'},
                             },
                             'required': ['query'],
                         },
@@ -1237,6 +1242,28 @@ class TestSearchNotesTool:
 
         return tagged
 
+    @pytest.fixture
+    def notes_factory(self, mysql, timestamp):
+        def _create(count):
+            texts = [f'Campaign performance note number {index}.' for index in range(count)]
+            # Perturb one component per note so every embedding points in a slightly different
+            # direction — cosine distance to a fixed query is then strictly ordered, making the
+            # pagination slices deterministic (the search itself adds no tiebreaker).
+            # See stored_note for why write_to_db can't be used for the note rows (embedding column).
+            with mysql.cursor() as cursor:
+                for index, text in enumerate(texts):
+                    embedding = np.arange(1, 65, dtype=np.float32)
+                    embedding[index % 64] += (index + 1) * 7
+                    cursor.execute(
+                        'INSERT INTO agent_note (session_id, note_text, campaign_ids, embedding, updated_at) '
+                        'VALUES (UNHEX(%s), %s, %s, UNHEX(%s), %s)',
+                        (uuid4().hex, text, '[]', embedding.tobytes().hex(), timestamp),
+                    )
+            mysql.commit()
+            return texts
+
+        return _create
+
     def test_search_notes_returns_the_stored_note_matching_the_query(self, client, mcp_headers, stored_note, timestamp):
         search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
         response = client.post(
@@ -1257,7 +1284,15 @@ class TestSearchNotesTool:
             'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
         }
         assert json.loads(response.json['result']['content'][0]['text']) == {
-            'content': [{'noteText': stored_note, 'campaignIds': [], 'updatedAt': timestamp}]
+            'content': [
+                {
+                    'noteText': stored_note,
+                    'campaignIds': [],
+                    'updatedAt': timestamp,
+                    'score': mock.ANY,
+                }
+            ],
+            'pagination': {'page': 1, 'pageSize': 5, 'total': 1},
         }
 
     def test_search_notes_tags_every_result_with_its_campaign_ids(
@@ -1276,9 +1311,10 @@ class TestSearchNotesTool:
         )
 
         assert response.status_code == 200, response.text
-        content = json.loads(response.json['result']['content'][0]['text'])['content']
-        assert sorted(content, key=lambda note: note['campaignIds']) == [
-            {'noteText': note_text, 'campaignIds': [campaign_id], 'updatedAt': timestamp}
+        payload = json.loads(response.json['result']['content'][0]['text'])
+        assert payload['pagination'] == {'page': 1, 'pageSize': 5, 'total': 2}
+        assert sorted(payload['content'], key=lambda note: note['campaignIds']) == [
+            {'noteText': note_text, 'campaignIds': [campaign_id], 'updatedAt': timestamp, 'score': mock.ANY}
             for note_text, campaign_id in campaign_tagged_notes
         ]
 
@@ -1303,7 +1339,10 @@ class TestSearchNotesTool:
 
         assert response.status_code == 200, response.text
         assert json.loads(response.json['result']['content'][0]['text']) == {
-            'content': [{'noteText': note_text, 'campaignIds': [campaign_id], 'updatedAt': timestamp}]
+            'content': [
+                {'noteText': note_text, 'campaignIds': [campaign_id], 'updatedAt': timestamp, 'score': mock.ANY}
+            ],
+            'pagination': {'page': 1, 'pageSize': 5, 'total': 1},
         }
 
     def test_search_notes_returns_no_content_when_no_notes_are_stored(self, client, mcp_headers):
@@ -1326,4 +1365,140 @@ class TestSearchNotesTool:
             'id': 1,
             'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
         }
-        assert json.loads(response.json['result']['content'][0]['text']) == {'content': []}
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [],
+            'pagination': {'page': 1, 'pageSize': 5, 'total': 0},
+        }
+
+    def test_search_notes_defaults_to_five_results_per_page(self, client, mcp_headers, notes_factory):
+        notes_factory(6)
+        search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+
+        response = client.post(
+            '/mcp',
+            headers=search_headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'search_notes', 'arguments': {'query': 'campaign performance'}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        payload = json.loads(response.json['result']['content'][0]['text'])
+        assert len(payload['content']) == 5
+        assert payload['pagination'] == {'page': 1, 'pageSize': 5, 'total': 6}
+
+    def test_search_notes_pages_through_results_without_overlap(self, client, mcp_headers, notes_factory):
+        created = set(notes_factory(6))
+        search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+
+        def fetch(page):
+            response = client.post(
+                '/mcp',
+                headers=search_headers,
+                json={
+                    'jsonrpc': '2.0',
+                    'id': 1,
+                    'method': 'tools/call',
+                    'params': {
+                        'name': 'search_notes',
+                        'arguments': {'query': 'campaign performance', 'page': page, 'pageSize': 4},
+                    },
+                },
+            )
+            assert response.status_code == 200, response.text
+            return json.loads(response.json['result']['content'][0]['text'])
+
+        first, second = fetch(1), fetch(2)
+        first_texts = [note['noteText'] for note in first['content']]
+        second_texts = [note['noteText'] for note in second['content']]
+
+        assert len(first_texts) == 4
+        assert len(second_texts) == 2
+        assert set(first_texts).isdisjoint(second_texts)
+        assert set(first_texts) | set(second_texts) == created
+        assert first['pagination'] == {'page': 1, 'pageSize': 4, 'total': 6}
+        assert second['pagination'] == {'page': 2, 'pageSize': 4, 'total': 6}
+
+    def test_search_notes_clamps_page_size_to_the_maximum(self, client, mcp_headers, notes_factory):
+        notes_factory(2)
+        search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+
+        response = client.post(
+            '/mcp',
+            headers=search_headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'search_notes', 'arguments': {'query': 'campaign performance', 'pageSize': 100}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        payload = json.loads(response.json['result']['content'][0]['text'])
+        assert payload['pagination'] == {'page': 1, 'pageSize': 25, 'total': 2}
+
+    def test_search_notes_scores_each_result_by_similarity_to_the_query(
+        self, client, mcp_headers, stored_note, timestamp
+    ):
+        search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+
+        response = client.post(
+            '/mcp',
+            headers=search_headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'search_notes', 'arguments': {'query': 'Facebook Germany campaign performance'}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        [note] = json.loads(response.json['result']['content'][0]['text'])['content']
+        assert set(note) == {'noteText', 'campaignIds', 'updatedAt', 'score'}
+        assert -1 <= note['score'] <= 1
+
+    def test_search_notes_pagination_total_reflects_the_campaign_filter(
+        self, client, mcp_headers, mysql, write_to_db, timestamp
+    ):
+        embedding_hex = np.arange(1, 65, dtype=np.float32).tobytes().hex()
+        campaign_id = write_to_db(
+            'campaign', {'name': 'Aurora', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'}
+        )['id']
+        other_campaign_id = write_to_db(
+            'campaign', {'name': 'Borealis', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'}
+        )['id']
+        # See stored_note for why write_to_db can't be used for the note rows (embedding column).
+        with mysql.cursor() as cursor:
+            for tag in (campaign_id, campaign_id, other_campaign_id):
+                cursor.execute(
+                    'INSERT INTO agent_note (session_id, note_text, campaign_ids, embedding, updated_at) '
+                    'VALUES (UNHEX(%s), %s, %s, UNHEX(%s), %s)',
+                    (uuid4().hex, 'Campaign performance note.', f'[{tag}]', embedding_hex, timestamp),
+                )
+        mysql.commit()
+        search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+
+        response = client.post(
+            '/mcp',
+            headers=search_headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'search_notes',
+                    'arguments': {'query': 'campaign performance', 'campaignId': campaign_id, 'pageSize': 1},
+                },
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        payload = json.loads(response.json['result']['content'][0]['text'])
+        assert len(payload['content']) == 1
+        assert payload['content'][0]['campaignIds'] == [campaign_id]
+        assert payload['pagination'] == {'page': 1, 'pageSize': 1, 'total': 2}

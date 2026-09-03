@@ -1,7 +1,10 @@
-from marshmallow import fields
+from marshmallow import fields, post_load
 
 from src.core.constants import PAGINATION_DEFAULT_PAGE_SIZE
 from src.core.schemas import PaginationRequestSchema, Schema
+
+SEARCH_NOTES_DEFAULT_PAGE_SIZE = 5
+SEARCH_NOTES_MAX_PAGE_SIZE = 25
 
 
 class JsonRpcRequestSchema(Schema):
@@ -47,3 +50,11 @@ class StoreAnalysisNoteArgumentsSchema(Schema):
 class SearchNotesArgumentsSchema(Schema):
     query = fields.String(required=True)
     campaignId = fields.Integer(required=False, allow_none=True, load_default=None)
+    page = fields.Integer(load_default=1)
+    pageSize = fields.Integer(load_default=SEARCH_NOTES_DEFAULT_PAGE_SIZE)
+
+    @post_load
+    def clamp_pagination(self, data, **kwargs):
+        data['page'] = max(1, data['page'])
+        data['pageSize'] = max(1, min(data['pageSize'], SEARCH_NOTES_MAX_PAGE_SIZE))
+        return data
