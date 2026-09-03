@@ -18,7 +18,13 @@ INSTRUCTIONS = (
     "conversation, omit session_handle. On every subsequent call, pass back exactly the session_handle "
     "value received from the previous call.\n\n"
     "When searching past notes with search_notes, write a query describing what you're looking for — "
-    "a campaign name, a geo, a topic — rather than assuming it only works for the current campaign."
+    "a campaign name, a geo, a topic — rather than assuming it only works for the current campaign.\n\n"
+    "Before using groupParameters for a profit/cost-based segment decision, check expensesDistributionParameter "
+    "for this campaign (from campaign_list/summary) to see which dimension, if any, carries real expense data. "
+    "Only use a segment breakdown along that dimension as the basis for a cut/pause recommendation. A breakdown "
+    "along any other dimension is a click/lead-quality signal only — say explicitly that real spend for that "
+    "segment would need to be verified externally (e.g. in the traffic source's own reporting) before "
+    "recommending a cut based on it."
 )
 
 
@@ -202,7 +208,12 @@ class TestToolsList:
                     {
                         'name': 'campaign_statistics',
                         'description': (
-                            'The statistics report for one campaign over a period, matching the Bangi dashboard.'
+                            'The statistics report for one campaign over a period, matching the Bangi dashboard. '
+                            'Supports breaking down the report by campaign-specific dimensions via '
+                            'groupParameters — see expensesDistributionParameter on the campaign\'s entry in '
+                            'campaign_list/summary to know which dimension (if any) returns a real expense '
+                            'breakdown for this campaign before drawing profit/ROI conclusions from any other '
+                            'breakdown.'
                         ),
                         'inputSchema': {
                             'type': 'object',
@@ -526,6 +537,7 @@ class TestSummaryTool:
                 {
                     'id': recent_campaign['id'],
                     'name': recent_campaign['name'],
+                    'expensesDistributionParameter': None,
                     'summary': {'clickCount': 1, 'clickShare': 0.5, 'lastActivityAt': timestamp - 60},
                 },
             ],
@@ -571,6 +583,7 @@ class TestSummaryTool:
                 {
                     'id': campaigns[2]['id'],
                     'name': campaigns[2]['name'],
+                    'expensesDistributionParameter': None,
                     'summary': {'clickCount': 1, 'clickShare': 1 / 3, 'lastActivityAt': timestamp - 2},
                 },
             ],
@@ -622,6 +635,49 @@ class TestSummaryTool:
         }
 
 
+class TestSummaryToolExpensesDistributionParameter:
+    def test_summary_includes_the_campaigns_expenses_distribution_parameter(
+        self, client, mcp_headers, timestamp, write_to_db, campaign_payload, flow_payload, set_default_flow_id
+    ):
+        campaign = write_to_db(
+            'campaign',
+            campaign_payload
+            | {'name': 'Campaign with expenses distribution', 'expenses_distribution_parameter': 'ad_name'},
+        )
+        flow = write_to_db('flow', flow_payload | {'campaign_id': campaign['id'], 'rule': None})
+        set_default_flow_id(campaign['id'], flow['id'])
+        write_to_db(
+            'track_click',
+            {
+                'campaign_id': campaign['id'],
+                'click_id': click_uuid(1),
+                'parameters': {},
+                'created_at': timestamp,
+            },
+        )
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'summary'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': 'summary', 'arguments': {}}},
+        )
+
+        assert response.status_code == 200, response.text
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [
+                {
+                    'id': campaign['id'],
+                    'name': campaign['name'],
+                    'expensesDistributionParameter': 'ad_name',
+                    'summary': {'clickCount': 1, 'clickShare': 1.0, 'lastActivityAt': timestamp},
+                },
+            ],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 1},
+            'alerts': [],
+        }
+
+
 class TestCampaignListTool:
     def test_campaign_list_matches_the_campaigns_endpoint_and_includes_dormant_campaigns(
         self, client, mcp_headers, timestamp, write_to_db
@@ -665,11 +721,13 @@ class TestCampaignListTool:
                 {
                     'id': active_campaign['id'],
                     'name': active_campaign['name'],
+                    'expensesDistributionParameter': None,
                     'summary': {'clickCount': 1, 'clickShare': 1.0, 'lastActivityAt': timestamp - 8 * 24 * 60 * 60},
                 },
                 {
                     'id': dormant_campaign['id'],
                     'name': dormant_campaign['name'],
+                    'expensesDistributionParameter': None,
                     'summary': {'clickCount': 0, 'clickShare': 0.0, 'lastActivityAt': None},
                 },
             ],
@@ -708,6 +766,7 @@ class TestCampaignListTool:
                 {
                     'id': campaigns[1]['id'],
                     'name': campaigns[1]['name'],
+                    'expensesDistributionParameter': None,
                     'summary': {'clickCount': 0, 'clickShare': 0.0, 'lastActivityAt': None},
                 },
             ],
@@ -737,6 +796,45 @@ class TestCampaignListTool:
         assert json.loads(response.json['result']['content'][0]['text']) == {
             'content': [],
             'pagination': {'page': 1, 'pageSize': 20, 'total': 0},
+        }
+
+    def test_campaign_list_includes_the_campaigns_expenses_distribution_parameter(
+        self, client, mcp_headers, write_to_db
+    ):
+        campaign = write_to_db(
+            'campaign',
+            {
+                'name': 'Campaign with expenses distribution',
+                'cost_model': 'cpm',
+                'cost_value': 1,
+                'currency': 'usd',
+                'expenses_distribution_parameter': 'ad_name',
+            },
+        )
+
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'campaign_list'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'campaign_list', 'arguments': {}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [
+                {
+                    'id': campaign['id'],
+                    'name': campaign['name'],
+                    'expensesDistributionParameter': 'ad_name',
+                    'summary': {'clickCount': 0, 'clickShare': 0.0, 'lastActivityAt': None},
+                },
+            ],
+            'pagination': {'page': 1, 'pageSize': 20, 'total': 1},
         }
 
 
