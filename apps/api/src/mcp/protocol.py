@@ -25,7 +25,13 @@ INSTRUCTIONS = (
     'conversation, omit session_handle. On every subsequent call, pass back exactly the session_handle '
     'value received from the previous call.\n\n'
     "When searching past notes with search_notes, write a query describing what you're looking for — "
-    'a campaign name, a geo, a topic — rather than assuming it only works for the current campaign.'
+    'a campaign name, a geo, a topic — rather than assuming it only works for the current campaign.\n\n'
+    'Before using groupParameters for a profit/cost-based segment decision, check expensesDistributionParameter '
+    'for this campaign (from campaign_list/summary) to see which dimension, if any, carries real expense data. '
+    'Only use a segment breakdown along that dimension as the basis for a cut/pause recommendation. A breakdown '
+    'along any other dimension is a click/lead-quality signal only — say explicitly that real spend for that '
+    "segment would need to be verified externally (e.g. in the traffic source's own reporting) before "
+    'recommending a cut based on it.'
 )
 
 
@@ -53,7 +59,13 @@ TOOL_DEFINITIONS = [
     },
     {
         'name': 'campaign_statistics',
-        'description': 'The statistics report for one campaign over a period, matching the Bangi dashboard.',
+        'description': (
+            'The statistics report for one campaign over a period, matching the Bangi dashboard. Supports '
+            'breaking down the report by campaign-specific dimensions via groupParameters — see '
+            "expensesDistributionParameter on the campaign's entry in campaign_list/summary to know which "
+            'dimension (if any) returns a real expense breakdown for this campaign before drawing profit/ROI '
+            'conclusions from any other breakdown.'
+        ),
         'inputSchema': schema_to_json_schema(CampaignStatisticsArgumentsSchema),
     },
     {
