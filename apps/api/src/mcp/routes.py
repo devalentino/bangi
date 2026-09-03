@@ -178,6 +178,7 @@ def serialize_campaign(campaign, click_stats, total_click_count):
     return {
         'id': campaign.id,
         'name': campaign.name,
+        'expensesDistributionParameter': campaign.expenses_distribution_parameter,
         'summary': {
             'clickCount': click_count,
             'clickShare': click_count / total_click_count if total_click_count else 0.0,
