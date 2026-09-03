@@ -16,15 +16,37 @@ INSTRUCTIONS = (
     "store_analysis_note with a complete summary of the conversation so far — reasoning, data points "
     "considered, and hypotheses discussed, not just the final conclusion. On the first call in a "
     "conversation, omit session_handle. On every subsequent call, pass back exactly the session_handle "
-    "value received from the previous call.\n\n"
+    "value received from the previous call. Starting a new session — omitting session_handle again — "
+    "when you return to a campaign after a meaningful time gap (long enough that the underlying "
+    "situation may have changed) is expected and correct; do not try to continue or recover an earlier "
+    "session across such a gap.\n\n"
+    "On every store_analysis_note call, pass campaignIds with the id(s) of whichever campaign(s) the "
+    "running summary currently concerns. This set can grow or change across calls within a session as "
+    "the conversation's scope evolves; pass an empty array only when the note is tied to no specific "
+    "campaign. Independently of those tags, the summary text itself must name every campaign, creative, "
+    "geo, or segment it refers to explicitly — never \"the same campaign\", \"this campaign\", \"that ad\", "
+    "or \"the same one\". Each note has to be readable in isolation, months later, by an agent with no "
+    "access to this conversation; the campaignIds tags do not make an ambiguous sentence inside the "
+    "note self-explanatory.\n\n"
     "When searching past notes with search_notes, write a query describing what you're looking for — "
-    "a campaign name, a geo, a topic — rather than assuming it only works for the current campaign.\n\n"
+    "a campaign name, a geo, a topic — rather than assuming it only works for the current campaign. "
+    "Pass campaignId to scope the search to notes tagged with one campaign; omit it to search every "
+    "note. Each result carries its own campaignIds tags so you can tell which campaign(s) it belongs "
+    "to.\n\n"
     "Before using groupParameters for a profit/cost-based segment decision, check expensesDistributionParameter "
     "for this campaign (from campaign_list/summary) to see which dimension, if any, carries real expense data. "
     "Only use a segment breakdown along that dimension as the basis for a cut/pause recommendation. A breakdown "
     "along any other dimension is a click/lead-quality signal only — say explicitly that real spend for that "
     "segment would need to be verified externally (e.g. in the traffic source's own reporting) before "
     "recommending a cut based on it."
+)
+
+STORE_ANALYSIS_NOTE_SUMMARY_DESCRIPTION = (
+    "Complete running summary of the analysis so far — the reasoning, data points considered, "
+    "and hypotheses discussed, not just the final conclusion. Refer to every campaign, creative, "
+    "geo, or segment by its actual name, never by an ambiguous reference like \"the same "
+    "campaign\", \"this campaign\", \"that ad\", or \"the same one\": the note must be interpretable "
+    "on its own, without the surrounding conversation to resolve what it means."
 )
 
 
@@ -234,13 +256,26 @@ class TestToolsList:
                     },
                     {
                         'name': 'store_analysis_note',
-                        'description': 'Persist a running summary of the current analysis conversation.',
+                        'description': (
+                            'Persist a running summary of the current analysis conversation, tagged via '
+                            'campaignIds with the campaign(s) it concerns.'
+                        ),
                         'inputSchema': {
                             'type': 'object',
                             'additionalProperties': False,
                             'properties': {
-                                'summary': {'title': 'summary', 'type': 'string'},
+                                'summary': {
+                                    'title': 'summary',
+                                    'type': 'string',
+                                    'description': STORE_ANALYSIS_NOTE_SUMMARY_DESCRIPTION,
+                                },
                                 'sessionId': {'title': 'sessionId', 'type': ['string', 'null']},
+                                'campaignIds': {
+                                    'title': 'campaignIds',
+                                    'type': 'array',
+                                    'default': [],
+                                    'items': {'title': 'campaignIds', 'type': 'integer'},
+                                },
                             },
                             'required': ['summary'],
                         },
@@ -248,12 +283,16 @@ class TestToolsList:
                     {
                         'name': 'search_notes',
                         'description': (
-                            'Search stored conversation summaries by semantic similarity to a free-text query.'
+                            'Search stored conversation summaries by semantic similarity to a free-text query, '
+                            'optionally scoped to a single campaign via campaignId.'
                         ),
                         'inputSchema': {
                             'type': 'object',
                             'additionalProperties': False,
-                            'properties': {'query': {'title': 'query', 'type': 'string'}},
+                            'properties': {
+                                'query': {'title': 'query', 'type': 'string'},
+                                'campaignId': {'title': 'campaignId', 'type': ['integer', 'null']},
+                            },
                             'required': ['query'],
                         },
                     },
@@ -1006,23 +1045,26 @@ class TestCampaignStatisticsTool:
 
 class TestStoreAnalysisNoteTool:
     @pytest.fixture
-    def existing_note(self, mysql, timestamp):
+    def existing_note(self, mysql, write_to_db, timestamp):
+        seed_campaign = write_to_db(
+            'campaign', {'name': 'Seed campaign', 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'}
+        )
         session_id = uuid4()
         embedding_hex = np.arange(1, 65, dtype=np.float32).tobytes().hex()
 
-        # write_to_db can't be used here: its underlying pymysql connection sends bytes params
-        # without the `_binary` marker, which VECTOR columns reject outright (unlike BINARY(16)).
+        # write_to_db can't be used for the note row: its underlying pymysql connection sends bytes
+        # params without the `_binary` marker, which VECTOR columns reject outright (unlike BINARY(16)).
         # UNHEX() on a hex string sidesteps that; raw connection since write_to_db builds queries
         # from plain %(key)s placeholders and can't wrap one column in UNHEX(...).
         with mysql.cursor() as cursor:
             cursor.execute(
-                'INSERT INTO agent_note (session_id, note_text, embedding, updated_at) '
-                'VALUES (UNHEX(%s), %s, UNHEX(%s), %s)',
-                (session_id.hex, 'First draft of the analysis.', embedding_hex, timestamp),
+                'INSERT INTO agent_note (session_id, note_text, campaign_ids, embedding, updated_at) '
+                'VALUES (UNHEX(%s), %s, %s, UNHEX(%s), %s)',
+                (session_id.hex, 'First draft of the analysis.', f'[{seed_campaign["id"]}]', embedding_hex, timestamp),
             )
         mysql.commit()
 
-        return session_id
+        return session_id, seed_campaign['id']
 
     def test_first_call_without_a_session_id_mints_a_new_one_and_persists_the_note(
         self, client, mcp_headers, read_from_db
@@ -1056,14 +1098,57 @@ class TestStoreAnalysisNoteTool:
         assert stored == {
             'embedding': mock.ANY,
             'note_text': 'Campaign X is scaling well on Facebook.',
+            'campaign_ids': '[]',
+            'session_id': mock.ANY,
+            'updated_at': mock.ANY,
+        }
+
+    def test_first_call_persists_the_campaign_ids_the_note_is_tagged_with(
+        self, client, mcp_headers, read_from_db, write_to_db
+    ):
+        campaign_ids = [
+            write_to_db('campaign', {'name': name, 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'})['id']
+            for name in ('Aurora', 'Borealis')
+        ]
+        headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'store_analysis_note'}
+        response = client.post(
+            '/mcp',
+            headers=headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'store_analysis_note',
+                    'arguments': {
+                        'summary': 'Comparing the "Aurora" and "Borealis" campaigns head to head.',
+                        'campaignIds': campaign_ids,
+                    },
+                },
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        payload = json.loads(response.json['result']['content'][0]['text'])
+        assert payload == {'content': {'sessionId': mock.ANY}}
+
+        stored = read_from_db('agent_note', filters={'session_id': UUID(payload['content']['sessionId'])})
+        assert stored == {
+            'embedding': mock.ANY,
+            'note_text': 'Comparing the "Aurora" and "Borealis" campaigns head to head.',
+            'campaign_ids': json.dumps(campaign_ids),
             'session_id': mock.ANY,
             'updated_at': mock.ANY,
         }
 
     def test_calling_again_with_the_same_session_id_replaces_rather_than_duplicates_the_note(
-        self, client, mcp_headers, read_from_db, existing_note
+        self, client, mcp_headers, read_from_db, write_to_db, existing_note
     ):
-        session_id = existing_note
+        session_id, seed_campaign_id = existing_note
+        new_campaign_ids = [
+            write_to_db('campaign', {'name': name, 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'})['id']
+            for name in ('Replacement campaign A', 'Replacement campaign B')
+        ]
         updated_summary = 'Updated analysis with more detail.'
         headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'store_analysis_note'}
         response = client.post(
@@ -1075,7 +1160,11 @@ class TestStoreAnalysisNoteTool:
                 'method': 'tools/call',
                 'params': {
                     'name': 'store_analysis_note',
-                    'arguments': {'summary': updated_summary, 'sessionId': str(session_id)},
+                    'arguments': {
+                        'summary': updated_summary,
+                        'sessionId': str(session_id),
+                        'campaignIds': new_campaign_ids,
+                    },
                 },
             },
         )
@@ -1093,10 +1182,12 @@ class TestStoreAnalysisNoteTool:
             {
                 'embedding': mock.ANY,
                 'note_text': updated_summary,
+                'campaign_ids': json.dumps(new_campaign_ids),
                 'session_id': session_id,
                 'updated_at': mock.ANY,
             }
         ]
+        assert seed_campaign_id not in json.loads(rows[0]['campaign_ids'])
 
 
 class TestSearchNotesTool:
@@ -1111,13 +1202,40 @@ class TestSearchNotesTool:
         # from plain %(key)s placeholders and can't wrap one column in UNHEX(...).
         with mysql.cursor() as cursor:
             cursor.execute(
-                'INSERT INTO agent_note (session_id, note_text, embedding, updated_at) '
-                'VALUES (UNHEX(%s), %s, UNHEX(%s), %s)',
-                (uuid4().hex, note_summary, embedding_hex, timestamp),
+                'INSERT INTO agent_note (session_id, note_text, campaign_ids, embedding, updated_at) '
+                'VALUES (UNHEX(%s), %s, %s, UNHEX(%s), %s)',
+                (uuid4().hex, note_summary, '[]', embedding_hex, timestamp),
             )
         mysql.commit()
 
         return note_summary
+
+    @pytest.fixture
+    def campaign_tagged_notes(self, mysql, write_to_db, timestamp):
+        embedding_hex = np.arange(1, 65, dtype=np.float32).tobytes().hex()
+        specs = [
+            ('Creative fatigue on the "Aurora" campaign in Canada.', 'Aurora'),
+            ('Payout drop on the "Borealis" campaign in Norway.', 'Borealis'),
+        ]
+        tagged = [
+            (
+                note_text,
+                write_to_db('campaign', {'name': name, 'cost_model': 'cpm', 'cost_value': 1, 'currency': 'usd'})['id'],
+            )
+            for note_text, name in specs
+        ]
+
+        # See stored_note for why write_to_db can't be used for the note rows (embedding column).
+        with mysql.cursor() as cursor:
+            for note_text, campaign_id in tagged:
+                cursor.execute(
+                    'INSERT INTO agent_note (session_id, note_text, campaign_ids, embedding, updated_at) '
+                    'VALUES (UNHEX(%s), %s, %s, UNHEX(%s), %s)',
+                    (uuid4().hex, note_text, f'[{campaign_id}]', embedding_hex, timestamp),
+                )
+        mysql.commit()
+
+        return tagged
 
     def test_search_notes_returns_the_stored_note_matching_the_query(self, client, mcp_headers, stored_note, timestamp):
         search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
@@ -1139,7 +1257,53 @@ class TestSearchNotesTool:
             'result': {'content': [{'type': 'text', 'text': mock.ANY}]},
         }
         assert json.loads(response.json['result']['content'][0]['text']) == {
-            'content': [{'noteText': stored_note, 'updatedAt': timestamp}]
+            'content': [{'noteText': stored_note, 'campaignIds': [], 'updatedAt': timestamp}]
+        }
+
+    def test_search_notes_tags_every_result_with_its_campaign_ids(
+        self, client, mcp_headers, campaign_tagged_notes, timestamp
+    ):
+        search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+        response = client.post(
+            '/mcp',
+            headers=search_headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {'name': 'search_notes', 'arguments': {'query': 'campaign performance'}},
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        content = json.loads(response.json['result']['content'][0]['text'])['content']
+        assert sorted(content, key=lambda note: note['campaignIds']) == [
+            {'noteText': note_text, 'campaignIds': [campaign_id], 'updatedAt': timestamp}
+            for note_text, campaign_id in campaign_tagged_notes
+        ]
+
+    def test_search_notes_scopes_results_to_the_requested_campaign(
+        self, client, mcp_headers, campaign_tagged_notes, timestamp
+    ):
+        note_text, campaign_id = campaign_tagged_notes[0]
+        search_headers = mcp_headers | {'Mcp-Method': 'tools/call', 'Mcp-Name': 'search_notes'}
+        response = client.post(
+            '/mcp',
+            headers=search_headers,
+            json={
+                'jsonrpc': '2.0',
+                'id': 1,
+                'method': 'tools/call',
+                'params': {
+                    'name': 'search_notes',
+                    'arguments': {'query': 'campaign performance', 'campaignId': campaign_id},
+                },
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        assert json.loads(response.json['result']['content'][0]['text']) == {
+            'content': [{'noteText': note_text, 'campaignIds': [campaign_id], 'updatedAt': timestamp}]
         }
 
     def test_search_notes_returns_no_content_when_no_notes_are_stored(self, client, mcp_headers):

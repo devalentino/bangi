@@ -22,12 +22,19 @@ class EmbeddingService:
 
 @injectable
 class AgentNoteService:
-    def upsert(self, session_id, note_text, embedding):
+    def upsert(self, session_id, note_text, campaign_ids, embedding):
         (
-            AgentNote.insert(session_id=session_id, note_text=note_text, embedding=embedding, updated_at=utcnow())
+            AgentNote.insert(
+                session_id=session_id,
+                note_text=note_text,
+                campaign_ids=campaign_ids,
+                embedding=embedding,
+                updated_at=utcnow(),
+            )
             .on_conflict(
                 update={
                     AgentNote.note_text: note_text,
+                    AgentNote.campaign_ids: campaign_ids,
                     AgentNote.embedding: embedding,
                     AgentNote.updated_at: utcnow(),
                 }
@@ -35,11 +42,11 @@ class AgentNoteService:
             .execute()
         )
 
-    def search(self, query_embedding, limit=10):
+    def search(self, query_embedding, campaign_id=None, limit=10):
         query_vector = AgentNote.embedding.db_value(query_embedding)
-        return list(
-            AgentNote.select(AgentNote.note_text, AgentNote.updated_at)
-            .order_by(fn.VEC_DISTANCE_COSINE(AgentNote.embedding, query_vector))
-            .limit(limit)
-            .dicts()
+        query = AgentNote.select(AgentNote.note_text, AgentNote.campaign_ids, AgentNote.updated_at).order_by(
+            fn.VEC_DISTANCE_COSINE(AgentNote.embedding, query_vector)
         )
+        if campaign_id is not None:
+            query = query.where(fn.JSON_CONTAINS(AgentNote.campaign_ids, str(campaign_id)))
+        return list(query.limit(limit).dicts())

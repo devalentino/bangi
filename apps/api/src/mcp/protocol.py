@@ -23,9 +23,23 @@ INSTRUCTIONS = (
     'store_analysis_note with a complete summary of the conversation so far — reasoning, data points '
     'considered, and hypotheses discussed, not just the final conclusion. On the first call in a '
     'conversation, omit session_handle. On every subsequent call, pass back exactly the session_handle '
-    'value received from the previous call.\n\n'
+    'value received from the previous call. Starting a new session — omitting session_handle again — '
+    'when you return to a campaign after a meaningful time gap (long enough that the underlying '
+    'situation may have changed) is expected and correct; do not try to continue or recover an earlier '
+    'session across such a gap.\n\n'
+    'On every store_analysis_note call, pass campaignIds with the id(s) of whichever campaign(s) the '
+    'running summary currently concerns. This set can grow or change across calls within a session as '
+    "the conversation's scope evolves; pass an empty array only when the note is tied to no specific "
+    'campaign. Independently of those tags, the summary text itself must name every campaign, creative, '
+    'geo, or segment it refers to explicitly — never "the same campaign", "this campaign", "that ad", '
+    'or "the same one". Each note has to be readable in isolation, months later, by an agent with no '
+    'access to this conversation; the campaignIds tags do not make an ambiguous sentence inside the '
+    'note self-explanatory.\n\n'
     "When searching past notes with search_notes, write a query describing what you're looking for — "
-    'a campaign name, a geo, a topic — rather than assuming it only works for the current campaign.\n\n'
+    'a campaign name, a geo, a topic — rather than assuming it only works for the current campaign. '
+    'Pass campaignId to scope the search to notes tagged with one campaign; omit it to search every '
+    'note. Each result carries its own campaignIds tags so you can tell which campaign(s) it belongs '
+    'to.\n\n'
     'Before using groupParameters for a profit/cost-based segment decision, check expensesDistributionParameter '
     'for this campaign (from campaign_list/summary) to see which dimension, if any, carries real expense data. '
     'Only use a segment breakdown along that dimension as the basis for a cut/pause recommendation. A breakdown '
@@ -70,12 +84,18 @@ TOOL_DEFINITIONS = [
     },
     {
         'name': 'store_analysis_note',
-        'description': 'Persist a running summary of the current analysis conversation.',
+        'description': (
+            'Persist a running summary of the current analysis conversation, tagged via campaignIds with '
+            'the campaign(s) it concerns.'
+        ),
         'inputSchema': schema_to_json_schema(StoreAnalysisNoteArgumentsSchema),
     },
     {
         'name': 'search_notes',
-        'description': 'Search stored conversation summaries by semantic similarity to a free-text query.',
+        'description': (
+            'Search stored conversation summaries by semantic similarity to a free-text query, optionally '
+            'scoped to a single campaign via campaignId.'
+        ),
         'inputSchema': schema_to_json_schema(SearchNotesArgumentsSchema),
     },
 ]
