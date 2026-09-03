@@ -94,7 +94,10 @@ TOOL_DEFINITIONS = [
         'name': 'search_notes',
         'description': (
             'Search stored conversation summaries by semantic similarity to a free-text query, optionally '
-            'scoped to a single campaign via campaignId.'
+            'scoped to a single campaign via campaignId. Results are ordered best match first; each result '
+            'carries a score (cosine similarity, 1.0 = near-identical, ~0 = unrelated). Paginate with page '
+            'and pageSize (default 5, max 25) to search deeper — page further while the scores stay useful, '
+            'and stop once they fall off.'
         ),
         'inputSchema': schema_to_json_schema(SearchNotesArgumentsSchema),
     },
