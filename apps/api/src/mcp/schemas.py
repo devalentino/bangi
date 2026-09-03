@@ -28,9 +28,22 @@ class CampaignStatisticsArgumentsSchema(Schema):
 
 
 class StoreAnalysisNoteArgumentsSchema(Schema):
-    summary = fields.String(required=True)
+    summary = fields.String(
+        required=True,
+        metadata={
+            'description': (
+                'Complete running summary of the analysis so far — the reasoning, data points considered, '
+                'and hypotheses discussed, not just the final conclusion. Refer to every campaign, creative, '
+                'geo, or segment by its actual name, never by an ambiguous reference like "the same '
+                'campaign", "this campaign", "that ad", or "the same one": the note must be interpretable '
+                'on its own, without the surrounding conversation to resolve what it means.'
+            )
+        },
+    )
     sessionId = fields.String(required=False, allow_none=True, load_default=None)
+    campaignIds = fields.List(fields.Integer(), dump_default=[], load_default=[])
 
 
 class SearchNotesArgumentsSchema(Schema):
     query = fields.String(required=True)
+    campaignId = fields.Integer(required=False, allow_none=True, load_default=None)

@@ -149,7 +149,7 @@ def store_analysis_note_tool(arguments):
 
     session_id = arguments['sessionId'] or str(uuid.uuid4())
     embedding = embedding_service.compute(arguments['summary'])
-    agent_note_service.upsert(session_id, arguments['summary'], embedding)
+    agent_note_service.upsert(session_id, arguments['summary'], arguments['campaignIds'], embedding)
 
     return protocol.tool_result({'content': {'sessionId': session_id}})
 
@@ -160,12 +160,17 @@ def search_notes_tool(arguments):
     agent_note_service = container.get(AgentNoteService)
 
     query_embedding = embedding_service.compute(arguments['query'])
-    notes = agent_note_service.search(query_embedding)
+    notes = agent_note_service.search(query_embedding, arguments['campaignId'])
 
     return protocol.tool_result(
         {
             'content': [
-                {'noteText': note['note_text'], 'updatedAt': int(note['updated_at'].timestamp())} for note in notes
+                {
+                    'noteText': note['note_text'],
+                    'campaignIds': note['campaign_ids'],
+                    'updatedAt': int(note['updated_at'].timestamp()),
+                }
+                for note in notes
             ]
         }
     )
