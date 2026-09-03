@@ -42,11 +42,18 @@ class AgentNoteService:
             .execute()
         )
 
-    def search(self, query_embedding, campaign_id=None, limit=10):
+    def search(self, query_embedding, campaign_id=None, limit=10, offset=0):
         query_vector = AgentNote.embedding.db_value(query_embedding)
-        query = AgentNote.select(AgentNote.note_text, AgentNote.campaign_ids, AgentNote.updated_at).order_by(
-            fn.VEC_DISTANCE_COSINE(AgentNote.embedding, query_vector)
-        )
+        distance = fn.VEC_DISTANCE_COSINE(AgentNote.embedding, query_vector)
+        query = AgentNote.select(
+            AgentNote.note_text, AgentNote.campaign_ids, AgentNote.updated_at, distance.alias('distance')
+        ).order_by(distance)
         if campaign_id is not None:
             query = query.where(fn.JSON_CONTAINS(AgentNote.campaign_ids, str(campaign_id)))
-        return list(query.limit(limit).dicts())
+        return list(query.limit(limit).offset(offset).dicts())
+
+    def count(self, campaign_id=None):
+        query = AgentNote.select()
+        if campaign_id is not None:
+            query = query.where(fn.JSON_CONTAINS(AgentNote.campaign_ids, str(campaign_id)))
+        return query.count()

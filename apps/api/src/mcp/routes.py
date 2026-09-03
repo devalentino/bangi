@@ -159,8 +159,13 @@ def search_notes_tool(arguments):
     embedding_service = container.get(EmbeddingService)
     agent_note_service = container.get(AgentNoteService)
 
+    page = arguments['page']
+    page_size = arguments['pageSize']
     query_embedding = embedding_service.compute(arguments['query'])
-    notes = agent_note_service.search(query_embedding, arguments['campaignId'])
+    notes = agent_note_service.search(
+        query_embedding, arguments['campaignId'], limit=page_size, offset=(page - 1) * page_size
+    )
+    total = agent_note_service.count(arguments['campaignId'])
 
     return protocol.tool_result(
         {
@@ -169,9 +174,11 @@ def search_notes_tool(arguments):
                     'noteText': note['note_text'],
                     'campaignIds': note['campaign_ids'],
                     'updatedAt': int(note['updated_at'].timestamp()),
+                    'score': round(1 - note['distance'], 4),
                 }
                 for note in notes
-            ]
+            ],
+            'pagination': {'page': page, 'pageSize': page_size, 'total': total},
         }
     )
 
